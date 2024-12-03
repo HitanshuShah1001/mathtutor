@@ -1,27 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SendIcon, UserIcon, ActivityIcon } from 'lucide-react';
+import { SendIcon, ActivityIcon, ChevronDownIcon } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
 import OpenAI from 'openai';
-import { MathJax, MathJaxContext } from 'better-react-mathjax'; // Import MathJax from better-react-mathjax
-
-// ChatMessage component
-const ChatMessage = ({ message, type }) => {
-  return (
-    <div className={`flex p-4 ${type === 'user' ? 'bg-gray-50' : 'bg-white'}`}>
-      <div className={`w-10 h-10 mr-4 rounded-full flex items-center justify-center 
-        ${type === 'user' ? 'bg-blue-500' : 'bg-green-500'}`}>
-        {type === 'user' ? <UserIcon className="text-white" size={20} /> : <ActivityIcon className="text-white" size={20} />}
-      </div>
-      <div className="flex-1">
-        <p className={`${type === 'user' ? 'text-blue-800' : 'text-green-800'}`}>
-          {message}
-        </p>
-      </div>
-    </div>
-  );
-};
+import { MathJaxContext } from 'better-react-mathjax';
+import { ChatMessage } from './Chatmessage';
+import { ASSISTANT, USER } from '../constants/constants.js';
+import { openai } from './InitOpenAI.js';
 
 const ChatContainer = ({ selectedChat, chats, setChats }) => {
+
   const [messages, setMessages] = useState([
     { 
       id: 0, 
@@ -32,33 +19,50 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  
+  // Add chatContainerRef
+  const chatContainerRef = useRef(null);
 
-  // Initialize OpenAI client (replace with your actual API key)
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    dangerouslyAllowBrowser: true // Note: Only for client-side demos. Use backend in production.
-  });
+
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setIsScrolledUp(false);
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const chatContainer = chatContainerRef.current;
+    
+    const handleScroll = () => {
+      if (chatContainer) {
+        const { scrollTop, scrollHeight, clientHeight } = chatContainer;
+        // Check if scrolled up from the bottom
+        setIsScrolledUp(scrollHeight - scrollTop - clientHeight > 100);
+      }
+    };
 
+    chatContainer?.addEventListener('scroll', handleScroll);
+    
+    // Scroll to bottom when messages change
+    scrollToBottom();
+
+    return () => {
+      chatContainer?.removeEventListener('scroll', handleScroll);
+    };
+  }, [messages]);
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
     const newUserMessage = {
       id: messages.length,
       text: inputMessage,
-      type: 'user'
+      type: USER
     };
 
     // Prepare the full message history for context
     const conversationHistory = messages.map(msg => ({
-      role: msg.type === 'user' ? 'user' : 'assistant',
+      role: msg.type === USER ? USER : ASSISTANT,
       content: msg.text
     }));
 
@@ -102,15 +106,6 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
     }
   };
 
-  // Helper function to check if the message contains LaTeX
-  const containsLatex = (text) => {
-    // Detect inline and block LaTeX using regex
-    const inlineMathRegex = /\\\(.*?\\\)/g;
-    const blockMathRegex = /\\\[.*?\\\]/gs;
-
-    return inlineMathRegex.test(text) || blockMathRegex.test(text);
-  };
-
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">
@@ -124,21 +119,19 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
           <ProfileMenu />
         </div>
 
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto bg-white">
-          {messages.map((message) => {
-            return (
-              <ChatMessage 
-                key={message.id}
-                message={
-                  containsLatex(message.text)
-                    ? <MathJax>{message.text}</MathJax> // If contains LaTeX, render with MathJax
-                    : message.text
-                }
-                type={message.type}
-              />
-            );
-          })}
+        {/* Chat Messages with Scrollbar */}
+        <div 
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto bg-white relative"
+        >
+          {messages.map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={message.text}
+              type={message.type}
+            />
+          ))}
+          
           {isLoading && (
             <div className="flex p-4 bg-white">
               <div className="w-10 h-10 mr-4 rounded-full bg-green-500 flex items-center justify-center">
@@ -150,9 +143,19 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
             </div>
           )}
           <div ref={chatEndRef} />
+
+          {/* Scroll to Bottom Button */}
+          {isScrolledUp && (
+            <button 
+              onClick={scrollToBottom}
+              className="fixed bottom-20 right-4 bg-blue-500 text-white p-2 rounded-full shadow-lg hover:bg-blue-600 z-50"
+            >
+              <ChevronDownIcon size={24} />
+            </button>
+          )}
         </div>
 
-        {/* Input Area */}
+        {/* Input Area remains the same */}
         <div className="bg-white p-4 border-t border-gray-200">
           <div className="flex items-center space-x-2">
             <textarea
