@@ -1,30 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { SendIcon, ActivityIcon, ChevronDownIcon } from 'lucide-react';
-import ProfileMenu from './ProfileMenu';
-import OpenAI from 'openai';
-import { MathJaxContext } from 'better-react-mathjax';
-import { ChatMessage } from './Chatmessage';
-import { ASSISTANT, USER } from '../constants/constants.js';
-import { openai } from './InitOpenAI.js';
+import React, { useState, useRef, useEffect } from "react";
+import { MathJaxContext } from "better-react-mathjax";
+import { ChatMessage } from "./Chatmessage";
+import { ASSISTANT, USER } from "../constants/constants.js";
+import { openai } from "./InitOpenAI.js";
+import { ChatHeader } from "./ChatHeader.js";
+import { ChatInput } from "./ChatInput.js";
+import { ScrollToBottom } from "./ScrollToBottom.js";
+import { ShowLoading } from "./ShowLoading.js";
 
 const ChatContainer = ({ selectedChat, chats, setChats }) => {
-
   const [messages, setMessages] = useState([
-    { 
-      id: 0, 
-      text: "Hello! I'm your AI assistant. How can I help you today?", 
-      type: 'ai' 
-    }
+    {
+      id: 0,
+      text: "Hello! I'm your AI assistant. How can I help you today?",
+      type: "ai",
+    },
   ]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
-  
+
   // Add chatContainerRef
   const chatContainerRef = useRef(null);
-
-
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,7 +31,7 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
-    
+
     const handleScroll = () => {
       if (chatContainer) {
         const { scrollTop, scrollHeight, clientHeight } = chatContainer;
@@ -42,13 +40,13 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
       }
     };
 
-    chatContainer?.addEventListener('scroll', handleScroll);
-    
+    chatContainer?.addEventListener("scroll", handleScroll);
+
     // Scroll to bottom when messages change
     scrollToBottom();
 
     return () => {
-      chatContainer?.removeEventListener('scroll', handleScroll);
+      chatContainer?.removeEventListener("scroll", handleScroll);
     };
   }, [messages]);
   const handleSendMessage = async () => {
@@ -57,23 +55,23 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
     const newUserMessage = {
       id: messages.length,
       text: inputMessage,
-      type: USER
+      type: USER,
     };
 
     // Prepare the full message history for context
-    const conversationHistory = messages.map(msg => ({
+    const conversationHistory = messages.map((msg) => ({
       role: msg.type === USER ? USER : ASSISTANT,
-      content: msg.text
+      content: msg.text,
     }));
 
     // Add current user message
     conversationHistory.push({
-      role: 'user',
-      content: inputMessage
+      role: "user",
+      content: inputMessage,
     });
 
-    setMessages(prevMessages => [...prevMessages, newUserMessage]);
-    setInputMessage('');
+    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+    setInputMessage("");
     setIsLoading(true);
 
     try {
@@ -81,26 +79,26 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
         model: "gpt-4o", // You can change this to gpt-4 if preferred
         messages: conversationHistory,
       });
-      console.log(response,"response received")
+      console.log(response, "response received");
       const aiResponse = response.choices[0].message.content.trim();
-      
+
       const newAIMessage = {
         id: messages.length + 1,
         text: aiResponse,
-        type: 'ai'
+        type: "ai",
       };
 
-      setMessages(prevMessages => [...prevMessages, newAIMessage]);
+      setMessages((prevMessages) => [...prevMessages, newAIMessage]);
     } catch (error) {
-      console.error('Error generating response:', error);
-      
+      console.error("Error generating response:", error);
+
       // Optional: Add error message to chat
       const errorMessage = {
         id: messages.length + 1,
         text: "Sorry, there was an error processing your request.",
-        type: 'ai'
+        type: "ai",
       };
-      setMessages(prevMessages => [...prevMessages, errorMessage]);
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -109,18 +107,8 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {selectedChat 
-              ? chats.find(chat => chat.id === selectedChat)?.title 
-              : 'New Chat'}
-          </h2>
-          <ProfileMenu />
-        </div>
-
-        {/* Chat Messages with Scrollbar */}
-        <div 
+        <ChatHeader selectedChat={selectedChat} />
+        <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto bg-white relative"
         >
@@ -131,59 +119,19 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
               type={message.type}
             />
           ))}
-          
-          {isLoading && (
-            <div className="flex p-4 bg-white">
-              <div className="w-10 h-10 mr-4 rounded-full bg-green-500 flex items-center justify-center">
-                <ActivityIcon className="text-white" size={20} />
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-500 animate-pulse">Typing...</p>
-              </div>
-            </div>
-          )}
+
+          {isLoading && <ShowLoading />}
           <div ref={chatEndRef} />
-
-          {/* Scroll to Bottom Button */}
-          {isScrolledUp && (
-            <button 
-              onClick={scrollToBottom}
-              className="fixed bottom-20 right-4 bg-blue-500 text-white p-2 rounded-full shadow-lg hover:bg-blue-600 z-50"
-            >
-              <ChevronDownIcon size={24} />
-            </button>
-          )}
+          <ScrollToBottom
+            isScrolledUp={isScrolledUp}
+            scrollToBottom={scrollToBottom}
+          />
         </div>
-
-        {/* Input Area remains the same */}
-        <div className="bg-white p-4 border-t border-gray-200">
-          <div className="flex items-center space-x-2">
-            <textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder="Send a message"
-              className="flex-1 p-2 border rounded-lg resize-none max-h-24 overflow-y-auto"
-              rows={1}
-            />
-            <button 
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading}
-              className={`p-2 rounded-full 
-                ${inputMessage.trim() && !isLoading 
-                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-            >
-              <SendIcon size={20} />
-            </button>
-          </div>
-        </div>
+        <ChatInput
+          isLoading={isLoading}
+          handleSendMessage={handleSendMessage}
+          inputMessage={inputMessage}
+        />
       </div>
     </MathJaxContext>
   );
