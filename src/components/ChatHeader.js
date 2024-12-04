@@ -1,6 +1,6 @@
 import ProfileMenu from "./ProfileMenu";
 
-export const ChatHeader = ({ selectedChat }) => {
+export const ChatHeader = ({ selectedChat,chats }) => {
     return (
       <div className="flex justify-between items-center p-4 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-800">

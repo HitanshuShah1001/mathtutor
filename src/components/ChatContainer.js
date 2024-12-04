@@ -8,7 +8,7 @@ import { ChatInput } from "./ChatInput.js";
 import { ScrollToBottom } from "./ScrollToBottom.js";
 import { ShowLoading } from "./ShowLoading.js";
 
-const ChatContainer = ({ selectedChat, chats, setChats }) => {
+const ChatContainer = ({ selectedChat, chats }) => {
   const [messages, setMessages] = useState([
     {
       id: 0,
@@ -107,7 +107,7 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">
-        <ChatHeader selectedChat={selectedChat} />
+        <ChatHeader selectedChat={selectedChat} chats={chats}/>
         <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto bg-white relative"
@@ -131,6 +131,7 @@ const ChatContainer = ({ selectedChat, chats, setChats }) => {
           isLoading={isLoading}
           handleSendMessage={handleSendMessage}
           inputMessage={inputMessage}
+          setInputMessage={setInputMessage}
         />
       </div>
     </MathJaxContext>

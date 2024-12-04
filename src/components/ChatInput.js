@@ -1,6 +1,6 @@
 import { SendIcon } from "lucide-react";
 
-export const ChatInput = ({handleSendMessage,inputMessage,isLoading}) => {
+export const ChatInput = ({handleSendMessage,inputMessage,isLoading,setInputMessage}) => {
   return (
     <div className="bg-white p-4 border-t border-gray-200">
       <div className="flex items-center space-x-2">
