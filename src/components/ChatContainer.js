@@ -7,6 +7,8 @@ import { ChatHeader } from "./ChatHeader.js";
 import { ChatInput } from "./ChatInput.js";
 import { ScrollToBottom } from "./ScrollToBottom.js";
 import { ShowLoading } from "./ShowLoading.js";
+import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
+import S3 from "aws-sdk/clients/s3";
 
 const ChatContainer = ({ selectedChat, chats }) => {
   const [messages, setMessages] = useState([
@@ -49,7 +51,40 @@ const ChatContainer = ({ selectedChat, chats }) => {
       chatContainer?.removeEventListener("scroll", handleScroll);
     };
   }, [messages]);
-  const handleSendMessage = async () => {
+
+  const uploadImageToS3 = async () => {
+    const S3_BUCKET = process.env.REACT_APP_S3_BUCKET_NAME;
+    const REGION = process.env.REACT_APP_AWS_REGION;
+    AWS.config.update({
+      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
+    });
+
+    const s3 = new S3({
+      params: {
+        Bucket: S3_BUCKET,
+        region: REGION,
+      },
+    });
+    const params = {
+      Bucket: S3_BUCKET,
+      Key: file.name,
+      Body: file,
+    };
+
+    try {
+      const upload = await s3.putObject(params).promise();
+      console.log(upload);
+      alert("File uploaded successfully.");
+    } catch (error) {
+      console.error(error);
+      alert("Error uploading file: " + error.message); // Inform user about the error
+    }
+  };
+
+  const handleSendMessage = async ({ inputMessage, image = undefined }) => {
+    if (image) {
+    }
     if (!inputMessage.trim()) return;
 
     const newUserMessage = {
@@ -107,7 +142,7 @@ const ChatContainer = ({ selectedChat, chats }) => {
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">
-        <ChatHeader selectedChat={selectedChat} chats={chats}/>
+        <ChatHeader selectedChat={selectedChat} chats={chats} />
         <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto bg-white relative"
