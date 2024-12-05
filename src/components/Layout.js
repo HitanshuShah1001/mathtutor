@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import ChatContainer from './ChatContainer';
 import Sidebar from './Sidebar';
-import ProfileMenu from './ProfileMenu';
 
 const Layout = () => {
   const [selectedChat, setSelectedChat] = useState(null);
