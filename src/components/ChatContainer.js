@@ -14,8 +14,8 @@ const ChatContainer = ({ selectedChat, chats }) => {
   const [messages, setMessages] = useState([
     {
       id: 0,
-      text: "Hello! I'm your AI assistant. How can I help you today?",
-      type: "ai",
+      content: "Hello! I'm your AI assistant. How can I help you today?",
+      type: ASSISTANT,
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
@@ -52,19 +52,18 @@ const ChatContainer = ({ selectedChat, chats }) => {
     };
   }, [messages]);
 
-  const uploadImageToS3 = async () => {
+  const uploadImageToS3 = async (file) => {
+
     const S3_BUCKET = process.env.REACT_APP_S3_BUCKET_NAME;
     const REGION = process.env.REACT_APP_AWS_REGION;
     AWS.config.update({
       accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
+      region: REGION
     });
-
+    
     const s3 = new S3({
-      params: {
-        Bucket: S3_BUCKET,
-        region: REGION,
-      },
+      region: REGION,
     });
     const params = {
       Bucket: S3_BUCKET,
@@ -74,8 +73,10 @@ const ChatContainer = ({ selectedChat, chats }) => {
 
     try {
       const upload = await s3.putObject(params).promise();
-      console.log(upload);
-      alert("File uploaded successfully.");
+      
+      return `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
+      //https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/63145382.jpeg
+
     } catch (error) {
       console.error(error);
       alert("Error uploading file: " + error.message); // Inform user about the error
@@ -83,26 +84,36 @@ const ChatContainer = ({ selectedChat, chats }) => {
   };
 
   const handleSendMessage = async ({ inputMessage, image = undefined }) => {
-    if (image) {
-    }
     if (!inputMessage.trim()) return;
+    let userContent;
 
+    if (image) {
+      const ImageUrl = await uploadImageToS3(image);
+      console.log(ImageUrl,"image url received");
+      userContent = [
+        { type: "text", text: inputMessage },
+        { type: "image_url", image_url: { url: ImageUrl } },
+      ];
+    } else {
+      userContent = inputMessage;
+    }
+    console.log(userContent,"user content")
     const newUserMessage = {
       id: messages.length,
-      text: inputMessage,
+      content: userContent,
       type: USER,
     };
 
     // Prepare the full message history for context
     const conversationHistory = messages.map((msg) => ({
       role: msg.type === USER ? USER : ASSISTANT,
-      content: msg.text,
+      content: msg.content,
     }));
 
     // Add current user message
     conversationHistory.push({
       role: "user",
-      content: inputMessage,
+      content: userContent,
     });
 
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
@@ -114,13 +125,11 @@ const ChatContainer = ({ selectedChat, chats }) => {
         model: "gpt-4o", // You can change this to gpt-4 if preferred
         messages: conversationHistory,
       });
-      console.log(response, "response received");
       const aiResponse = response.choices[0].message.content.trim();
-
       const newAIMessage = {
         id: messages.length + 1,
-        text: aiResponse,
-        type: "ai",
+        content: aiResponse,
+        type: ASSISTANT,
       };
 
       setMessages((prevMessages) => [...prevMessages, newAIMessage]);
@@ -130,8 +139,8 @@ const ChatContainer = ({ selectedChat, chats }) => {
       // Optional: Add error message to chat
       const errorMessage = {
         id: messages.length + 1,
-        text: "Sorry, there was an error processing your request.",
-        type: "ai",
+        content: "Sorry, there was an error processing your request.",
+        type: ASSISTANT,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
@@ -150,7 +159,7 @@ const ChatContainer = ({ selectedChat, chats }) => {
           {messages.map((message) => (
             <ChatMessage
               key={message.id}
-              message={message.text}
+              message={message.content}
               type={message.type}
             />
           ))}

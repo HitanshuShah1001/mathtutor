@@ -1,7 +1,6 @@
 import { SendIcon, ImageIcon, XIcon } from "lucide-react";
 import { useState, useRef } from "react";
-import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
-import S3 from "aws-sdk/clients/s3";
+
 
 export const ChatInput = ({
   handleSendMessage,
@@ -15,7 +14,6 @@ export const ChatInput = ({
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-    console.log(file,"file")
     if (file) {
       // Revoke the old object URL to avoid memory leaks
       if (imagePreviewUrl) {
@@ -27,34 +25,6 @@ export const ChatInput = ({
     }
   };
 
-  const uploadImageToS3 = async (e) => {
-    const file = e.target.files[0];
-    
-    const S3_BUCKET = process.env.REACT_APP_S3_BUCKET_NAME;
-    const REGION = process.env.REACT_APP_S3_AWS_REGION;
-    AWS.config.update({
-      accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY,
-      region: REGION
-    });
-    const s3 = new S3({
-      region: REGION
-    });
-    const params = {
-      Bucket: S3_BUCKET,
-      Key: file.name,
-      Body: file,
-    };
-
-    try {
-      const upload = await s3.putObject(params).promise();
-      console.log(upload);
-      alert("File uploaded successfully.");
-    } catch (error) {
-      console.error(error);
-      alert("Error uploading file: " + error.message); // Inform user about the error
-    }
-  };
   
   const handleImageUploadButtonClick = () => {
     inputRef.current.click();
@@ -69,7 +39,7 @@ export const ChatInput = ({
   };
 
   const handleSend = () => {
-    handleSendMessage({ text: inputMessage, image: imageFile });
+    handleSendMessage({inputMessage, image: imageFile });
     setInputMessage("");
     setImageFile(null);
     if (imagePreviewUrl) {
@@ -117,7 +87,7 @@ export const ChatInput = ({
           accept="image/*"
           id="image-upload"
           style={{ display: "none" }}
-          onChange={uploadImageToS3}
+          onChange={handleImageUpload}
           ref={inputRef}
         />
         {/* Image upload button */}
