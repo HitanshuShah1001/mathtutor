@@ -1,29 +1,44 @@
-// src/contexts/AuthContext.js
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from "react";
 
-// Create an authentication context
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // New loading state
 
-  // Mock login function (replace with your actual authentication logic)
-  const login = (email, password) => {
-    // Simple mock authentication (replace with real authentication)
-    if (email === 'user@example.com' && password === 'password123') {
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
+    }
+    setLoading(false); // Set loading to false after the check
+  }, []);
+
+  const login = (email, password) => {
+    if (email === "user@example.com" && password === "password123") {
+      const userData = { email };
+      setUser(userData);
+      setIsAuthenticated(true);
+
+      // Save user data to localStorage
+      localStorage.setItem("user", JSON.stringify(userData));
       return true;
     }
     return false;
   };
 
-  // Logout function
   const logout = () => {
+    setUser(null);
     setIsAuthenticated(false);
+
+    // Remove user data from localStorage
+    localStorage.removeItem("user");
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -33,3 +48,6 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   return useContext(AuthContext);
 };
+
+// ProtectedRoute.js
+
