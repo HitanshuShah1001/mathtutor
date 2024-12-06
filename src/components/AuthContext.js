@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
+import { ChatContextProvider } from "./ChatContext";
 
 const AuthContext = createContext(null);
 
@@ -38,8 +39,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
-      {children}
+    <AuthContext.Provider
+      value={{ isAuthenticated, user, login, logout, loading }}
+    >
+      <ChatContextProvider>{children}</ChatContextProvider>
     </AuthContext.Provider>
   );
 };
@@ -50,4 +53,3 @@ export const useAuth = () => {
 };
 
 // ProtectedRoute.js
-

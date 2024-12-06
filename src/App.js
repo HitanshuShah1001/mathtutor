@@ -11,27 +11,29 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 import { MathJaxContext } from "better-react-mathjax";
+import { ChatContextProvider } from "./components/ChatContext";
 
 function App() {
   return (
     <MathJaxContext>
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/home"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            />
-            {/* Redirect to login by default */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Router>
-      </AuthProvider>
+      
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Redirect to login by default */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </Router>
+        </AuthProvider>
     </MathJaxContext>
   );
 }
