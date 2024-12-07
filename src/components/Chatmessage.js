@@ -7,7 +7,6 @@ import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { MathJax } from "better-react-mathjax";
 
 export const ChatMessage = ({ message, type }) => {
-  console.log(message,"message in chatm essage")
   const [copied, setCopied] = useState(false);
 
   // Helper function to check if the message contains LaTeX

@@ -12,20 +12,31 @@ import S3 from "aws-sdk/clients/s3";
 import { ChatContext } from "./ChatContext.js";
 
 const ChatContainer = () => {
-  const { selectedChat, setSelectedChat } = useContext(ChatContext);
-  const [messages, setMessages] = useState(selectedChat.splice(1));
+  const { selectedChat, setSelectedChat, chats, selectedIndex, setChats } =
+    useContext(ChatContext);
+
+  const [messages, setMessages] = useState(selectedChat.slice(1));
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
 
-  // Add chatContainerRef
   const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedChat) {
+      setMessages(selectedChat.slice(1));
+    }
+  }, [selectedChat]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     setIsScrolledUp(false);
   };
+
+  useEffect(() => {
+    console.log(chats, "cahts");
+  }, [chats]);
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
@@ -110,6 +121,10 @@ const ChatContainer = () => {
 
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
     setSelectedChat((prevChat) => [...prevChat, newUserMessage]);
+    const newChats = [...chats];
+    newChats[selectedIndex] = [...chats[selectedIndex], newUserMessage];
+    localStorage.setItem("chats", newChats);
+    setChats(newChats);
     setInputMessage("");
     setIsLoading(true);
 
@@ -127,6 +142,10 @@ const ChatContainer = () => {
 
       setMessages((prevMessages) => [...prevMessages, newAIMessage]);
       setSelectedChat((prevChat) => [...prevChat, newAIMessage]);
+      const newChats = [...chats];
+      newChats[selectedIndex] = [...chats[selectedIndex], newAIMessage];
+      localStorage.setItem("chats", newChats);
+      setChats(newChats);
     } catch (error) {
       console.error("Error generating response:", error);
 
@@ -142,7 +161,6 @@ const ChatContainer = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">
