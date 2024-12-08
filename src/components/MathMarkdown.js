@@ -5,7 +5,7 @@ import rehypeMathjax from 'rehype-mathjax';
 
 
 export const MathMarkdown = ({ content }) => {
-    console.log(content,"content in math markdown")
+    //console.log(content,"content in math markdown")
     return (
       <ReactMarkdown
         children={content}

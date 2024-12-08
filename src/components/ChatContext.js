@@ -21,7 +21,7 @@ export const ChatContextProvider = ({ children }) => {
   // Retrieve chats from local storage or use default
   const getInitialChats = () => {
     const storedChats = localStorage.getItem("chats");
-    console.log(storedChats,"stored chats")
+    console.log(JSON.parse(storedChats),"stored chats")
     return storedChats ? JSON.parse(storedChats) : defaultChats;
   };
 

@@ -35,7 +35,7 @@ const ChatContainer = () => {
   };
 
   useEffect(() => {
-    console.log(chats, "cahts");
+    //console.log(chats, "cahts");
   }, [chats]);
 
   useEffect(() => {
@@ -89,6 +89,7 @@ const ChatContainer = () => {
   };
 
   const handleSendMessage = async ({ inputMessage, image = undefined }) => {
+    let newChats;
     if (!inputMessage.trim()) return;
     let userContent;
 
@@ -121,10 +122,9 @@ const ChatContainer = () => {
 
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
     setSelectedChat((prevChat) => [...prevChat, newUserMessage]);
-    const newChats = [...chats];
+    newChats = [...chats];
     newChats[selectedIndex] = [...chats[selectedIndex], newUserMessage];
-    localStorage.setItem("chats", newChats);
-    setChats(newChats);
+    localStorage.setItem("chats", JSON.stringify(newChats));
     setInputMessage("");
     setIsLoading(true);
 
@@ -142,9 +142,8 @@ const ChatContainer = () => {
 
       setMessages((prevMessages) => [...prevMessages, newAIMessage]);
       setSelectedChat((prevChat) => [...prevChat, newAIMessage]);
-      const newChats = [...chats];
-      newChats[selectedIndex] = [...chats[selectedIndex], newAIMessage];
-      localStorage.setItem("chats", newChats);
+      newChats[selectedIndex] = [...newChats[selectedIndex], newAIMessage];
+      localStorage.setItem("chats",JSON.stringify(newChats))
       setChats(newChats);
     } catch (error) {
       console.error("Error generating response:", error);
@@ -161,6 +160,7 @@ const ChatContainer = () => {
       setIsLoading(false);
     }
   };
+
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">

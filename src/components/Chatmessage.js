@@ -80,7 +80,7 @@ export const ChatMessage = ({ message, type }) => {
         </ReactMarkdown>
       );
     } else if (content.type === "image_url") {
-      console.log(content.image_url,"content image url")
+      //console.log(content.image_url,"content image url")
       return (
         <div className="my-2">
           <img
