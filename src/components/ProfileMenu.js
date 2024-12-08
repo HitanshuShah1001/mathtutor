@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserIcon, SettingsIcon, LogOutIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../utils/AuthContext';
 
 const ProfileMenu = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

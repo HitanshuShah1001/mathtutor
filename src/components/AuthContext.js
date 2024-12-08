@@ -1,7 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
+import axios from "axios";
 import { ChatContextProvider } from "./ChatContext";
+import { ACCESS_KEY, API_LOGIN, BASE_URL_API, USER } from "../constants/constants";
+import { AuthContext } from "../utils/AuthContext";
 
-const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -9,7 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true); // New loading state
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
+    const savedUser = localStorage.getItem(USER);
     if (savedUser) {
       setUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
@@ -17,25 +19,42 @@ export const AuthProvider = ({ children }) => {
     setLoading(false); // Set loading to false after the check
   }, []);
 
-  const login = (email, password) => {
-    if (email === "user@example.com" && password === "password123") {
-      const userData = { email };
+  const login = async (email, password) => {
+    const data = JSON.stringify({
+      emailId: email,
+      password: password,
+    });
+
+    try {
+      const response = await axios.post(`${BASE_URL_API}${API_LOGIN}`, data, {
+        headers: { "Content-Type": "application/json" },
+      });
+      const { accessKey, userData } = response.data;
+
+      // Save accessKey in sessionStorage
+      localStorage.setItem(ACCESS_KEY, accessKey);
+
+      // Save user data to localStorage for persistence
+      localStorage.setItem(USER, JSON.stringify({email}));
+
+      // Set user state and mark as authenticated
       setUser(userData);
       setIsAuthenticated(true);
 
-      // Save user data to localStorage
-      localStorage.setItem("user", JSON.stringify(userData));
       return true;
+    } catch (error) {
+      alert(error.response.data.message ?? "Some error occured");
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
 
-    // Remove user data from localStorage
+    // Remove user data and accessKey
     localStorage.removeItem("user");
+    sessionStorage.removeItem("accessKey");
   };
 
   return (
@@ -47,9 +66,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the auth context
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
 
-// ProtectedRoute.js
