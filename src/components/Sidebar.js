@@ -73,8 +73,8 @@ const Sidebar = () => {
         </button>
       )}
 
-      {/* Chat List */}
-      <div className="flex-1 overflow-y-auto">
+      {!isCollapsed && (
+        <div className="flex-1 overflow-y-auto">
         {chats.map((chat, index) => (
           <div
             key={index}
@@ -91,6 +91,8 @@ const Sidebar = () => {
           </div>
         ))}
       </div>
+      )}
+      
     </div>
   );
 };
