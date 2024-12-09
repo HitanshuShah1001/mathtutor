@@ -5,21 +5,7 @@ import { getRequest } from "../utils/ApiCall";
 export const ChatContext = createContext(null);
 
 export const ChatContextProvider = ({ children }) => {
-  const defaultChats = [
-    [
-      {
-        id: new Date(Date.now()),
-        title: "New Chat",
-      },
-      {
-        index: 0,
-        content: "Hello! I'm your AI assistant. How can I help you today?",
-        type: ASSISTANT,
-      },
-    ],
-  ];
 
-  // Retrieve chats from local storage or use default
 
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(chats[0]);
@@ -45,7 +31,7 @@ export const ChatContextProvider = ({ children }) => {
     };
 
     getInitialChats();
-  }, [chats]);
+  }, []);
 
   return (
     <ChatContext.Provider

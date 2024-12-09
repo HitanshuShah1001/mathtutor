@@ -30,10 +30,10 @@ export const AuthProvider = ({ children }) => {
     });
 
     try {
-      const response = await axios.post(`${BASE_URL_API}${API_LOGIN}`, data, {
+      const response = await axios.post(`${BASE_URL_API}/${API_LOGIN}`, data, {
         headers: { "Content-Type": "application/json" },
       });
-      console.log(response, "response received");
+
       const { accessToken, userData } = response.data;
 
       // Save accessKey in sessionStorage
@@ -48,7 +48,8 @@ export const AuthProvider = ({ children }) => {
 
       return true;
     } catch (error) {
-      alert(error.response.data.message ?? "Some error occured");
+      console.log(error,"error")
+      alert(error?.response?.data?.message ?? "Some error occured");
       return false;
     }
   };

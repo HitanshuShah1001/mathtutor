@@ -6,7 +6,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { MathJax } from "better-react-mathjax";
 
-export const ChatMessage = ({ message, type }) => {
+export const ChatMessage = ({ message, role, mediaUrl }) => {
   const [copied, setCopied] = useState(false);
 
   // Helper function to check if the message contains LaTeX
@@ -37,7 +37,7 @@ export const ChatMessage = ({ message, type }) => {
 
   // Render content based on its type
   const renderContent = (content) => {
-    if (content.type === "text") {
+
       const text = content.text;
       // If the text contains LaTeX, render with MathJax
       if (containsLatex(text)) {
@@ -79,49 +79,39 @@ export const ChatMessage = ({ message, type }) => {
           {text}
         </ReactMarkdown>
       );
-    } else if (content.type === "image_url") {
-      //console.log(content.image_url,"content image url")
-      return (
-        <div className="my-2">
-          <img
-            src={content.image_url.url}
-            alt="Uploaded Content"
-            className="max-w-full rounded-lg"
-          />
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
     <div
       className={`flex p-4 ${
-        type === "user" ? "bg-gray-50" : "bg-white"
+        role === "user" ? "bg-gray-50" : "bg-white"
       } relative`}
     >
       <div
         className={`w-10 h-10 mr-4 rounded-full flex items-center justify-center 
-        ${type === "user" ? "bg-blue-500" : "bg-green-500"}`}
+        ${role === "user" ? "bg-blue-500" : "bg-green-500"}`}
       >
-        {type === "user" ? (
+        {role === "user" ? (
           <UserIcon className="text-white" size={20} />
         ) : (
           <ActivityIcon className="text-white" size={20} />
         )}
       </div>
       <div className="flex-1">
-        {Array.isArray(message) ? (
-          message.map((content, index) => (
-            <div key={index}>{renderContent(content)}</div>
-          ))
-        ) : (
-          <p
-            className={`${type === "user" ? "text-blue-800" : "text-green-800"}`}
-          >
-            {renderContent({ type: "text", text: message })}
-          </p>
+        {mediaUrl && (
+          <div className="my-2">
+            <img
+              src={mediaUrl}
+              alt="Uploaded Content"
+              className="max-w-full rounded-lg"
+            />
+          </div>
         )}
+        <p
+          className={`${role === "user" ? "text-blue-800" : "text-green-800"}`}
+        >
+          {renderContent({ type: "text", text: message })}
+        </p>
       </div>
       {/* Copy Icon positioned at the rightmost of the container */}
       <div
