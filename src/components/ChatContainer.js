@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { MathJaxContext } from "better-react-mathjax";
 import { ChatMessage } from "./Chatmessage";
 import { ASSISTANT, BASE_URL_API, USER } from "../constants/constants.js";
@@ -10,20 +10,17 @@ import { ShowLoading } from "./ShowLoading.js";
 import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
 import S3 from "aws-sdk/clients/s3";
 import { postRequest } from "../utils/ApiCall.js";
+import { ChatContext } from "./ChatContext.js";
 
 const ChatContainer = () => {
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "\n\nHello there, how may I assist you today?",
-    },
-  ]);
+  const {selectedChat} = useContext(ChatContext);
+  const [messages, setMessages] = useState(selectedChat?.messagePayload?.messages);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const access = localStorage.getItem("accessKey");
-  const chatId = useRef(0);
+  const chatId = useRef(selectedChat?.id ?? 0);
 
   const chatContainerRef = useRef(null);
 
@@ -31,6 +28,12 @@ const ChatContainer = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     setIsScrolledUp(false);
   };
+
+  useEffect(() => {
+    if(selectedChat){
+      setMessages(selectedChat?.messagePayload?.messages)
+    }
+  },[selectedChat])
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
@@ -120,7 +123,6 @@ const ChatContainer = () => {
       content: userContentForAi,
     });
 
-    console.log(conversationHistory);
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
     setInputMessage("");
     setIsLoading(true);

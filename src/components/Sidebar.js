@@ -1,12 +1,16 @@
 import React, { useContext, useState } from "react";
-import { PlusIcon, MessageSquareIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import {
+  PlusIcon,
+  MessageSquareIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react";
 import { ChatContext } from "./ChatContext";
 import { ASSISTANT } from "../constants/constants";
 
 const Sidebar = () => {
   const { chats, setChats, selectedChat, setSelectedChat, setSelectedIndex } =
     useContext(ChatContext);
-    console.log(chats,"chats")
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNewChat = () => {
@@ -76,26 +80,28 @@ const Sidebar = () => {
 
       {!isCollapsed && (
         <div className="flex-1 overflow-y-auto">
-        {chats?.map((chat, index) => {
-          console.log(chat,"chat individua;")
-          return(
-          <div
-            key={index}
-            onClick={() => onSelectChat(chat, index)}
-            className={`flex items-center p-2 rounded-md cursor-pointer mb-2 ${
-              selectedChat === chat && !isCollapsed ? "bg-gray-700" : "hover:bg-gray-800"
-            }`}
-          >
-            <MessageSquareIcon
-              className={`mr-2 ${isCollapsed ? "hidden" : ""}`}
-              size={20}
-            />
-            {!isCollapsed && <span className="truncate">{chat.title}</span>}
-          </div>
-        )})}
-      </div>
+          {chats?.map((chat, index) => {
+            return (
+              <div
+                key={index}
+                
+                onClick={() => onSelectChat(chat, index)}
+                className={`flex items-center p-2 rounded-md cursor-pointer mb-2 ${
+                  selectedChat === chat && !isCollapsed
+                    ? "bg-gray-700"
+                    : "hover:bg-gray-800"
+                }`}
+              >
+                <MessageSquareIcon
+                  className={`mr-2 ${isCollapsed ? "hidden" : ""}`}
+                  size={20}
+                />
+                {!isCollapsed && <span className="truncate">{chat.title}</span>}
+              </div>
+            );
+          })}
+        </div>
       )}
-      
     </div>
   );
 };

@@ -89,9 +89,9 @@ export const ChatMessage = ({ message, role, mediaUrl }) => {
     >
       <div
         className={`w-10 h-10 mr-4 rounded-full flex items-center justify-center 
-        ${role === "user" ? "bg-blue-500" : "bg-green-500"}`}
+        ${role === "USER" ? "bg-blue-500" : "bg-green-500"}`}
       >
-        {role === "user" ? (
+        {role === "USER" ? (
           <UserIcon className="text-white" size={20} />
         ) : (
           <ActivityIcon className="text-white" size={20} />
