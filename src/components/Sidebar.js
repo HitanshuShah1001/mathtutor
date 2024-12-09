@@ -35,7 +35,7 @@ const Sidebar = () => {
 
   const onSelectChat = (chat, index) => {
     setSelectedChat(chat);
-    setSelectedIndex(index);
+    setSelectedIndex(chat.id);
   };
 
   const toggleSidebar = () => {
@@ -76,7 +76,9 @@ const Sidebar = () => {
 
       {!isCollapsed && (
         <div className="flex-1 overflow-y-auto">
-        {chats?.map((chat, index) => (
+        {chats?.map((chat, index) => {
+          console.log(chat,"chat individua;")
+          return(
           <div
             key={index}
             onClick={() => onSelectChat(chat, index)}
@@ -88,9 +90,9 @@ const Sidebar = () => {
               className={`mr-2 ${isCollapsed ? "hidden" : ""}`}
               size={20}
             />
-            {!isCollapsed && <span className="truncate">{chat[0]?.title}</span>}
+            {!isCollapsed && <span className="truncate">{chat.title}</span>}
           </div>
-        ))}
+        )})}
       </div>
       )}
       
