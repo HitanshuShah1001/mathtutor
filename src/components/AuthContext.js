@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${BASE_URL_API}${API_LOGIN}`, data, {
         headers: { "Content-Type": "application/json" },
       });
+      console.log(response,"response received")
       const { accessKey, userData } = response.data;
 
       // Save accessKey in sessionStorage

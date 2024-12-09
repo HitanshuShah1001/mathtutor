@@ -13,12 +13,12 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
+    let isCorrectAuth = await login(email, password);
     // Attempt to log in
-    if (login(email, password)) {
+    if (isCorrectAuth) {
       // Redirect to home page on successful login
       navigate("/home");
     } else {
@@ -43,7 +43,10 @@ const LoginPage = () => {
             <p className="text-gray-500">Sign in to continue</p>
           </div>
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <div
+              className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
               {error}
             </div>
           )}
