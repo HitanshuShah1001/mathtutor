@@ -1,9 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
 import { ChatContextProvider } from "./ChatContext";
-import { ACCESS_KEY, API_LOGIN, BASE_URL_API, USER } from "../constants/constants";
+import {
+  ACCESS_KEY,
+  API_LOGIN,
+  BASE_URL_API,
+  USER,
+} from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
-
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -29,14 +33,14 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${BASE_URL_API}${API_LOGIN}`, data, {
         headers: { "Content-Type": "application/json" },
       });
-      console.log(response,"response received")
-      const { accessKey, userData } = response.data;
+      console.log(response, "response received");
+      const { accessToken, userData } = response.data;
 
       // Save accessKey in sessionStorage
-      localStorage.setItem(ACCESS_KEY, accessKey);
+      localStorage.setItem(ACCESS_KEY, accessToken);
 
       // Save user data to localStorage for persistence
-      localStorage.setItem(USER, JSON.stringify({email}));
+      localStorage.setItem(USER, JSON.stringify({ userData }));
 
       // Set user state and mark as authenticated
       setUser(userData);
@@ -66,5 +70,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-

@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect } from "react";
-import { ASSISTANT } from "../constants/constants";
+import { ASSISTANT, BASE_URL_API } from "../constants/constants";
+import { getRequest } from "../utils/ApiCall";
 
 export const ChatContext = createContext(null);
 
@@ -19,19 +20,31 @@ export const ChatContextProvider = ({ children }) => {
   ];
 
   // Retrieve chats from local storage or use default
-  const getInitialChats = () => {
-    const storedChats = localStorage.getItem("chats");
-    console.log(JSON.parse(storedChats),"stored chats")
-    return storedChats ? JSON.parse(storedChats) : defaultChats;
-  };
 
-  const [chats, setChats] = useState(getInitialChats);
+  const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(chats[0]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Persist chats to local storage whenever it changes
   useEffect(() => {
-    localStorage.setItem("chats", JSON.stringify(chats));
+    const getInitialChats = async () => {
+      const access = localStorage.getItem("accessKey");
+      const headers = {
+        Authorization: access,
+      };
+      const params = {
+        userId: 3,
+        messages: 10,
+        limit: 10,
+      };
+      const result = await getRequest(
+        `${BASE_URL_API}/chat/getPaginatedChats`,
+        headers,
+        params
+      );
+      setChats(result.chats)
+    };
+
+    getInitialChats();
   }, [chats]);
 
   return (

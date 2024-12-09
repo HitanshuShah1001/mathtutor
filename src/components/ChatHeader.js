@@ -7,7 +7,7 @@ export const ChatHeader = () => {
     return (
       <div className="flex justify-between items-center p-4 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-800">
-          {selectedChat[0].title}
+          {selectedChat ? selectedChat[0].title : 'New chat'}
         </h2>
         <ProfileMenu />
       </div>

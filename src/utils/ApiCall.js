@@ -20,7 +20,6 @@ export const getRequest = async (url, headers = {}, params = {}) => {
     // Add query parameters to URL if any
     const queryParams = new URLSearchParams(params).toString();
     const finalUrl = queryParams ? `${url}?${queryParams}` : url;
-  
     const requestOptions = {
       method: 'GET',
       headers: myHeaders,
@@ -29,11 +28,10 @@ export const getRequest = async (url, headers = {}, params = {}) => {
   
     try {
       const response = await fetch(finalUrl, requestOptions);
-  
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
-  
+      
       const result = await response.json();
       return result;
   

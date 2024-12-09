@@ -15,7 +15,7 @@ const ChatContainer = () => {
   const { selectedChat, setSelectedChat, chats, selectedIndex, setChats } =
     useContext(ChatContext);
 
-  const [messages, setMessages] = useState(selectedChat.slice(1));
+  const [messages, setMessages] = useState(selectedChat?.slice(1));
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
@@ -169,7 +169,7 @@ const ChatContainer = () => {
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto bg-white relative"
         >
-          {messages.map((message) => (
+          {messages?.map((message) => (
             <ChatMessage
               key={message.id}
               message={message.content}

@@ -6,6 +6,7 @@ import { ASSISTANT } from "../constants/constants";
 const Sidebar = () => {
   const { chats, setChats, selectedChat, setSelectedChat, setSelectedIndex } =
     useContext(ChatContext);
+    console.log(chats,"chats")
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNewChat = () => {
@@ -75,7 +76,7 @@ const Sidebar = () => {
 
       {!isCollapsed && (
         <div className="flex-1 overflow-y-auto">
-        {chats.map((chat, index) => (
+        {chats?.map((chat, index) => (
           <div
             key={index}
             onClick={() => onSelectChat(chat, index)}
