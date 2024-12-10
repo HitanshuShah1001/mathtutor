@@ -13,7 +13,8 @@ import { postRequest } from "../utils/ApiCall.js";
 import { AuthContext } from "../utils/AuthContext.js";
 
 const ChatContainer = () => {
-  const { selectedChat, setchatId, chatId, setChats } = useContext(AuthContext);
+  const { selectedChat, setchatId, chatId, setChats, chats } =
+    useContext(AuthContext);
   const [messages, setMessages] = useState(
     [...(selectedChat?.messagePayload?.messages ?? [...[]])].reverse() ?? []
   );
@@ -174,10 +175,18 @@ const ChatContainer = () => {
           { messages: messageToSendToApiForCreation }
         );
         setMessages((prevMessages) => [...prevMessages, newAIMessage]);
+        const chatwithId = chats.find((chat) => chat.id === chatId);
+        console.log(chatwithId, "chat with id");
         setChats((prevChats) =>
           prevChats.map((chat) =>
             chat.id === chatId
-              ? { ...chat, ...newUserMessage, ...newAIMessage }
+              ? {
+                  ...chat,
+                  messagePayload: {
+                    ...chat.messagePayload,
+                    messages: [newUserMessage, newAIMessage, ...messages.reverse()],
+                  },
+                }
               : chat
           )
         );

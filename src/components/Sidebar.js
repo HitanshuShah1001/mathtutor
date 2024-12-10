@@ -12,7 +12,6 @@ const Sidebar = () => {
   const { chats, selectedChat, setSelectedChat, setchatId } =
     useContext(AuthContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
   const handleNewChat = () => {
     const newChat = [
       {

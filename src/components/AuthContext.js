@@ -9,7 +9,6 @@ import {
 import { AuthContext } from "../utils/AuthContext";
 import { getRequest } from "../utils/ApiCall";
 
-
 export const getInitialChats = async () => {
   const access = localStorage.getItem("accessKey");
   const headers = {
@@ -37,13 +36,11 @@ export const AuthProvider = ({ children }) => {
   const [selectedChat, setSelectedChat] = useState(undefined);
   const [chatId, setchatId] = useState(undefined);
 
-  useEffect(() => {
+  useEffect( () => {
     const savedUser = localStorage.getItem(USER);
     if (savedUser) {
       setUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
-      let chats = getInitialChats();
-      setChats(chats);
     }
     setLoading(false); // Set loading to false after the check
   }, []);
@@ -60,7 +57,7 @@ export const AuthProvider = ({ children }) => {
       });
 
       const { accessToken, userData } = response.data;
-      const chats = getInitialChats();
+      const chats = await getInitialChats();
       setChats(chats);
       // Save accessKey in sessionStorage
       localStorage.setItem(ACCESS_KEY, accessToken);
