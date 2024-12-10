@@ -76,7 +76,7 @@ const Sidebar = () => {
                 key={index}
                 onClick={() => onSelectChat(chat, index)}
                 className={`flex items-center p-2 rounded-md cursor-pointer mb-2 ${
-                  selectedChat === chat && !isCollapsed
+                  selectedChat?.id === chat.id && !isCollapsed
                     ? "bg-gray-700"
                     : "hover:bg-gray-800"
                 }`}
