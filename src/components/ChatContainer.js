@@ -10,19 +10,18 @@ import { ShowLoading } from "./ShowLoading.js";
 import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
 import S3 from "aws-sdk/clients/s3";
 import { postRequest } from "../utils/ApiCall.js";
-import { ChatContext } from "./ChatContext.js";
+import { AuthContext } from "../utils/AuthContext.js";
 
 const ChatContainer = () => {
-  const { selectedChat, setchatId, chatId } = useContext(ChatContext);
+  const { selectedChat, setchatId, chatId, setChats } = useContext(AuthContext);
   const [messages, setMessages] = useState(
-    selectedChat?.messagePayload?.messages ?? []
+    [...(selectedChat?.messagePayload?.messages ?? [...[]])].reverse() ?? []
   );
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const access = localStorage.getItem("accessKey");
-
   const chatContainerRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -32,7 +31,7 @@ const ChatContainer = () => {
 
   useEffect(() => {
     if (selectedChat) {
-      setMessages(selectedChat?.messagePayload?.messages);
+      setMessages([...selectedChat.messagePayload.messages].reverse());
     }
   }, [selectedChat]);
 
@@ -175,6 +174,13 @@ const ChatContainer = () => {
           { messages: messageToSendToApiForCreation }
         );
         setMessages((prevMessages) => [...prevMessages, newAIMessage]);
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === chatId
+              ? { ...chat, ...newUserMessage, ...newAIMessage }
+              : chat
+          )
+        );
       }
     } catch (error) {
       console.error("Error generating response:", error);
@@ -189,7 +195,6 @@ const ChatContainer = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">

@@ -5,12 +5,12 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react";
-import { ChatContext } from "./ChatContext";
 import { ASSISTANT } from "../constants/constants";
+import { AuthContext } from "../utils/AuthContext";
 
 const Sidebar = () => {
-  const { chats, setChats, selectedChat, setSelectedChat, setchatId } =
-    useContext(ChatContext);
+  const { chats, selectedChat, setSelectedChat, setchatId } =
+    useContext(AuthContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNewChat = () => {
@@ -23,13 +23,6 @@ const Sidebar = () => {
         type: ASSISTANT,
       },
     ];
-
-    // Add the new chat and set it as selected
-    setChats((prevChats) => {
-      const updatedChats = [...prevChats, newChat];
-      localStorage.setItem("chats", JSON.stringify(updatedChats)); // Persist to localStorage
-      return updatedChats;
-    });
 
     setchatId(chats.length);
     setSelectedChat(newChat);

@@ -11,7 +11,6 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 import { MathJaxContext } from "better-react-mathjax";
-import { ChatContextProvider } from "./components/ChatContext";
 
 function App() {
   return (
