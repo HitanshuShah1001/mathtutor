@@ -29,10 +29,14 @@ const ChatContainer = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     setIsScrolledUp(false);
   };
-
+  
   useEffect(() => {
     if (selectedChat) {
-      setMessages([...selectedChat.messagePayload.messages].reverse());
+      setMessages(
+        [...(selectedChat?.messagePayload?.messages ?? [...[]])].reverse() ?? []
+      );
+    }else{
+      setMessages([])
     }
   }, [selectedChat]);
 
@@ -184,7 +188,11 @@ const ChatContainer = () => {
                   ...chat,
                   messagePayload: {
                     ...chat.messagePayload,
-                    messages: [newUserMessage, newAIMessage, ...messages.reverse()],
+                    messages: [
+                      newUserMessage,
+                      newAIMessage,
+                      ...messages.reverse(),
+                    ],
                   },
                 }
               : chat

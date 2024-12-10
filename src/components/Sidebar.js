@@ -19,12 +19,12 @@ const Sidebar = () => {
       },
       {
         content: "Hello! I'm your AI assistant. How can I help you today?",
-        type: ASSISTANT,
+        role: ASSISTANT,
       },
     ];
 
-    setchatId(chats.length);
-    setSelectedChat(newChat);
+    setchatId(undefined);
+    setSelectedChat(undefined);
   };
 
   const onSelectChat = (chat) => {
