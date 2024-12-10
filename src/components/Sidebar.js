@@ -9,18 +9,16 @@ import { ChatContext } from "./ChatContext";
 import { ASSISTANT } from "../constants/constants";
 
 const Sidebar = () => {
-  const { chats, setChats, selectedChat, setSelectedChat, setSelectedIndex } =
+  const { chats, setChats, selectedChat, setSelectedChat, setchatId } =
     useContext(ChatContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleNewChat = () => {
     const newChat = [
       {
-        id: new Date().toISOString(), // Use ISO string for consistent format
         title: `New Chat ${chats.length + 1}`,
       },
       {
-        id: 0,
         content: "Hello! I'm your AI assistant. How can I help you today?",
         type: ASSISTANT,
       },
@@ -33,13 +31,13 @@ const Sidebar = () => {
       return updatedChats;
     });
 
-    setSelectedIndex(chats.length);
+    setchatId(chats.length);
     setSelectedChat(newChat);
   };
 
-  const onSelectChat = (chat, index) => {
+  const onSelectChat = (chat) => {
     setSelectedChat(chat);
-    setSelectedIndex(chat.id);
+    setchatId(chat.id);
   };
 
   const toggleSidebar = () => {
@@ -84,7 +82,6 @@ const Sidebar = () => {
             return (
               <div
                 key={index}
-                
                 onClick={() => onSelectChat(chat, index)}
                 className={`flex items-center p-2 rounded-md cursor-pointer mb-2 ${
                   selectedChat === chat && !isCollapsed

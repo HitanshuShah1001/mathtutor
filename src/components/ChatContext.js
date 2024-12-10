@@ -8,8 +8,8 @@ export const ChatContextProvider = ({ children }) => {
 
 
   const [chats, setChats] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(chats[0]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedChat, setSelectedChat] = useState(undefined);
+  const [chatId, setchatId] = useState(undefined);
 
   useEffect(() => {
     const getInitialChats = async () => {
@@ -40,8 +40,8 @@ export const ChatContextProvider = ({ children }) => {
         setChats,
         selectedChat,
         setSelectedChat,
-        selectedIndex,
-        setSelectedIndex,
+        chatId,
+        setchatId,
       }}
     >
       {children}

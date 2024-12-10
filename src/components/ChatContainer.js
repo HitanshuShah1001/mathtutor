@@ -13,14 +13,15 @@ import { postRequest } from "../utils/ApiCall.js";
 import { ChatContext } from "./ChatContext.js";
 
 const ChatContainer = () => {
-  const {selectedChat} = useContext(ChatContext);
-  const [messages, setMessages] = useState(selectedChat?.messagePayload?.messages);
+  const { selectedChat, setchatId, chatId } = useContext(ChatContext);
+  const [messages, setMessages] = useState(
+    selectedChat?.messagePayload?.messages ?? []
+  );
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const access = localStorage.getItem("accessKey");
-  const chatId = useRef(selectedChat?.id ?? 0);
 
   const chatContainerRef = useRef(null);
 
@@ -30,10 +31,10 @@ const ChatContainer = () => {
   };
 
   useEffect(() => {
-    if(selectedChat){
-      setMessages(selectedChat?.messagePayload?.messages)
+    if (selectedChat) {
+      setMessages(selectedChat?.messagePayload?.messages);
     }
-  },[selectedChat])
+  }, [selectedChat]);
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
@@ -41,7 +42,6 @@ const ChatContainer = () => {
     const handleScroll = () => {
       if (chatContainer) {
         const { scrollTop, scrollHeight, clientHeight } = chatContainer;
-        // Check if scrolled up from the bottom
         setIsScrolledUp(scrollHeight - scrollTop - clientHeight > 100);
       }
     };
@@ -104,7 +104,7 @@ const ChatContainer = () => {
       role: USER,
     };
     // Prepare the full message history for context
-    const conversationHistory = messages.map((msg) => {
+    const conversationHistory = messages?.map((msg) => {
       const content = msg.mediaUrl
         ? [
             { type: "text", text: msg.content },
@@ -137,21 +137,22 @@ const ChatContainer = () => {
         content: aiResponse,
         role: ASSISTANT,
       };
-      if (messages.length === 1) {
+
+      if (conversationHistory.length === 1) {
         const createChat = await postRequest(
           `${BASE_URL_API}/chat/create`,
           { Authorization: access },
           { title: `${new Date(Date.now())}`, userId: 3 }
         );
         id = createChat.chat.id;
-        chatId.current = id;
+        setchatId(id);
         let messageToSendToApiForCreation = [];
         for (let message of [
           ...messages.splice(1),
           newUserMessage,
           newAIMessage,
         ]) {
-          message["chatId"] = chatId.current;
+          message["chatId"] = id;
           message["role"] = message.role.toUpperCase();
           messageToSendToApiForCreation.push(message);
         }
@@ -160,20 +161,21 @@ const ChatContainer = () => {
           { Authorization: access },
           { messages: messageToSendToApiForCreation }
         );
+        setMessages((prevMessages) => [...prevMessages, newAIMessage]);
+      } else {
+        let messageToSendToApiForCreation = [];
+        for (let message of [newUserMessage, newAIMessage]) {
+          message["chatId"] = chatId;
+          message["role"] = message.role.toUpperCase();
+          messageToSendToApiForCreation.push(message);
+        }
+        await postRequest(
+          `${BASE_URL_API}/messages/create`,
+          { Authorization: access },
+          { messages: messageToSendToApiForCreation }
+        );
+        setMessages((prevMessages) => [...prevMessages, newAIMessage]);
       }
-      let messageToSendToApiForCreation = [];
-      for (let message of [newUserMessage, newAIMessage]) {
-        message["chatId"] = chatId.current;
-        message["role"] = message.role.toUpperCase();
-        messageToSendToApiForCreation.push(message);
-      }
-      await postRequest(
-        `${BASE_URL_API}/messages/create`,
-        { Authorization: access },
-        { messages: messageToSendToApiForCreation }
-      );
-
-      setMessages((prevMessages) => [...prevMessages, newAIMessage]);
     } catch (error) {
       console.error("Error generating response:", error);
 
