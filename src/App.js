@@ -11,6 +11,7 @@ import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 import { MathJaxContext } from "better-react-mathjax";
+import GenerateQuestionPaper from "./components/Questionpaper";
 
 function App() {
   return (
@@ -24,7 +25,7 @@ function App() {
                 path="/home"
                 element={
                   <ProtectedRoute>
-                    <Layout />
+                    <GenerateQuestionPaper />
                   </ProtectedRoute>
                 }
               />
