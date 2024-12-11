@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { openai } from "./InitOpenAI";
+import { jsPDF } from "jspdf"; // Import jsPDF
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -9,8 +10,10 @@ const GenerateQuestionPaper = () => {
   const [marks, setMarks] = useState("");
   const [mcqs, setMcqs] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
+  const [responseText, setResponseText] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // State to track loading
 
-  // Demo topics (You can adjust or fetch these dynamically)
+  // Demo topics
   const allTopics = {
     science: {
       1: ["Living and Non-living", "Basic Shapes in Nature"],
@@ -62,24 +65,6 @@ const GenerateQuestionPaper = () => {
     setSelectedTopics(selectedTopics.filter((t) => t !== topicToRemove));
   };
 
-  const generateQuestionPaper = async () => {
-    try {
-      const prompt = generatePrompt();
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You are a helpful assistant." },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-      });
-      console.log(response, "response that came from backend");
-    } catch (e) {
-        console.log('error occured')
-    }
-  };
   const generatePrompt = () => {
     return `Generate a question paper for:
     Standard: ${standard}
@@ -90,6 +75,44 @@ const GenerateQuestionPaper = () => {
     Additional input: ${anyotherQuery}
 
     Instructions: Create a well-structured and balanced question paper, ensuring topics are proportionally represented.`;
+  };
+
+  const generateQuestionPaper = async () => {
+    try {
+      setIsLoading(true);
+      const prompt = generatePrompt();
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "You are a helpful assistant." },
+          { role: "user", content: prompt },
+        ],
+      });
+      console.log(response)
+      const content = response.choices?.[0]?.message?.content || "";
+      setResponseText(content);
+    } catch (e) {
+      console.log('error occurred', e);
+    } finally {
+      setIsLoading(false); // Hide loader after response
+    }
+  };
+
+  const generatePDF = () => {
+    if (!responseText) return;
+
+    const doc = new jsPDF({
+      orientation: "p",
+      unit: "pt",
+      format: "A4",
+    });
+
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(12);
+
+    const lines = doc.splitTextToSize(responseText, 500);
+    doc.text(lines, 50, 50);
+    doc.save("question-paper.pdf");
   };
 
   return (
@@ -186,7 +209,7 @@ const GenerateQuestionPaper = () => {
       <div style={styles.formGroup}>
         <label style={styles.label}>Any other query</label>
         <input
-          type="number"
+          type="text"
           style={styles.input}
           value={anyotherQuery}
           onChange={(e) => setAnyOtherQuery(e.target.value)}
@@ -196,11 +219,21 @@ const GenerateQuestionPaper = () => {
 
       <button
         style={styles.generateButton}
-        onClick={() => generateQuestionPaper()}
-        disabled={!standard || !subject || !marks}
+        onClick={generateQuestionPaper}
+        disabled={!standard || !subject || !marks || isLoading}
       >
-        Generate Prompt
+        {isLoading ? "Loading..." : "Generate Prompt"}
       </button>
+
+      {responseText && (
+        <div style={styles.resultContainer}>
+          <h2 style={styles.subTitle}>Preview Generated Question Paper</h2>
+          <pre style={styles.responsePre}>{responseText}</pre>
+          <button style={styles.generateButton} onClick={generatePDF}>
+            Download PDF
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -222,6 +255,11 @@ const styles = {
     textAlign: "center",
     marginBottom: "1.5rem",
     color: "#2c3e50",
+  },
+  subTitle: {
+    fontSize: "1.25rem",
+    fontWeight: "600",
+    marginBottom: "1rem",
   },
   formGroup: {
     display: "flex",
@@ -291,6 +329,17 @@ const styles = {
     cursor: "pointer",
     fontWeight: "600",
     transition: "background 0.3s",
+  },
+  resultContainer: {
+    marginTop: "2rem",
+  },
+  responsePre: {
+    background: "#f4f4f4",
+    padding: "1rem",
+    borderRadius: "4px",
+    whiteSpace: "pre-wrap",
+    fontFamily: "monospace",
+    fontSize: "0.95rem",
   },
 };
 
