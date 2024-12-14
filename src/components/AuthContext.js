@@ -1,14 +1,21 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { ChatContextProvider } from "./ChatContext";
-import { ACCESS_KEY, API_LOGIN, BASE_URL_API, USER } from "../constants/constants";
+import {
+  API_SEND_OTP,
+  BASE_URL_API,
+  OTP_VERIFY,
+  USER,
+} from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
-
+import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // New loading state
+  const [loading, setLoading] = useState(true);
+  const [chats, setChats] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(undefined);
+  const [chatId, setchatId] = useState(undefined);
 
   useEffect(() => {
     const savedUser = localStorage.getItem(USER);
@@ -16,34 +23,38 @@ export const AuthProvider = ({ children }) => {
       setUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
     }
-    setLoading(false); // Set loading to false after the check
+    setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const requestOtp = async (mobileNumber) => {
     const data = JSON.stringify({
-      emailId: email,
-      password: password,
+      countryCode: "+91",
+      mobileNumber,
     });
 
     try {
-      const response = await axios.post(`${BASE_URL_API}${API_LOGIN}`, data, {
+      await axios.post(`${BASE_URL_API}/${API_SEND_OTP}`, data, {
         headers: { "Content-Type": "application/json" },
       });
-      const { accessKey, userData } = response.data;
-
-      // Save accessKey in sessionStorage
-      localStorage.setItem(ACCESS_KEY, accessKey);
-
-      // Save user data to localStorage for persistence
-      localStorage.setItem(USER, JSON.stringify({email}));
-
-      // Set user state and mark as authenticated
-      setUser(userData);
-      setIsAuthenticated(true);
-
       return true;
     } catch (error) {
-      alert(error.response.data.message ?? "Some error occured");
+      return false;
+    }
+  };
+
+  const verifyOTP = async (mobileNumber, otp) => {
+    const data = JSON.stringify({
+      countryCode: "+91",
+      mobileNumber,
+      otp,
+    });
+
+    try {
+      const response = await axios.post(`${BASE_URL_API}/${OTP_VERIFY}`, data, {
+        headers: { "Content-Type": "application/json" },
+      });
+      return { status: true, data: response };
+    } catch (error) {
       return false;
     }
   };
@@ -52,18 +63,29 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
 
-    // Remove user data and accessKey
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("accessKey");
+    removeDataFromLocalStorage();
   };
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, user, login, logout, loading }}
+      value={{
+        isAuthenticated,
+        user,
+        requestOtp,
+        logout,
+        verifyOTP,
+        loading,
+        chats,
+        setChats,
+        selectedChat,
+        setSelectedChat,
+        setIsAuthenticated,
+        chatId,
+        setchatId,
+        setUser,
+      }}
     >
-      <ChatContextProvider>{children}</ChatContextProvider>
+      {children}
     </AuthContext.Provider>
   );
 };
-
-

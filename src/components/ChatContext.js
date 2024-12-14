@@ -1,38 +1,34 @@
 import { createContext, useState, useEffect } from "react";
-import { ASSISTANT } from "../constants/constants";
+import { BASE_URL_API } from "../constants/constants";
+import { getRequest } from "../utils/ApiCall";
 
 export const ChatContext = createContext(null);
-
-export const ChatContextProvider = ({ children }) => {
-  const defaultChats = [
-    [
-      {
-        id: new Date(Date.now()),
-        title: "New Chat",
-      },
-      {
-        index: 0,
-        content: "Hello! I'm your AI assistant. How can I help you today?",
-        type: ASSISTANT,
-      },
-    ],
-  ];
-
-  // Retrieve chats from local storage or use default
-  const getInitialChats = () => {
-    const storedChats = localStorage.getItem("chats");
-    console.log(JSON.parse(storedChats),"stored chats")
-    return storedChats ? JSON.parse(storedChats) : defaultChats;
+export const getInitialChats = async () => {
+  const access = localStorage.getItem("accessKey");
+  const headers = {
+    Authorization: access,
   };
+  const params = {
+    userId: 3,
+    messages: 100,
+    limit: 1000,
+  };
+  const result = await getRequest(
+    `${BASE_URL_API}/chat/getPaginatedChats`,
+    headers,
+    params
+  );
+  return result.chats;
+};
+export const ChatContextProvider = ({ children }) => {
+  const [chats, setChats] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(undefined);
+  const [chatId, setchatId] = useState(undefined);
 
-  const [chats, setChats] = useState(getInitialChats);
-  const [selectedChat, setSelectedChat] = useState(chats[0]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  // Persist chats to local storage whenever it changes
   useEffect(() => {
-    localStorage.setItem("chats", JSON.stringify(chats));
-  }, [chats]);
+    let chats = getInitialChats();
+    setChats(chats);
+  }, []);
 
   return (
     <ChatContext.Provider
@@ -41,8 +37,8 @@ export const ChatContextProvider = ({ children }) => {
         setChats,
         selectedChat,
         setSelectedChat,
-        selectedIndex,
-        setSelectedIndex,
+        chatId,
+        setchatId,
       }}
     >
       {children}

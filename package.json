@@ -10,6 +10,7 @@
     "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
     "better-react-mathjax": "^2.0.4-beta1",
+    "jspdf": "^2.5.2",
     "lucide-react": "^0.462.0",
     "mathjax": "^3.2.2",
     "openai": "^4.73.1",

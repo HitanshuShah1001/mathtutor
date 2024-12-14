@@ -1,41 +1,46 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
-import React, { useEffect, useState } from "react";
-import { PhoneIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../utils/AuthContext";
-import { getDataFromLocalStorage } from "../utils/LocalStorageOps";
+import React, { useContext, useState } from "react";
+import { KeyIcon } from "lucide-react";
+import { AuthContext, useAuth } from "../utils/AuthContext";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  addDataToLocalStorage,
+  removeDataFromLocalStorage,
+} from "../utils/LocalStorageOps";
 
-const LoginPage = () => {
-  const [phoneNumber, setPhoneNumber] = useState("");
+const VerifyOtp = () => {
+  const { setChats, setIsAuthenticated, setUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
+  const location = useLocation();
 
-  const navigate = useNavigate();
-  const { requestOtp } = useAuth(); // Make sure you have a requestOTP function in your AuthContext
-  const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
-
-  useEffect(() => {
-    if (USER && ACCESS_KEY) {
-      navigate("/home", { replace: true });
-    }
-  }, [USER, ACCESS_KEY, navigate]);
+  const { verifyOTP } = useAuth();
 
   const handleSubmit = async (e) => {
+    const mobileNumber = location.state?.phoneNumber || "";
     e.preventDefault();
-    const indianPhoneRegex = /^[6-9]\d{9}$/;
-    if (!indianPhoneRegex.test(phoneNumber)) {
-      setError("Please enter a valid 10-digit Indian mobile number.");
+    setError("");
+
+    const otpRegex = /^\d{6}$/;
+    if (!otpRegex.test(otp)) {
+      setError("Please enter a valid 6-digit OTP.");
+      return;
+    }
+
+    const isValidAndData = await verifyOTP(mobileNumber, otp);
+    if (isValidAndData.status) {
+      const data = isValidAndData.data;
+      const { accessToken, user } = data.data;
+      removeDataFromLocalStorage();
+      addDataToLocalStorage({ accessToken, user });
+      setUser(user);
+      setIsAuthenticated(true);
+      navigate('/home')
     } else {
-      setError("");
-      const isOTPSent = await requestOtp(phoneNumber);
-      // const isOTPSent = awa;
-      if (isOTPSent) {
-        navigate("/verify-otp", { state: { phoneNumber } });
-      } else {
-        setError(
-          "Unable to send OTP. Please check the phone number and try again."
-        );
-      }
+      setError("Invalid OTP. Please try again.");
+      return;
     }
   };
 
@@ -50,9 +55,11 @@ const LoginPage = () => {
         >
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              Welcome To MathTutor
+              Verify OTP
             </h2>
-            <p className="text-gray-500">Enter your phone number to continue</p>
+            <p className="text-gray-500">
+              Enter the 6-digit code sent to your phone
+            </p>
           </div>
           {error && (
             <div
@@ -65,13 +72,13 @@ const LoginPage = () => {
 
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <PhoneIcon className="text-gray-400" size={20} />
+              <KeyIcon className="text-gray-400" size={20} />
             </div>
             <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Your 10 Digit Phone Number"
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="Enter your 6-digit OTP"
               required
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
             />
@@ -86,7 +93,7 @@ const LoginPage = () => {
                   : "bg-blue-500 hover:bg-blue-600"
               }`}
           >
-            Get OTP
+            Verify OTP
           </button>
         </form>
       </div>
@@ -94,4 +101,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage;
+export default VerifyOtp;

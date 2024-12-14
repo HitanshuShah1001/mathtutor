@@ -1,40 +1,25 @@
 import React, { useContext, useState } from "react";
-import { PlusIcon, MessageSquareIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { ChatContext } from "./ChatContext";
+import {
+  PlusIcon,
+  MessageSquareIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "lucide-react";
 import { ASSISTANT } from "../constants/constants";
+import { AuthContext } from "../utils/AuthContext";
 
 const Sidebar = () => {
-  const { chats, setChats, selectedChat, setSelectedChat, setSelectedIndex } =
-    useContext(ChatContext);
+  const { chats, selectedChat, setSelectedChat, setchatId } =
+    useContext(AuthContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
   const handleNewChat = () => {
-    const newChat = [
-      {
-        id: new Date().toISOString(), // Use ISO string for consistent format
-        title: `New Chat ${chats.length + 1}`,
-      },
-      {
-        id: 0,
-        content: "Hello! I'm your AI assistant. How can I help you today?",
-        type: ASSISTANT,
-      },
-    ];
-
-    // Add the new chat and set it as selected
-    setChats((prevChats) => {
-      const updatedChats = [...prevChats, newChat];
-      localStorage.setItem("chats", JSON.stringify(updatedChats)); // Persist to localStorage
-      return updatedChats;
-    });
-
-    setSelectedIndex(chats.length);
-    setSelectedChat(newChat);
+    setchatId(undefined);
+    setSelectedChat(undefined);
   };
 
-  const onSelectChat = (chat, index) => {
+  const onSelectChat = (chat) => {
     setSelectedChat(chat);
-    setSelectedIndex(index);
+    setchatId(chat.id);
   };
 
   const toggleSidebar = () => {
@@ -75,24 +60,27 @@ const Sidebar = () => {
 
       {!isCollapsed && (
         <div className="flex-1 overflow-y-auto">
-        {chats.map((chat, index) => (
-          <div
-            key={index}
-            onClick={() => onSelectChat(chat, index)}
-            className={`flex items-center p-2 rounded-md cursor-pointer mb-2 ${
-              selectedChat === chat && !isCollapsed ? "bg-gray-700" : "hover:bg-gray-800"
-            }`}
-          >
-            <MessageSquareIcon
-              className={`mr-2 ${isCollapsed ? "hidden" : ""}`}
-              size={20}
-            />
-            {!isCollapsed && <span className="truncate">{chat[0]?.title}</span>}
-          </div>
-        ))}
-      </div>
+          {chats?.map((chat, index) => {
+            return (
+              <div
+                key={index}
+                onClick={() => onSelectChat(chat, index)}
+                className={`flex items-center p-2 rounded-md cursor-pointer mb-2 ${
+                  selectedChat?.id === chat.id && !isCollapsed
+                    ? "bg-gray-700"
+                    : "hover:bg-gray-800"
+                }`}
+              >
+                <MessageSquareIcon
+                  className={`mr-2 ${isCollapsed ? "hidden" : ""}`}
+                  size={20}
+                />
+                {!isCollapsed && <span className="truncate">{chat.title}</span>}
+              </div>
+            );
+          })}
+        </div>
       )}
-      
     </div>
   );
 };

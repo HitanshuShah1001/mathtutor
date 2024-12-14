@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { MathJaxContext } from "better-react-mathjax";
 import { ChatMessage } from "./Chatmessage";
-import { ASSISTANT, USER } from "../constants/constants.js";
+import {
+  ACCESS_KEY,
+  ASSISTANT,
+  BASE_URL_API,
+  USER,
+} from "../constants/constants.js";
 import { openai } from "./InitOpenAI.js";
 import { ChatHeader } from "./ChatHeader.js";
 import { ChatInput } from "./ChatInput.js";
@@ -9,25 +14,21 @@ import { ScrollToBottom } from "./ScrollToBottom.js";
 import { ShowLoading } from "./ShowLoading.js";
 import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
 import S3 from "aws-sdk/clients/s3";
-import { ChatContext } from "./ChatContext.js";
+import { postRequest } from "../utils/ApiCall.js";
+import { AuthContext } from "../utils/AuthContext.js";
 
 const ChatContainer = () => {
-  const { selectedChat, setSelectedChat, chats, selectedIndex, setChats } =
-    useContext(ChatContext);
-
-  const [messages, setMessages] = useState(selectedChat.slice(1));
+  const { selectedChat, setchatId, chatId, setChats, chats } =
+    useContext(AuthContext);
+  const [messages, setMessages] = useState(
+    [...(selectedChat?.messagePayload?.messages ?? [...[]])].reverse() ?? []
+  );
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
-
+  const access = localStorage.getItem(ACCESS_KEY);
   const chatContainerRef = useRef(null);
-
-  useEffect(() => {
-    if (selectedChat) {
-      setMessages(selectedChat.slice(1));
-    }
-  }, [selectedChat]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,8 +36,14 @@ const ChatContainer = () => {
   };
 
   useEffect(() => {
-    //console.log(chats, "cahts");
-  }, [chats]);
+    if (selectedChat) {
+      setMessages(
+        [...(selectedChat?.messagePayload?.messages ?? [...[]])].reverse() ?? []
+      );
+    } else {
+      setMessages([]);
+    }
+  }, [selectedChat]);
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
@@ -44,7 +51,6 @@ const ChatContainer = () => {
     const handleScroll = () => {
       if (chatContainer) {
         const { scrollTop, scrollHeight, clientHeight } = chatContainer;
-        // Check if scrolled up from the bottom
         setIsScrolledUp(scrollHeight - scrollTop - clientHeight > 100);
       }
     };
@@ -89,78 +95,128 @@ const ChatContainer = () => {
   };
 
   const handleSendMessage = async ({ inputMessage, image = undefined }) => {
-    let newChats;
     if (!inputMessage.trim()) return;
-    let userContent;
+    let userContentForAi;
 
     if (image) {
       const ImageUrl = await uploadImageToS3(image);
-      userContent = [
+      userContentForAi = [
         { type: "text", text: inputMessage },
         { type: "image_url", image_url: { url: ImageUrl } },
       ];
+      newUserMessage["mediaUrl"] = ImageUrl;
     } else {
-      userContent = inputMessage;
+      userContentForAi = inputMessage;
     }
     const newUserMessage = {
-      id: messages.length,
-      content: userContent,
-      type: USER,
+      content: userContentForAi,
+      role: USER,
     };
-
     // Prepare the full message history for context
-    const conversationHistory = messages.map((msg) => ({
-      role: msg.type === USER ? USER : ASSISTANT,
-      content: msg.content,
-    }));
+    const conversationHistory = messages?.map((msg) => {
+      const content = msg.mediaUrl
+        ? [
+            { type: "text", text: msg.content },
+            { type: "image_url", image_url: { url: msg.mediaUrl } },
+          ]
+        : msg.content; // If no mediaUrl, just include the text
+      return {
+        role: msg.role === USER ? USER : ASSISTANT,
+        content: content,
+      };
+    });
 
     // Add current user message
     conversationHistory.push({
       role: "user",
-      content: userContent,
+      content: userContentForAi,
     });
 
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
-    setSelectedChat((prevChat) => [...prevChat, newUserMessage]);
-    newChats = [...chats];
-    newChats[selectedIndex] = [...chats[selectedIndex], newUserMessage];
-    localStorage.setItem("chats", JSON.stringify(newChats));
     setInputMessage("");
     setIsLoading(true);
-
     try {
+      let id;
       const response = await openai.chat.completions.create({
         model: "gpt-4o", // You can change this to gpt-4 if preferred
         messages: conversationHistory,
       });
       const aiResponse = response.choices[0].message.content.trim();
       const newAIMessage = {
-        id: messages.length + 1,
         content: aiResponse,
-        type: ASSISTANT,
+        role: ASSISTANT,
       };
 
-      setMessages((prevMessages) => [...prevMessages, newAIMessage]);
-      setSelectedChat((prevChat) => [...prevChat, newAIMessage]);
-      newChats[selectedIndex] = [...newChats[selectedIndex], newAIMessage];
-      localStorage.setItem("chats",JSON.stringify(newChats))
-      setChats(newChats);
+      if (conversationHistory.length === 1) {
+        const createChat = await postRequest(
+          `${BASE_URL_API}/chat/create`,
+          { Authorization: access },
+          { title: `${new Date(Date.now())}`, userId: 3 }
+        );
+        id = createChat.chat.id;
+        setchatId(id);
+        let messageToSendToApiForCreation = [];
+        for (let message of [
+          ...messages.splice(1),
+          newUserMessage,
+          newAIMessage,
+        ]) {
+          message["chatId"] = id;
+          message["role"] = message.role.toUpperCase();
+          messageToSendToApiForCreation.push(message);
+        }
+        await postRequest(
+          `${BASE_URL_API}/messages/create`,
+          { Authorization: access },
+          { messages: messageToSendToApiForCreation }
+        );
+        setMessages((prevMessages) => [...prevMessages, newAIMessage]);
+      } else {
+        let messageToSendToApiForCreation = [];
+        for (let message of [newUserMessage, newAIMessage]) {
+          message["chatId"] = chatId;
+          message["role"] = message.role.toUpperCase();
+          messageToSendToApiForCreation.push(message);
+        }
+        await postRequest(
+          `${BASE_URL_API}/messages/create`,
+          { Authorization: access },
+          { messages: messageToSendToApiForCreation }
+        );
+        setMessages((prevMessages) => [...prevMessages, newAIMessage]);
+        const chatwithId = chats.find((chat) => chat.id === chatId);
+        console.log(chatwithId, "chat with id");
+        setChats((prevChats) =>
+          prevChats.map((chat) =>
+            chat.id === chatId
+              ? {
+                  ...chat,
+                  messagePayload: {
+                    ...chat.messagePayload,
+                    messages: [
+                      newUserMessage,
+                      newAIMessage,
+                      ...messages.reverse(),
+                    ],
+                  },
+                }
+              : chat
+          )
+        );
+      }
     } catch (error) {
       console.error("Error generating response:", error);
 
       // Optional: Add error message to chat
       const errorMessage = {
-        id: messages.length + 1,
         content: "Sorry, there was an error processing your request.",
-        type: ASSISTANT,
+        role: ASSISTANT,
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
-      setSelectedChat((prevchat) => [...prevchat, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
-
   return (
     <MathJaxContext>
       <div className="flex flex-col h-full">
@@ -169,11 +225,12 @@ const ChatContainer = () => {
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto bg-white relative"
         >
-          {messages.map((message) => (
+          {messages?.map((message) => (
             <ChatMessage
               key={message.id}
               message={message.content}
-              type={message.type}
+              role={message.role}
+              mediaUrl={message.mediaUrl ?? null}
             />
           ))}
 
