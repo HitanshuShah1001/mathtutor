@@ -99,8 +99,10 @@ export const AuthProvider = ({ children }) => {
         setChats,
         selectedChat,
         setSelectedChat,
+        setIsAuthenticated,
         chatId,
         setchatId,
+        setUser,
       }}
     >
       {children}

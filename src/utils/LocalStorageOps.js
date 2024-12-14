@@ -6,6 +6,7 @@ export const removeDataFromLocalStorage = () => {
 };
 
 export const addDataToLocalStorage = ({ accessToken, user }) => {
+  console.log(accessToken, user);
   localStorage.setItem(ACCESS_KEY, accessToken);
   localStorage.setItem(USER, JSON.stringify({ user }));
 };

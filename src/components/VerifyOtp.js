@@ -4,7 +4,6 @@ import { KeyIcon } from "lucide-react";
 import { AuthContext, useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getInitialChats } from "./AuthContext";
-import { ACCESS_KEY, USER } from "../constants/constants";
 import {
   addDataToLocalStorage,
   removeDataFromLocalStorage,
@@ -17,7 +16,6 @@ const VerifyOtp = () => {
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
 
-  const navigate = useNavigate();
   const { verifyOTP } = useAuth();
 
   const handleSubmit = async (e) => {
@@ -32,9 +30,12 @@ const VerifyOtp = () => {
     }
 
     const isValidAndData = await verifyOTP(mobileNumber, otp);
+    console.log(isValidAndData,"is valid and data");
     if (isValidAndData.status) {
       const data = { isValidAndData };
+      console.log(data,"Data that came");
       const { accessToken, user } = data;
+      console.log(accessToken, "access token", user, "user that came");
       removeDataFromLocalStorage();
       addDataToLocalStorage({ accessToken, user });
       const chats = await getInitialChats();
