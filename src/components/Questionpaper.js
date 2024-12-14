@@ -6,12 +6,27 @@ const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
   const [subject, setSubject] = useState("");
   const [topics, setTopics] = useState([]);
-  const [selectedTopics, setSelectedTopics] = useState([]);
+  const [customTopic, setCustomTopic] = useState("");
   const [marks, setMarks] = useState("");
   const [mcqs, setMcqs] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
+
+  // topicsConfig will hold detailed config for each topic
+  // Structure:
+  // {
+  //   topicName: {
+  //     easyMCQs: number,
+  //     mediumMCQs: number,
+  //     hardMCQs: number,
+  //     mcqMarks: number,
+  //     descCount: number,
+  //     descDifficulties: ["easy","medium","hard",...] length = descCount
+  //     descMarksPerQuestion: [number, number, ...] length = descCount
+  //   }
+  // }
+  const [topicsConfig, setTopicsConfig] = useState({});
 
   // Demo topics
   const allTopics = {
@@ -47,34 +62,126 @@ const GenerateQuestionPaper = () => {
 
   useEffect(() => {
     if (standard && subject) {
-      setTopics(allTopics[subject][standard] || []);
-      setSelectedTopics([]);
+      const topicList = allTopics[subject][standard] || [];
+      setTopics(topicList);
+      // Reset selected topics and configs
+      setTopicsConfig({});
     } else {
       setTopics([]);
-      setSelectedTopics([]);
+      setTopicsConfig({});
     }
-  }, [standard, subject]);
+  }, [standard, subject,allTopics]);
 
-  const handleAddTopic = (topic) => {
-    if (!selectedTopics.includes(topic)) {
-      setSelectedTopics((prev) => [...prev, topic]);
+  const addTopic = (topic) => {
+    setTopicsConfig((prev) => {
+      if (!prev[topic]) {
+        return {
+          ...prev,
+          [topic]: {
+            easyMCQs: 0,
+            mediumMCQs: 0,
+            hardMCQs: 0,
+            mcqMarks: 1,
+            descCount: 0,
+            descDifficulties: [],
+            descMarksPerQuestion: []
+          },
+        };
+      }
+      return prev;
+    });
+  };
+
+  const handleAddTopicFromDropdown = (topic) => {
+    if (topic && !topicsConfig[topic]) {
+      addTopic(topic);
+    }
+  };
+
+  const handleAddCustomTopic = () => {
+    if (customTopic.trim() && !topicsConfig[customTopic.trim()]) {
+      addTopic(customTopic.trim());
+      setCustomTopic("");
     }
   };
 
   const handleRemoveTopic = (topicToRemove) => {
-    setSelectedTopics(selectedTopics.filter((t) => t !== topicToRemove));
+    setTopicsConfig((prev) => {
+      const newConfig = { ...prev };
+      delete newConfig[topicToRemove];
+      return newConfig;
+    });
+  };
+
+  const handleTopicChange = (topic, field, value) => {
+    setTopicsConfig((prev) => {
+      const updated = { ...prev[topic], [field]: value };
+      // If descCount changed, adjust descDifficulties and descMarksPerQuestion arrays length
+      if (field === "descCount") {
+        const count = parseInt(value, 10) || 0;
+        let descDiff = updated.descDifficulties || [];
+        let descMarksArr = updated.descMarksPerQuestion || [];
+
+        if (count > descDiff.length) {
+          // Add more difficulties defaulting to "easy"
+          descDiff = [...descDiff, ...Array(count - descDiff.length).fill("easy")];
+          descMarksArr = [...descMarksArr, ...Array(count - descMarksArr.length).fill(1)];
+        } else if (count < descDiff.length) {
+          // Remove extra difficulties and marks
+          descDiff = descDiff.slice(0, count);
+          descMarksArr = descMarksArr.slice(0, count);
+        }
+        updated.descDifficulties = descDiff;
+        updated.descMarksPerQuestion = descMarksArr;
+      }
+
+      return { ...prev, [topic]: updated };
+    });
+  };
+
+  const handleDescDifficultyChange = (topic, index, difficulty) => {
+    setTopicsConfig((prev) => {
+      const updated = { ...prev[topic] };
+      updated.descDifficulties[index] = difficulty;
+      return { ...prev, [topic]: updated };
+    });
+  };
+
+  const handleDescMarksChange = (topic, index, markValue) => {
+    setTopicsConfig((prev) => {
+      const updated = { ...prev[topic] };
+      updated.descMarksPerQuestion[index] = markValue;
+      return { ...prev, [topic]: updated };
+    });
   };
 
   const generatePrompt = () => {
-    return `Generate a question paper for:
-    Standard: ${standard}
-    Subject: ${subject.charAt(0).toUpperCase() + subject.slice(1)}
-    Topics: ${selectedTopics.join(", ")}
-    Total Marks: ${marks}
-    Number of MCQs: ${mcqs}
-    Additional input: ${anyotherQuery}
+    // Construct a detailed prompt with the topicsConfig
+    const topicsDetails = Object.entries(topicsConfig)
+      .map(([topic, config]) => {
+        // Construct a string for descriptive questions
+        const descDetails = config.descDifficulties.map((diff, i) => {
+          return `    Q${i + 1}: Difficulty - ${diff}, Marks: ${config.descMarksPerQuestion[i]}`;
+        }).join("\n");
 
-    Instructions: Create a well-structured and balanced question paper, ensuring topics are proportionally represented.`;
+        return `Topic: ${topic}
+  MCQs -> Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}, MCQ Marks Each: ${config.mcqMarks}
+  Descriptive Questions: ${config.descCount}
+${descDetails}`;
+      })
+      .join("\n\n");
+
+    return `Generate a question paper for:
+Standard: ${standard}
+Subject: ${subject.charAt(0).toUpperCase() + subject.slice(1)}
+Total Marks: ${marks}
+Number of MCQs: ${mcqs}
+Additional input: ${anyotherQuery}
+
+Topic Details:
+${topicsDetails}
+
+Instructions: Create a well-structured and balanced question paper, ensuring topics are proportionally represented. Consider the specified MCQ difficulties and descriptive question difficulties for each topic, and use the given marks per question.`;
   };
 
   const generateQuestionPaper = async () => {
@@ -88,11 +195,11 @@ const GenerateQuestionPaper = () => {
           { role: "user", content: prompt },
         ],
       });
-      console.log(response)
+
       const content = response.choices?.[0]?.message?.content || "";
       setResponseText(content);
     } catch (e) {
-      console.log('error occurred', e);
+      console.log("error occurred", e);
     } finally {
       setIsLoading(false); // Hide loader after response
     }
@@ -114,6 +221,8 @@ const GenerateQuestionPaper = () => {
     doc.text(lines, 50, 50);
     doc.save("question-paper.pdf");
   };
+
+  const selectedTopics = Object.keys(topicsConfig);
 
   return (
     <div style={styles.container}>
@@ -151,26 +260,47 @@ const GenerateQuestionPaper = () => {
       {topics.length > 0 && (
         <div style={styles.formGroup}>
           <label style={styles.label}>Select Topics to Include</label>
-          <div style={styles.topicSelectContainer}>
-            <select
-              style={styles.select}
-              onChange={(e) => {
-                if (e.target.value) handleAddTopic(e.target.value);
-              }}
-            >
-              <option value="">--Select Topic--</option>
-              {topics.map((t, idx) => (
-                <option key={idx} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          {selectedTopics.length > 0 && (
-            <div style={styles.selectedTopicsContainer}>
-              {selectedTopics.map((topic, idx) => (
-                <div style={styles.topicChip} key={idx}>
-                  {topic}
+          <select
+            style={styles.select}
+            onChange={(e) => {
+              if (e.target.value) handleAddTopicFromDropdown(e.target.value);
+            }}
+          >
+            <option value="">--Select Topic--</option>
+            {topics.map((t, idx) => (
+              <option key={idx} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div style={styles.formGroup}>
+        <label style={styles.label}>Or Add a Custom Topic</label>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input
+            type="text"
+            style={styles.input}
+            value={customTopic}
+            onChange={(e) => setCustomTopic(e.target.value)}
+            placeholder="Enter custom topic"
+          />
+          <button style={styles.generateButton} onClick={handleAddCustomTopic}>
+            Add Topic
+          </button>
+        </div>
+      </div>
+
+      {selectedTopics.length > 0 && (
+        <div style={styles.topicConfigContainer}>
+          <h2 style={styles.subTitle}>Configure Topics</h2>
+          {selectedTopics.map((topic) => {
+            const config = topicsConfig[topic] || {};
+            return (
+              <div key={topic} style={styles.topicConfig}>
+                <div style={styles.topicHeader}>
+                  <h3 style={styles.topicTitle}>{topic}</h3>
                   <button
                     style={styles.removeButton}
                     onClick={() => handleRemoveTopic(topic)}
@@ -178,9 +308,102 @@ const GenerateQuestionPaper = () => {
                     &times;
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={styles.topicFormGroup}>
+                  <label style={styles.label}>Easy MCQs</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={config.easyMCQs}
+                    onChange={(e) =>
+                      handleTopicChange(topic, "easyMCQs", parseInt(e.target.value,10) || 0)
+                    }
+                    onWheel={(e) => e.preventDefault()}
+                  />
+                </div>
+                <div style={styles.topicFormGroup}>
+                  <label style={styles.label}>Medium MCQs</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={config.mediumMCQs}
+                    onChange={(e) =>
+                      handleTopicChange(topic, "mediumMCQs", parseInt(e.target.value,10) || 0)
+                    }
+                    onWheel={(e) => e.preventDefault()}
+                  />
+                </div>
+                <div style={styles.topicFormGroup}>
+                  <label style={styles.label}>Hard MCQs</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={config.hardMCQs}
+                    onChange={(e) =>
+                      handleTopicChange(topic, "hardMCQs", parseInt(e.target.value,10) || 0)
+                    }
+                    onWheel={(e) => e.preventDefault()}
+                  />
+                </div>
+                <div style={styles.topicFormGroup}>
+                  <label style={styles.label}>Marks per MCQ</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={config.mcqMarks || 1}
+                    onChange={(e) =>
+                      handleTopicChange(topic, "mcqMarks", parseInt(e.target.value,10) || 1)
+                    }
+                    onWheel={(e) => e.preventDefault()}
+                  />
+                </div>
+                <div style={styles.topicFormGroup}>
+                  <label style={styles.label}>Number of Descriptive Questions</label>
+                  <input
+                    type="number"
+                    style={styles.input}
+                    value={config.descCount}
+                    onChange={(e) =>
+                      handleTopicChange(topic, "descCount", parseInt(e.target.value,10) || 0)
+                    }
+                    onWheel={(e) => e.preventDefault()}
+                  />
+                </div>
+
+                {config.descCount > 0 && (
+                  <div style={{ marginTop: "1rem" }}>
+                    <h4 style={styles.subTitle}>Descriptive Questions Configuration</h4>
+                    {config.descDifficulties?.map((diff, i) => (
+                      <div key={i} style={styles.topicFormGroup}>
+                        <label style={styles.label}>Question {i + 1} Difficulty</label>
+                        <select
+                          style={styles.select}
+                          value={diff}
+                          onChange={(e) =>
+                            handleDescDifficultyChange(topic, i, e.target.value)
+                          }
+                        >
+                          <option value="easy">Easy</option>
+                          <option value="medium">Medium</option>
+                          <option value="hard">Hard</option>
+                        </select>
+
+                        <label style={styles.label}>Marks for Question {i + 1}</label>
+                        <input
+                          type="number"
+                          style={styles.input}
+                          value={config.descMarksPerQuestion[i]}
+                          onChange={(e) =>
+                            handleDescMarksChange(topic, i, parseInt(e.target.value,10) || 1)
+                          }
+                          onWheel={(e) => e.preventDefault()}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -192,6 +415,7 @@ const GenerateQuestionPaper = () => {
           value={marks}
           onChange={(e) => setMarks(e.target.value)}
           placeholder="e.g. 100"
+          onWheel={(e) => e.preventDefault()}
         />
       </div>
 
@@ -203,6 +427,7 @@ const GenerateQuestionPaper = () => {
           value={mcqs}
           onChange={(e) => setMcqs(e.target.value)}
           placeholder="e.g. 10"
+          onWheel={(e) => e.preventDefault()}
         />
       </div>
 
@@ -214,6 +439,7 @@ const GenerateQuestionPaper = () => {
           value={anyotherQuery}
           onChange={(e) => setAnyOtherQuery(e.target.value)}
           placeholder="Mark problems as section A"
+          onWheel={(e) => e.preventDefault()}
         />
       </div>
 
@@ -286,6 +512,30 @@ const styles = {
     flexDirection: "column",
     gap: "0.5rem",
   },
+  topicConfigContainer: {
+    marginTop: "2rem",
+    borderTop: "1px solid #ccc",
+    paddingTop: "1rem",
+  },
+  topicConfig: {
+    border: "1px solid #ccc",
+    borderRadius: "4px",
+    padding: "1rem",
+    marginBottom: "1rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.5rem",
+  },
+  topicHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  topicTitle: {
+    fontSize: "1.15rem",
+    fontWeight: "600",
+    margin: 0,
+  },
   selectedTopicsContainer: {
     display: "flex",
     flexWrap: "wrap",
@@ -307,9 +557,10 @@ const styles = {
     background: "none",
     border: "none",
     cursor: "pointer",
-    fontSize: "1rem",
-    color: "#006064",
+    fontSize: "1.5rem",
+    color: "#e74c3c",
     fontWeight: "bold",
+    padding: "0 0.5rem",
   },
   input: {
     padding: "0.5rem",
@@ -319,11 +570,10 @@ const styles = {
     outline: "none",
   },
   generateButton: {
-    marginTop: "1rem",
     background: "#1abc9c",
     color: "#fff",
     border: "none",
-    padding: "0.75rem",
+    padding: "0.75rem 1rem",
     fontSize: "1rem",
     borderRadius: "4px",
     cursor: "pointer",
@@ -340,6 +590,12 @@ const styles = {
     whiteSpace: "pre-wrap",
     fontFamily: "monospace",
     fontSize: "0.95rem",
+    marginBottom: "1rem",
+  },
+  topicFormGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.25rem",
   },
 };
 

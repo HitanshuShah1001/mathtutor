@@ -1,29 +1,33 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import React, { useState } from "react";
-import { LockIcon, MailIcon } from "lucide-react";
-import { useAuth } from "../utils/AuthContext";
+import { PhoneIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../utils/AuthContext";
 
 const LoginPage = () => {
-  const [email, setEmail] = useState("user@example.com");
-  const [password, setPassword] = useState("password123");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
 
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { requestOtp } = useAuth(); // Make sure you have a requestOTP function in your AuthContext
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    let isCorrectAuth = await login(email, password);
-    // Attempt to log in
-    if (isCorrectAuth) {
-      // Redirect to home page on successful login
-      navigate("/home");
+    const indianPhoneRegex = /^[6-9]\d{9}$/;
+    if (!indianPhoneRegex.test(phoneNumber)) {
+      setError("Please enter a valid 10-digit Indian mobile number.");
     } else {
-      // Show error message for failed login
-      setError("Invalid email or password");
+      setError("");
+      const isOTPSent = await requestOtp(phoneNumber);
+      // const isOTPSent = awa;
+      if (isOTPSent) {
+        navigate("/verify-otp");
+      } else {
+        setError(
+          "Unable to send OTP. Please check the phone number and try again."
+        );
+      }
     }
   };
 
@@ -40,7 +44,7 @@ const LoginPage = () => {
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
               Welcome To MathTutor
             </h2>
-            <p className="text-gray-500">Sign in to continue</p>
+            <p className="text-gray-500">Enter your phone number to continue</p>
           </div>
           {error && (
             <div
@@ -53,27 +57,13 @@ const LoginPage = () => {
 
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MailIcon className="text-gray-400" size={20} />
+              <PhoneIcon className="text-gray-400" size={20} />
             </div>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              required
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
-            />
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <LockIcon className="text-gray-400" size={20} />
-            </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="Your 10 Digit Phone Number"
               required
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
             />
@@ -88,17 +78,8 @@ const LoginPage = () => {
                   : "bg-blue-500 hover:bg-blue-600"
               }`}
           >
-            Sign In
+            Get OTP
           </button>
-
-          <div className="text-center">
-            <a
-              href="#"
-              className="text-blue-500 hover:text-blue-600 transition-colors duration-300"
-            >
-              Forgot password?
-            </a>
-          </div>
         </form>
       </div>
     </div>

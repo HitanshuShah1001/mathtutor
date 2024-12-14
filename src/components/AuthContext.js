@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {
-  ACCESS_KEY,
-  API_LOGIN,
-  BASE_URL_API,
-  USER,
-} from "../constants/constants";
+import { API_SEND_OTP, BASE_URL_API, USER } from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
 import { getRequest } from "../utils/ApiCall";
 
@@ -36,7 +31,7 @@ export const AuthProvider = ({ children }) => {
   const [selectedChat, setSelectedChat] = useState(undefined);
   const [chatId, setchatId] = useState(undefined);
 
-  useEffect( () => {
+  useEffect(() => {
     const savedUser = localStorage.getItem(USER);
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -45,29 +40,34 @@ export const AuthProvider = ({ children }) => {
     setLoading(false); // Set loading to false after the check
   }, []);
 
-  const login = async (email, password) => {
+  const requestOtp = async (mobileNumber) => {
     const data = JSON.stringify({
-      emailId: email,
-      password: password,
+      countryCode: "+91",
+      mobileNumber,
     });
 
     try {
-      const response = await axios.post(`${BASE_URL_API}/${API_LOGIN}`, data, {
-        headers: { "Content-Type": "application/json" },
-      });
+      const response = await axios.post(
+        `${BASE_URL_API}/${API_SEND_OTP}`,
+        data,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      console.log(response, "response received");
 
-      const { accessToken, userData } = response.data;
-      const chats = await getInitialChats();
-      setChats(chats);
-      // Save accessKey in sessionStorage
-      localStorage.setItem(ACCESS_KEY, accessToken);
+      // const { accessToken, userData } = response.data;
+      // const chats = await getInitialChats();
+      // setChats(chats);
+      // // Save accessKey in sessionStorage
+      // localStorage.setItem(ACCESS_KEY, accessToken);
 
-      // Save user data to localStorage for persistence
-      localStorage.setItem(USER, JSON.stringify({ userData }));
+      // // Save user data to localStorage for persistence
+      // localStorage.setItem(USER, JSON.stringify({ userData }));
 
-      // Set user state and mark as authenticated
-      setUser(userData);
-      setIsAuthenticated(true);
+      // // Set user state and mark as authenticated
+      // setUser(userData);
+      // setIsAuthenticated(true);
 
       return true;
     } catch (error) {
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         isAuthenticated,
         user,
-        login,
+        requestOtp,
         logout,
         loading,
         chats,
