@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { openai } from "./InitOpenAI";
 import { jsPDF } from "jspdf"; // Import jsPDF
+import { ChatHeader } from "./ChatHeader";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -84,7 +85,7 @@ const GenerateQuestionPaper = () => {
             mcqMarks: 1,
             descCount: 0,
             descDifficulties: [],
-            descMarksPerQuestion: []
+            descMarksPerQuestion: [],
           },
         };
       }
@@ -124,8 +125,14 @@ const GenerateQuestionPaper = () => {
 
         if (count > descDiff.length) {
           // Add more difficulties defaulting to "easy"
-          descDiff = [...descDiff, ...Array(count - descDiff.length).fill("easy")];
-          descMarksArr = [...descMarksArr, ...Array(count - descMarksArr.length).fill(1)];
+          descDiff = [
+            ...descDiff,
+            ...Array(count - descDiff.length).fill("easy"),
+          ];
+          descMarksArr = [
+            ...descMarksArr,
+            ...Array(count - descMarksArr.length).fill(1),
+          ];
         } else if (count < descDiff.length) {
           // Remove extra difficulties and marks
           descDiff = descDiff.slice(0, count);
@@ -160,9 +167,13 @@ const GenerateQuestionPaper = () => {
     const topicsDetails = Object.entries(topicsConfig)
       .map(([topic, config]) => {
         // Construct a string for descriptive questions
-        const descDetails = config.descDifficulties.map((diff, i) => {
-          return `    Q${i + 1}: Difficulty - ${diff}, Marks: ${config.descMarksPerQuestion[i]}`;
-        }).join("\n");
+        const descDetails = config.descDifficulties
+          .map((diff, i) => {
+            return `    Q${i + 1}: Difficulty - ${diff}, Marks: ${
+              config.descMarksPerQuestion[i]
+            }`;
+          })
+          .join("\n");
 
         return `Topic: ${topic}
   MCQs -> Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}, MCQ Marks Each: ${config.mcqMarks}
@@ -225,242 +236,284 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
   const selectedTopics = Object.keys(topicsConfig);
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Generate Question Paper</h1>
+    <>
+      <ChatHeader />
+      <div style={styles.container}>
+        <h1 style={styles.title}>Generate Question Paper</h1>
 
-      <div style={styles.formGroup}>
-        <label style={styles.label}>Select Standard</label>
-        <select
-          style={styles.select}
-          value={standard}
-          onChange={(e) => setStandard(e.target.value)}
-        >
-          <option value="">--Select--</option>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-            <option key={num} value={num}>
-              {num}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={styles.formGroup}>
-        <label style={styles.label}>Select Subject</label>
-        <select
-          style={styles.select}
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-        >
-          <option value="">--Select--</option>
-          <option value="science">Science</option>
-          <option value="maths">Maths</option>
-        </select>
-      </div>
-
-      {topics.length > 0 && (
         <div style={styles.formGroup}>
-          <label style={styles.label}>Select Topics to Include</label>
+          <label style={styles.label}>Select Standard</label>
           <select
             style={styles.select}
-            onChange={(e) => {
-              if (e.target.value) handleAddTopicFromDropdown(e.target.value);
-            }}
+            value={standard}
+            onChange={(e) => setStandard(e.target.value)}
           >
-            <option value="">--Select Topic--</option>
-            {topics.map((t, idx) => (
-              <option key={idx} value={t}>
-                {t}
+            <option value="">--Select--</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+              <option key={num} value={num}>
+                {num}
               </option>
             ))}
           </select>
         </div>
-      )}
 
-      <div style={styles.formGroup}>
-        <label style={styles.label}>Or Add a Custom Topic</label>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Select Subject</label>
+          <select
+            style={styles.select}
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+          >
+            <option value="">--Select--</option>
+            <option value="science">Science</option>
+            <option value="maths">Maths</option>
+          </select>
+        </div>
+
+        {topics.length > 0 && (
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Select Topics to Include</label>
+            <select
+              style={styles.select}
+              onChange={(e) => {
+                if (e.target.value) handleAddTopicFromDropdown(e.target.value);
+              }}
+            >
+              <option value="">--Select Topic--</option>
+              {topics.map((t, idx) => (
+                <option key={idx} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Or Add a Custom Topic</label>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              type="text"
+              style={styles.input}
+              value={customTopic}
+              onChange={(e) => setCustomTopic(e.target.value)}
+              placeholder="Enter custom topic"
+            />
+            <button
+              style={styles.generateButton}
+              onClick={handleAddCustomTopic}
+            >
+              Add Topic
+            </button>
+          </div>
+        </div>
+
+        {selectedTopics.length > 0 && (
+          <div style={styles.topicConfigContainer}>
+            <h2 style={styles.subTitle}>Configure Topics</h2>
+            {selectedTopics.map((topic) => {
+              const config = topicsConfig[topic] || {};
+              return (
+                <div key={topic} style={styles.topicConfig}>
+                  <div style={styles.topicHeader}>
+                    <h3 style={styles.topicTitle}>{topic}</h3>
+                    <button
+                      style={styles.removeButton}
+                      onClick={() => handleRemoveTopic(topic)}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div style={styles.topicFormGroup}>
+                    <label style={styles.label}>Easy MCQs</label>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={config.easyMCQs}
+                      onChange={(e) =>
+                        handleTopicChange(
+                          topic,
+                          "easyMCQs",
+                          parseInt(e.target.value, 10) || 0
+                        )
+                      }
+                      onWheel={(e) => e.preventDefault()}
+                    />
+                  </div>
+                  <div style={styles.topicFormGroup}>
+                    <label style={styles.label}>Medium MCQs</label>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={config.mediumMCQs}
+                      onChange={(e) =>
+                        handleTopicChange(
+                          topic,
+                          "mediumMCQs",
+                          parseInt(e.target.value, 10) || 0
+                        )
+                      }
+                      onWheel={(e) => e.preventDefault()}
+                    />
+                  </div>
+                  <div style={styles.topicFormGroup}>
+                    <label style={styles.label}>Hard MCQs</label>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={config.hardMCQs}
+                      onChange={(e) =>
+                        handleTopicChange(
+                          topic,
+                          "hardMCQs",
+                          parseInt(e.target.value, 10) || 0
+                        )
+                      }
+                      onWheel={(e) => e.preventDefault()}
+                    />
+                  </div>
+                  <div style={styles.topicFormGroup}>
+                    <label style={styles.label}>Marks per MCQ</label>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={config.mcqMarks || 1}
+                      onChange={(e) =>
+                        handleTopicChange(
+                          topic,
+                          "mcqMarks",
+                          parseInt(e.target.value, 10) || 1
+                        )
+                      }
+                      onWheel={(e) => e.preventDefault()}
+                    />
+                  </div>
+                  <div style={styles.topicFormGroup}>
+                    <label style={styles.label}>
+                      Number of Descriptive Questions
+                    </label>
+                    <input
+                      type="number"
+                      style={styles.input}
+                      value={config.descCount}
+                      onChange={(e) =>
+                        handleTopicChange(
+                          topic,
+                          "descCount",
+                          parseInt(e.target.value, 10) || 0
+                        )
+                      }
+                      onWheel={(e) => e.preventDefault()}
+                    />
+                  </div>
+
+                  {config.descCount > 0 && (
+                    <div style={{ marginTop: "1rem" }}>
+                      <h4 style={styles.subTitle}>
+                        Descriptive Questions Configuration
+                      </h4>
+                      {config.descDifficulties?.map((diff, i) => (
+                        <div key={i} style={styles.topicFormGroup}>
+                          <label style={styles.label}>
+                            Question {i + 1} Difficulty
+                          </label>
+                          <select
+                            style={styles.select}
+                            value={diff}
+                            onChange={(e) =>
+                              handleDescDifficultyChange(
+                                topic,
+                                i,
+                                e.target.value
+                              )
+                            }
+                          >
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                          </select>
+
+                          <label style={styles.label}>
+                            Marks for Question {i + 1}
+                          </label>
+                          <input
+                            type="number"
+                            style={styles.input}
+                            value={config.descMarksPerQuestion[i]}
+                            onChange={(e) =>
+                              handleDescMarksChange(
+                                topic,
+                                i,
+                                parseInt(e.target.value, 10) || 1
+                              )
+                            }
+                            onWheel={(e) => e.preventDefault()}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Total Marks</label>
+          <input
+            type="number"
+            style={styles.input}
+            value={marks}
+            onChange={(e) => setMarks(e.target.value)}
+            placeholder="e.g. 100"
+            onWheel={(e) => e.preventDefault()}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Number of MCQs (optional)</label>
+          <input
+            type="number"
+            style={styles.input}
+            value={mcqs}
+            onChange={(e) => setMcqs(e.target.value)}
+            placeholder="e.g. 10"
+            onWheel={(e) => e.preventDefault()}
+          />
+        </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Any other query</label>
           <input
             type="text"
             style={styles.input}
-            value={customTopic}
-            onChange={(e) => setCustomTopic(e.target.value)}
-            placeholder="Enter custom topic"
+            value={anyotherQuery}
+            onChange={(e) => setAnyOtherQuery(e.target.value)}
+            placeholder="Mark problems as section A"
+            onWheel={(e) => e.preventDefault()}
           />
-          <button style={styles.generateButton} onClick={handleAddCustomTopic}>
-            Add Topic
-          </button>
         </div>
+
+        <button
+          style={styles.generateButton}
+          onClick={generateQuestionPaper}
+          disabled={!standard || !subject || !marks || isLoading}
+        >
+          {isLoading ? "Loading..." : "Generate Prompt"}
+        </button>
+
+        {responseText && (
+          <div style={styles.resultContainer}>
+            <h2 style={styles.subTitle}>Preview Generated Question Paper</h2>
+            <pre style={styles.responsePre}>{responseText}</pre>
+            <button style={styles.generateButton} onClick={generatePDF}>
+              Download PDF
+            </button>
+          </div>
+        )}
       </div>
-
-      {selectedTopics.length > 0 && (
-        <div style={styles.topicConfigContainer}>
-          <h2 style={styles.subTitle}>Configure Topics</h2>
-          {selectedTopics.map((topic) => {
-            const config = topicsConfig[topic] || {};
-            return (
-              <div key={topic} style={styles.topicConfig}>
-                <div style={styles.topicHeader}>
-                  <h3 style={styles.topicTitle}>{topic}</h3>
-                  <button
-                    style={styles.removeButton}
-                    onClick={() => handleRemoveTopic(topic)}
-                  >
-                    &times;
-                  </button>
-                </div>
-                <div style={styles.topicFormGroup}>
-                  <label style={styles.label}>Easy MCQs</label>
-                  <input
-                    type="number"
-                    style={styles.input}
-                    value={config.easyMCQs}
-                    onChange={(e) =>
-                      handleTopicChange(topic, "easyMCQs", parseInt(e.target.value,10) || 0)
-                    }
-                    onWheel={(e) => e.preventDefault()}
-                  />
-                </div>
-                <div style={styles.topicFormGroup}>
-                  <label style={styles.label}>Medium MCQs</label>
-                  <input
-                    type="number"
-                    style={styles.input}
-                    value={config.mediumMCQs}
-                    onChange={(e) =>
-                      handleTopicChange(topic, "mediumMCQs", parseInt(e.target.value,10) || 0)
-                    }
-                    onWheel={(e) => e.preventDefault()}
-                  />
-                </div>
-                <div style={styles.topicFormGroup}>
-                  <label style={styles.label}>Hard MCQs</label>
-                  <input
-                    type="number"
-                    style={styles.input}
-                    value={config.hardMCQs}
-                    onChange={(e) =>
-                      handleTopicChange(topic, "hardMCQs", parseInt(e.target.value,10) || 0)
-                    }
-                    onWheel={(e) => e.preventDefault()}
-                  />
-                </div>
-                <div style={styles.topicFormGroup}>
-                  <label style={styles.label}>Marks per MCQ</label>
-                  <input
-                    type="number"
-                    style={styles.input}
-                    value={config.mcqMarks || 1}
-                    onChange={(e) =>
-                      handleTopicChange(topic, "mcqMarks", parseInt(e.target.value,10) || 1)
-                    }
-                    onWheel={(e) => e.preventDefault()}
-                  />
-                </div>
-                <div style={styles.topicFormGroup}>
-                  <label style={styles.label}>Number of Descriptive Questions</label>
-                  <input
-                    type="number"
-                    style={styles.input}
-                    value={config.descCount}
-                    onChange={(e) =>
-                      handleTopicChange(topic, "descCount", parseInt(e.target.value,10) || 0)
-                    }
-                    onWheel={(e) => e.preventDefault()}
-                  />
-                </div>
-
-                {config.descCount > 0 && (
-                  <div style={{ marginTop: "1rem" }}>
-                    <h4 style={styles.subTitle}>Descriptive Questions Configuration</h4>
-                    {config.descDifficulties?.map((diff, i) => (
-                      <div key={i} style={styles.topicFormGroup}>
-                        <label style={styles.label}>Question {i + 1} Difficulty</label>
-                        <select
-                          style={styles.select}
-                          value={diff}
-                          onChange={(e) =>
-                            handleDescDifficultyChange(topic, i, e.target.value)
-                          }
-                        >
-                          <option value="easy">Easy</option>
-                          <option value="medium">Medium</option>
-                          <option value="hard">Hard</option>
-                        </select>
-
-                        <label style={styles.label}>Marks for Question {i + 1}</label>
-                        <input
-                          type="number"
-                          style={styles.input}
-                          value={config.descMarksPerQuestion[i]}
-                          onChange={(e) =>
-                            handleDescMarksChange(topic, i, parseInt(e.target.value,10) || 1)
-                          }
-                          onWheel={(e) => e.preventDefault()}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div style={styles.formGroup}>
-        <label style={styles.label}>Total Marks</label>
-        <input
-          type="number"
-          style={styles.input}
-          value={marks}
-          onChange={(e) => setMarks(e.target.value)}
-          placeholder="e.g. 100"
-          onWheel={(e) => e.preventDefault()}
-        />
-      </div>
-
-      <div style={styles.formGroup}>
-        <label style={styles.label}>Number of MCQs (optional)</label>
-        <input
-          type="number"
-          style={styles.input}
-          value={mcqs}
-          onChange={(e) => setMcqs(e.target.value)}
-          placeholder="e.g. 10"
-          onWheel={(e) => e.preventDefault()}
-        />
-      </div>
-
-      <div style={styles.formGroup}>
-        <label style={styles.label}>Any other query</label>
-        <input
-          type="text"
-          style={styles.input}
-          value={anyotherQuery}
-          onChange={(e) => setAnyOtherQuery(e.target.value)}
-          placeholder="Mark problems as section A"
-          onWheel={(e) => e.preventDefault()}
-        />
-      </div>
-
-      <button
-        style={styles.generateButton}
-        onClick={generateQuestionPaper}
-        disabled={!standard || !subject || !marks || isLoading}
-      >
-        {isLoading ? "Loading..." : "Generate Prompt"}
-      </button>
-
-      {responseText && (
-        <div style={styles.resultContainer}>
-          <h2 style={styles.subTitle}>Preview Generated Question Paper</h2>
-          <pre style={styles.responsePre}>{responseText}</pre>
-          <button style={styles.generateButton} onClick={generatePDF}>
-            Download PDF
-          </button>
-        </div>
-      )}
-    </div>
+    </>
   );
 };
 

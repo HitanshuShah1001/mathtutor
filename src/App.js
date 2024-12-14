@@ -14,6 +14,7 @@ import VerifyOtp from "./components/VerifyOtp";
 import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
 import { Layout } from "./components/Layout";
 import { UpdateUserDetails } from "./components/UpdateUserDetails";
+import GenerateQuestionPaper from "./components/Questionpaper";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -30,6 +31,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout />
+                </ProtectedRoute>
+              }
+            />
+             <Route
+              path="/question-paper-generation"
+              element={
+                <ProtectedRoute>
+                  <GenerateQuestionPaper />
                 </ProtectedRoute>
               }
             />
