@@ -97,6 +97,7 @@ const ChatContainer = () => {
   const handleSendMessage = async ({ inputMessage, image = undefined }) => {
     if (!inputMessage.trim()) return;
     let userContentForAi;
+    let newUserMessage = {};
 
     if (image) {
       const ImageUrl = await uploadImageToS3(image);
@@ -105,13 +106,12 @@ const ChatContainer = () => {
         { type: "image_url", image_url: { url: ImageUrl } },
       ];
       newUserMessage["mediaUrl"] = ImageUrl;
+      newUserMessage["content"] = inputMessage;
     } else {
       userContentForAi = inputMessage;
+      newUserMessage["content"] = inputMessage;
     }
-    const newUserMessage = {
-      content: userContentForAi,
-      role: USER,
-    };
+
     // Prepare the full message history for context
     const conversationHistory = messages?.map((msg) => {
       const content = msg.mediaUrl

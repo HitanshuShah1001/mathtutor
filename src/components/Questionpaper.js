@@ -3,6 +3,7 @@ import { openai } from "./InitOpenAI";
 import { jsPDF } from "jspdf"; // Import jsPDF
 import { ChatHeader } from "./ChatHeader";
 import { styles } from "../Questionpaperstyles";
+import { generatePrompt } from "../utils/GeneratePrompt";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -10,6 +11,7 @@ const GenerateQuestionPaper = () => {
   const [topics, setTopics] = useState([]);
   const [customTopic, setCustomTopic] = useState("");
   const [marks, setMarks] = useState("");
+  const [title, setTitle] = useState("");
   const [mcqs, setMcqs] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [responseText, setResponseText] = useState("");
@@ -113,42 +115,17 @@ const GenerateQuestionPaper = () => {
     });
   };
 
-  const generatePrompt = () => {
-    // Construct a detailed prompt with the topicsConfig
-    const topicsDetails = Object.entries(topicsConfig)
-      .map(([topic, config]) => {
-        // Construct a string for descriptive questions
-        const descDetails = config.descDifficulties
-          .map((diff, i) => {
-            return `    Q${i + 1}: Difficulty - ${diff}, Marks: ${
-              config.descMarksPerQuestion[i]
-            }`;
-          })
-          .join("\n");
-
-        return `Topic: ${topic}
-  MCQs -> Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}, MCQ Marks Each: ${config.mcqMarks}
-${descDetails}`;
-      })
-      .join("\n\n");
-
-    return `Generate a question paper for:
-Standard: ${standard}
-Subject: ${subject.charAt(0).toUpperCase() + subject.slice(1)}
-Total Marks: ${marks}
-Number of MCQs: ${mcqs}
-Additional input: ${anyotherQuery}
-
-Topic Details:
-${topicsDetails}
-
-Instructions: Create a well-structured and balanced question paper, ensuring topics are proportionally represented. Consider the specified MCQ difficulties and descriptive question difficulties for each topic, and use the given marks per question.`;
-  };
-
   const generateQuestionPaper = async () => {
     try {
       setIsLoading(true);
-      const prompt = generatePrompt();
+      const prompt = generatePrompt({
+        marks,
+        topicsConfig,
+        standard,
+        mcqs,
+        anyotherQuery,
+        subject,
+      });
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -245,6 +222,15 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Exam Details</h2>
 
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Title</label>
+                <input
+                  style={styles.input}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="12 Std. Question Paper"
+                />
+              </div>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Standard</label>
                 <select
