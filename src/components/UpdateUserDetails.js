@@ -13,7 +13,7 @@ export const UpdateUserDetails = () => {
   const location = useLocation();
   const id = location?.state?.id;
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [emailId, setEmailId] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export const UpdateUserDetails = () => {
     e.preventDefault();
     setError("");
 
-    if (!name.trim() || !email.trim()) {
+    if (!name.trim() || !emailId.trim()) {
       setError("Please enter both name and email.");
       return;
     }
@@ -37,7 +37,7 @@ export const UpdateUserDetails = () => {
       return;
     }
 
-    const data = JSON.stringify({ name, email, id, tokens: 100 });
+    const data = JSON.stringify({ name, emailId, id, tokens: 100 });
 
     try {
       const response = await axios.post(`${BASE_URL_API}/user/update`, data, {
@@ -108,8 +108,8 @@ export const UpdateUserDetails = () => {
             </div>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={emailId}
+              onChange={(e) => setEmailId(e.target.value)}
               placeholder="Enter your Email"
               required
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
