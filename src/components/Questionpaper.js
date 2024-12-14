@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { openai } from "./InitOpenAI";
 import { jsPDF } from "jspdf"; // Import jsPDF
 import { ChatHeader } from "./ChatHeader";
+import { styles } from "../Questionpaperstyles";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -14,6 +15,12 @@ const GenerateQuestionPaper = () => {
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
+  const [easyMCQMarks, setEasyMCQMarks] = useState(1);
+  const [mediumMCQMarks, setMediumMCQMarks] = useState(2);
+  const [hardMCQMarks, setHardMCQMarks] = useState(4);
+  const [easyDescMarks, setEasyDescMarks] = useState(1);
+  const [mediumDescMarks, setMediumDescMarks] = useState(2);
+  const [hardDescMarks, setHardDescMarks] = useState(4);
 
   // Demo topics
   const allTopics = {
@@ -189,16 +196,12 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
           >
             <option value="">Choose a Topic</option>
             {topics.map((t, idx) => (
-              <option
-                key={idx}
-                value={t}
-                disabled={!!topicsConfig[t]}
-              >
+              <option key={idx} value={t} disabled={!!topicsConfig[t]}>
                 {t} {topicsConfig[t] ? "✓" : ""}
               </option>
             ))}
           </select>
-  
+
           <div style={styles.customTopicContainer}>
             <input
               type="text"
@@ -207,15 +210,12 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
               onChange={(e) => setCustomTopic(e.target.value)}
               placeholder="Or add custom topic"
             />
-            <button
-              style={styles.addButton}
-              onClick={handleAddCustomTopic}
-            >
+            <button style={styles.addButton} onClick={handleAddCustomTopic}>
               +
             </button>
           </div>
         </div>
-  
+
         {/* Selected Topics Chips */}
         {Object.keys(topicsConfig).length > 0 && (
           <div style={styles.selectedTopicsChips}>
@@ -295,7 +295,79 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
                   placeholder="e.g. 10"
                 />
               </div> */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Weightage for MCQs (Marks)</label>
+                <div style={styles.weightageContainer}>
+                  <div style={styles.weightageBox}>
+                    <label>Easy</label>
+                    <input
+                      type="number"
+                      style={styles.inputSmall}
+                      placeholder="e.g. 1"
+                      value={easyMCQMarks}
+                      onChange={(e) => setEasyMCQMarks(e.target.value)}
+                    />
+                  </div>
+                  <div style={styles.weightageBox}>
+                    <label>Medium</label>
+                    <input
+                      type="number"
+                      style={styles.inputSmall}
+                      value={mediumMCQMarks}
+                      placeholder="e.g. 2"
+                      onChange={(e) => setMediumMCQMarks(e.target.value)}
+                    />
+                  </div>
+                  <div style={styles.weightageBox}>
+                    <label>Hard</label>
+                    <input
+                      type="number"
+                      style={styles.inputSmall}
+                      value={hardMCQMarks}
+                      placeholder="e.g. 4"
+                      onChange={(e) => setHardMCQMarks(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
 
+              <div style={styles.formGroup}>
+                <label style={styles.label}>
+                  Weightage for Descriptive (Marks)
+                </label>
+                <div style={styles.weightageContainer}>
+                  <div style={styles.weightageBox}>
+                    <label>Easy</label>
+                    <input
+                      type="number"
+                      style={styles.inputSmall}
+                      value={easyDescMarks}
+                      placeholder="e.g. 1"
+                      onChange={(e) => setEasyDescMarks(e.target.value)}
+                    />
+                  </div>
+                  <div style={styles.weightageBox}>
+                    <label>Medium</label>
+                    <input
+                      type="number"
+                      value={mediumDescMarks}
+                      style={styles.inputSmall}
+                      placeholder="e.g. 2"
+                      onChange={(e) => setMediumDescMarks(e.target.value)}
+                    />
+                  </div>
+                  <div style={styles.weightageBox}>
+                    <label>Hard</label>
+                    <input
+                      type="number"
+                      style={styles.inputSmall}
+                      placeholder="e.g. 4"
+                      value={hardDescMarks}
+                      onChange={(e) => setHardDescMarks(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
               <div style={styles.formGroup}>
                 <label style={styles.label}>Additional Instructions</label>
                 <input
@@ -313,9 +385,7 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Topic Configuration</h2>
 
-              {topics.length > 0 && (
-                <RenderTopicSelection />
-              )}
+              {topics.length > 0 && <RenderTopicSelection />}
 
               {Object.keys(topicsConfig).length > 0 && (
                 <div style={styles.topicConfigDetails}>
@@ -447,202 +517,6 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
       </div>
     </div>
   );
-};
-
-const styles = {
-  pageContainer: {
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    backgroundColor: "#f4f6f9",
-    minHeight: "100vh",
-    padding: "20px",
-  },
-  container: {
-
-    marginTop: 10,
-    backgroundColor: "white",
-    borderRadius: "12px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-    padding: "30px",
-  },
-  formContainer: {
-    display: "flex",
-    gap: "30px",
-    marginBottom: "30px",
-  },
-  columnLeft: {
-    flex: 1,
-  },
-  columnRight: {
-    flex: 1,
-  },
-  card: {
-    backgroundColor: "white",
-    border: "1px solid #e0e4e8",
-    borderRadius: "8px",
-    padding: "25px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-  },
-  cardTitle: {
-    marginTop: 0,
-    marginBottom: "20px",
-    color: "#2c3e50",
-    borderBottom: "2px solid #3498db",
-    paddingBottom: "10px",
-  },
-  formGroup: {
-    marginBottom: "15px",
-  },
-  label: {
-    display: "block",
-    marginBottom: "8px",
-    color: "#34495e",
-    fontWeight: "600",
-  },
-  select: {
-    width: "100%",
-    padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #d1d8e0",
-    backgroundColor: "white",
-  },
-  input: {
-    width: "100%",
-    padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #d1d8e0",
-  },
-  generateButton: {
-    backgroundColor: "#3498db",
-    color: "white",
-    padding: "12px 24px",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    transition: "background-color 0.3s ease",
-  },
-  actionContainer: {
-    textAlign: "center",
-    marginTop: "20px",
-  },
-  topicSelectionContainer: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-  },
-  customTopicContainer: {
-    display: "flex",
-    gap: "10px",
-  },
-  inputInline: {
-    flex: 1,
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #d1d8e0",
-  },
-  addButton: {
-    backgroundColor: "#2ecc71",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    padding: "8px 15px",
-  },
-  selectedTopicsChips: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    marginTop: "15px",
-  },
-  topicChip: {
-    backgroundColor: "#e8f4f8",
-    padding: "6px 12px",
-    borderRadius: "20px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  chipRemoveButton: {
-    backgroundColor: "#e74c3c",
-    color: "white",
-    border: "none",
-    borderRadius: "50%",
-    width: "20px",
-    height: "20px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  },
-  topicConfigDetails: {
-    marginTop: "20px",
-  },
-  topicConfigCard: {
-    backgroundColor: "#f9f9fb",
-    border: "1px solid #e0e4e8",
-    borderRadius: "8px",
-    padding: "15px",
-    marginBottom: "15px",
-  },
-  topicConfigHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "15px",
-  },
-  topicConfigTitle: {
-    margin: 0,
-    color: "#2c3e50",
-  },
-  removeTopicButton: {
-    backgroundColor: "#e74c3c",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    padding: "6px 12px",
-  },
-  topicConfigGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "10px",
-  },
-  formGroupInline: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "5px",
-  },
-  inputSmall: {
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #d1d8e0",
-    width: "100%",
-  },
-  resultContainer: {
-    marginTop: "30px",
-    backgroundColor: "#f9f9fb",
-    padding: "20px",
-    borderRadius: "8px",
-  },
-  resultTitle: {
-    color: "#2c3e50",
-    borderBottom: "2px solid #3498db",
-    paddingBottom: "10px",
-  },
-  responsePre: {
-    backgroundColor: "white",
-    border: "1px solid #e0e4e8",
-    borderRadius: "6px",
-    padding: "15px",
-    whiteSpace: "pre-wrap",
-    maxHeight: "300px",
-    overflowY: "auto",
-  },
-  downloadButton: {
-    backgroundColor: "#2ecc71",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    padding: "10px 20px",
-    marginTop: "15px",
-  },
 };
 
 export default GenerateQuestionPaper;
