@@ -39,51 +39,57 @@ const GenerateQuestionPaper = () => {
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
 
-
   const renderContent = (content) => {
-
     const text = content.text;
+  
     // If the text contains LaTeX, render with MathJax
     if (containsLatex(text)) {
-      return <MathJax>{text}</MathJax>;
+      return (
+        <div className="latex-content">
+          <MathJax>{text}</MathJax>
+        </div>
+      );
     }
+  
     // Otherwise, render as Markdown
     return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || "");
-            return !inline && match ? (
-              <SyntaxHighlighter
-                style={materialDark}
-                language={match[1]}
-                PreTag="div"
+      <div className="markdown-content">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || "");
+              return !inline && match ? (
+                <SyntaxHighlighter
+                  style={materialDark}
+                  language={match[1]}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, "")}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
+            a: ({ node, ...props }) => (
+              <a
                 {...props}
-              >
-                {String(children).replace(/\n$/, "")}
-              </SyntaxHighlighter>
-            ) : (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            );
-          },
-          a: ({ node, ...props }) => (
-            <a
-              {...props}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            />
-          ),
-        }}
-        className="prose max-w-full"
-      >
-        {text}
-      </ReactMarkdown>
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              />
+            ),
+          }}
+          className="prose max-w-full"
+        >
+          {text}
+        </ReactMarkdown>
+      </div>
     );
-};
+  };
 
   const allTopics = {
     science: {
@@ -226,6 +232,7 @@ const GenerateQuestionPaper = () => {
 
   const generateQuestionPaper = async () => {
     try {
+      setResponseText("")
       setIsLoading(true);
       const prompt = generatePrompt({
         title,
@@ -248,15 +255,14 @@ const GenerateQuestionPaper = () => {
         mediumDescOptionalTopics,
         hardDescOptionalTopics,
       });
-      console.log(prompt,"prompt");
+      console.log(prompt, "prompt");
       const response = await openai.chat.completions.create({
         model: "o1-preview",
-        messages: [
-          { role: "user", content: prompt },
-        ],
+        messages: [{ role: "user", content: prompt }],
       });
-      
+      console.log(response,"respone")
       const content = response.choices?.[0]?.message?.content || "";
+      console.log(content,"content")
       setResponseText(content);
     } catch (e) {
       console.log("error occurred", e);
@@ -278,13 +284,12 @@ const GenerateQuestionPaper = () => {
     const pageHeight = doc.internal.pageSize.getHeight();
     const leftMargin = 50;
     const topMargin = 50;
-    const lineHeight = 14;
-  
+    const lineHeight = 18;
+    
     let currentY = topMargin;
-  
+    
     // A helper function to draw text, handling page breaks
     const drawLineOfText = (text, fontStyle = "normal", fontSize = 12) => {
-      // If we are close to the bottom, add a page
       if (currentY > pageHeight - topMargin) {
         doc.addPage();
         currentY = topMargin;
@@ -295,13 +300,12 @@ const GenerateQuestionPaper = () => {
       currentY += lineHeight;
     };
   
-    // A helper function to draw a horizontal line (for `---`)
+    // A helper function to draw a horizontal rule (for `---`)
     const drawHorizontalRule = () => {
       if (currentY > pageHeight - topMargin) {
         doc.addPage();
         currentY = topMargin;
       }
-      // Draw a line across the page
       doc.setDrawColor(0, 0, 0);
       doc.line(leftMargin, currentY, pageWidth - leftMargin, currentY);
       currentY += lineHeight;
@@ -324,22 +328,14 @@ const GenerateQuestionPaper = () => {
       let headingPattern = /^(#+)\s+(.*)/;
       let headingMatch = trimmedLine.match(headingPattern);
       if (headingMatch) {
-        // Count the number of # to determine heading level
         headingLevel = headingMatch[1].length;
-        trimmedLine = headingMatch[2]; // The actual heading text without ###
+        trimmedLine = headingMatch[2];
       }
   
-      // Now handle bold text (**bold**)
-      // We'll split the line by ** and toggle bold on/off
-      // Example: "This is **bold** text" -> ["This is ", "bold", " text"]
-      let boldParts = trimmedLine.split(/\*\*/);
-      let isBold = false;
-  
-      // Determine font size for heading
+      // Process the content with headings and normal text
       let currentFontSize = 12;
       let currentFontStyle = "normal";
       if (headingLevel === 3) {
-        // For ### heading, use a larger font size
         currentFontSize = 14;
         currentFontStyle = "bold";
       } else if (headingLevel === 2) {
@@ -350,62 +346,12 @@ const GenerateQuestionPaper = () => {
         currentFontStyle = "bold";
       }
   
-      // We'll accumulate the line segments into a single line with different styles
-      // For simplicity, we can handle bold inline by splitting further text placements
-      let currentX = leftMargin;
-  
-      // Helper to write a segment of text in current style
-      const writeSegment = (segment, fontStyle, fontSize) => {
-        // If we are close to bottom, add page
-        if (currentY > pageHeight - topMargin) {
-          doc.addPage();
-          currentY = topMargin;
-          currentX = leftMargin;
-        }
-        doc.setFont("Helvetica", fontStyle);
-        doc.setFontSize(fontSize);
-  
-        // Calculate segment width
-        let segmentWidth = doc.getTextWidth(segment);
-  
-        // If segment doesn't fit in this line, move to next line
-        if (currentX + segmentWidth > pageWidth - leftMargin) {
-          // Move to next line
-          currentY += lineHeight;
-          currentX = leftMargin;
-          // Check again if need a new page after line break
-          if (currentY > pageHeight - topMargin) {
-            doc.addPage();
-            currentY = topMargin;
-          }
-        }
-  
-        doc.text(segment, currentX, currentY);
-        currentX += segmentWidth;
-        return currentX;
-      };
-  
-      // Process bold parts
-      for (let i = 0; i < boldParts.length; i++) {
-        let textSegment = boldParts[i];
-        if (isBold) {
-          // This segment should be bold
-          currentX = writeSegment(textSegment, "bold", currentFontSize);
-        } else {
-          // Normal text
-          currentX = writeSegment(textSegment, currentFontStyle, currentFontSize);
-        }
-        isBold = !isBold; // toggle after each **
-      }
-  
-      // After finishing the line, move to the next line if not a heading (headings done already)
-      currentY += lineHeight;
+      // Add each line to the PDF
+      drawLineOfText(trimmedLine, currentFontStyle, currentFontSize);
     }
   
     doc.save("question-paper.pdf");
   };
-  
-  
   
 
   const RenderTopicSelection = useCallback(() => {
@@ -429,7 +375,6 @@ const GenerateQuestionPaper = () => {
 
           <div style={styles.customTopicContainer}>
             <input
-              
               style={styles.inputInline}
               value={customTopic}
               onChange={(e) => setCustomTopic(e.target.value)}
@@ -929,7 +874,7 @@ const GenerateQuestionPaper = () => {
           <button
             style={styles.generateButton}
             onClick={generateQuestionPaper}
-            disabled={!standard || !subject }
+            disabled={!standard || !subject}
           >
             {isLoading ? "Generating..." : "Generate Question Paper"}
           </button>
@@ -938,7 +883,10 @@ const GenerateQuestionPaper = () => {
             <div style={styles.resultContainer}>
               <h2 style={styles.resultTitle}>Generated Question Paper</h2>
               {renderContent({ text: responseText })}
-              <button style={styles.downloadButton} onClick={() => generatePDF(responseText)}>
+              <button
+                style={styles.downloadButton}
+                onClick={() => generatePDF(responseText)}
+              >
                 Download PDF
               </button>
             </div>
