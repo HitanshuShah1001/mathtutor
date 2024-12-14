@@ -8,6 +8,7 @@ import {
 } from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
 import { getRequest } from "../utils/ApiCall";
+import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 export const getInitialChats = async () => {
   const access = localStorage.getItem("accessKey");
@@ -51,17 +52,11 @@ export const AuthProvider = ({ children }) => {
     });
 
     try {
-      const response = await axios.post(
-        `${BASE_URL_API}/${API_SEND_OTP}`,
-        data,
-        {
-          headers: { "Content-Type": "application/json" },
-        }
-      );
-      console.log(response, "response received");
+      await axios.post(`${BASE_URL_API}/${API_SEND_OTP}`, data, {
+        headers: { "Content-Type": "application/json" },
+      });
       return true;
     } catch (error) {
-      alert(error?.response?.data?.message ?? "Some error occured");
       return false;
     }
   };
@@ -77,33 +72,18 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.post(`${BASE_URL_API}/${OTP_VERIFY}`, data, {
         headers: { "Content-Type": "application/json" },
       });
-      console.log(response, "response");
-      return true;
+      return { status: true, data: response };
     } catch (error) {
       alert(error?.response?.data?.message ?? "Some error occured");
       return false;
     }
-    // const { accessToken, userData } = response.data;
-    // const chats = await getInitialChats();
-    // setChats(chats);
-    // // Save accessKey in sessionStorage
-    // localStorage.setItem(ACCESS_KEY, accessToken);
-
-    // // Save user data to localStorage for persistence
-    // localStorage.setItem(USER, JSON.stringify({ userData }));
-
-    // // Set user state and mark as authenticated
-    // setUser(userData);
-    // setIsAuthenticated(true);
   };
 
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
 
-    // Remove user data and accessKey
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("accessKey");
+    removeDataFromLocalStorage();
   };
 
   return (

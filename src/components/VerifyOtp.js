@@ -1,10 +1,17 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { KeyIcon } from "lucide-react";
-import { useAuth } from "../utils/AuthContext";
+import { AuthContext, useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getInitialChats } from "./AuthContext";
+import { ACCESS_KEY, USER } from "../constants/constants";
+import {
+  addDataToLocalStorage,
+  removeDataFromLocalStorage,
+} from "../utils/LocalStorageOps";
 
 const VerifyOtp = () => {
+  const { setChats, setIsAuthenticated, setUser } = useContext(AuthContext);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
@@ -24,12 +31,19 @@ const VerifyOtp = () => {
       return;
     }
 
-    const isValid = await verifyOTP(mobileNumber, otp);
-    return;
-    if (isValid) {
-      navigate("/home");
+    const isValidAndData = await verifyOTP(mobileNumber, otp);
+    if (isValidAndData.status) {
+      const data = { isValidAndData };
+      const { accessToken, user } = data;
+      removeDataFromLocalStorage();
+      addDataToLocalStorage({ accessToken, user });
+      const chats = await getInitialChats();
+      setChats(chats);
+      setUser(user);
+      setIsAuthenticated(true);
     } else {
       setError("Invalid OTP. Please try again.");
+      return;
     }
   };
 
