@@ -20,15 +20,16 @@ export const generatePrompt = ({
   hardDescOptionalTopics,
 }) => {
   // Construct topic details section
-  const topicsDetails = Object.entries(topicsConfig)
-    .map(([topic, config]) => {
-      return `Topic: ${topic}
-    MCQs:
-      Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}
-    Descriptive:
-      Easy: ${config.descEasy}, Medium: ${config.descMedium}, Hard: ${config.descHard}`;
-    })
-    .join("\n\n");
+  const topicLines = Object.entries(topicsConfig).map(([topic, config]) => {
+    return `
+    Topic: ${topic}
+      MCQs:
+        Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}
+      Descriptive:
+        Easy: ${config.descEasy}, Medium: ${config.descMedium}, Hard: ${config.descHard}`;
+  });
+
+  const topicsDetails = topicLines.length > 0 ? topicLines.join("\n") : "No specific topics configured.";
 
   // Construct optional descriptive questions details
   const optionalDetails = `
@@ -38,9 +39,8 @@ Optional Descriptive Questions:
   Hard (${hardDescOptionalCount} total): ${hardDescOptionalTopics.length > 0 ? hardDescOptionalTopics.join(", ") : "None selected"}
 `.trim();
 
-  // Combine all instructions into a single prompt
   return `
-You are an expert exam-setter. Create a well-structured, balanced, and challenging question paper following these specifications.
+You are an expert exam-setter. Create a well-structured, balanced, and challenging question paper following these exact specifications:
 
 Title: ${title || "Question Paper"}
 Standard: ${standard || "Not specified"}
@@ -55,19 +55,20 @@ Marking Scheme:
 - Descriptive per question:
   Easy: ${easyDescMarks}, Medium: ${mediumDescMarks}, Hard: ${hardDescMarks}
 
-${topicsDetails ? `Topic-wise Configuration:\n${topicsDetails}` : "No specific topics configured."}
+Topic-wise Configuration:
+${topicsDetails}
 
 ${optionalDetails}
 
-Please ensure the following:
-1. The question paper should be clearly divided into sections and indicate marks for each question.
-2. The distribution of MCQs and descriptive questions should reflect the specified numbers and difficulty levels.
-3. For MCQs, use a variety of question types (conceptual, application-based) within the given difficulties.
-4. For descriptive questions, incorporate progressively challenging problems as per easy, medium, and hard categories.
-5. Include optional descriptive questions as specified, ensuring that the user can choose from the provided topics. The number of optional questions for each difficulty level should match the specified count.
-6. The final paper should be neatly formatted, labeled, and easy to understand for a student.
-7. Take into account any additional instructions provided.
+IMPORTANT REQUIREMENTS:
+1. **Exact Question Counts**: You must include the exact number of MCQs and descriptive questions for each difficulty level and topic as specified. Do not omit or reduce the number of questions.
+2. For MCQs, distribute them across the specified topics and difficulty levels, ensuring each count is met exactly.
+3. For descriptive questions, also ensure the exact count is provided for each difficulty level per topic.
+4. Include all optional descriptive questions as specified. The number of optional questions (easy, medium, hard) and their selected topics must match the given counts exactly.
+5. The question paper should be clearly organized into sections and each question should clearly indicate its marks.
+6. Ensure a logical progression and a variety of question types where possible.
+7. Follow any additional instructions or formatting guidelines provided.
 
-Generate the final question paper, ensuring that it is logical, fair, and consistent with all the details above.
+Your final output should be a complete question paper meeting all these conditions, with every single required question included.
 `.trim();
 };

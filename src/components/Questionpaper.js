@@ -4,6 +4,12 @@ import { jsPDF } from "jspdf"; // Import jsPDF
 import { ChatHeader } from "./ChatHeader";
 import { styles } from "../Questionpaperstyles";
 import { generatePrompt } from "../utils/GeneratePrompt";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { MathJax } from "better-react-mathjax";
+import { containsLatex } from "./Chatmessage";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -32,6 +38,52 @@ const GenerateQuestionPaper = () => {
   const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
+
+
+  const renderContent = (content) => {
+
+    const text = content.text;
+    // If the text contains LaTeX, render with MathJax
+    if (containsLatex(text)) {
+      return <MathJax>{text}</MathJax>;
+    }
+    // Otherwise, render as Markdown
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || "");
+            return !inline && match ? (
+              <SyntaxHighlighter
+                style={materialDark}
+                language={match[1]}
+                PreTag="div"
+                {...props}
+              >
+                {String(children).replace(/\n$/, "")}
+              </SyntaxHighlighter>
+            ) : (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          },
+          a: ({ node, ...props }) => (
+            <a
+              {...props}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            />
+          ),
+        }}
+        className="prose max-w-full"
+      >
+        {text}
+      </ReactMarkdown>
+    );
+};
 
   const allTopics = {
     science: {
@@ -196,14 +248,14 @@ const GenerateQuestionPaper = () => {
         mediumDescOptionalTopics,
         hardDescOptionalTopics,
       });
+      console.log(prompt,"prompt");
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "o1-preview",
         messages: [
-          { role: "system", content: "You are a helpful assistant." },
           { role: "user", content: prompt },
         ],
       });
-
+      
       const content = response.choices?.[0]?.message?.content || "";
       setResponseText(content);
     } catch (e) {
@@ -213,7 +265,7 @@ const GenerateQuestionPaper = () => {
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = (responseText) => {
     if (!responseText) return;
   
     const doc = new jsPDF({
@@ -222,35 +274,138 @@ const GenerateQuestionPaper = () => {
       format: "A4",
     });
   
-    doc.setFont("Helvetica", "normal");
-    doc.setFontSize(12);
-  
-    // Calculate page dimensions and line height
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const leftMargin = 50;
     const topMargin = 50;
-    const lineHeight = 14; // Adjust as needed for line spacing
-  
-    // Split text into lines based on page width to avoid horizontal overflow
-    const lines = doc.splitTextToSize(responseText, pageWidth - leftMargin * 2);
+    const lineHeight = 14;
   
     let currentY = topMargin;
   
-    // Render each line, adding pages as needed
-    for (let i = 0; i < lines.length; i++) {
+    // A helper function to draw text, handling page breaks
+    const drawLineOfText = (text, fontStyle = "normal", fontSize = 12) => {
+      // If we are close to the bottom, add a page
       if (currentY > pageHeight - topMargin) {
-        // If we're beyond the printable area, add a new page
         doc.addPage();
         currentY = topMargin;
       }
+      doc.setFont("Helvetica", fontStyle);
+      doc.setFontSize(fontSize);
+      doc.text(leftMargin, currentY, text);
+      currentY += lineHeight;
+    };
   
-      doc.text(leftMargin, currentY, lines[i]);
+    // A helper function to draw a horizontal line (for `---`)
+    const drawHorizontalRule = () => {
+      if (currentY > pageHeight - topMargin) {
+        doc.addPage();
+        currentY = topMargin;
+      }
+      // Draw a line across the page
+      doc.setDrawColor(0, 0, 0);
+      doc.line(leftMargin, currentY, pageWidth - leftMargin, currentY);
+      currentY += lineHeight;
+    };
+  
+    // Split the response by lines for processing
+    const lines = responseText.split('\n');
+  
+    for (let line of lines) {
+      let trimmedLine = line.trim();
+  
+      // Check for horizontal rule (---)
+      if (trimmedLine === '---') {
+        drawHorizontalRule();
+        continue;
+      }
+  
+      // Check for headings (e.g., ### Heading)
+      let headingLevel = 0;
+      let headingPattern = /^(#+)\s+(.*)/;
+      let headingMatch = trimmedLine.match(headingPattern);
+      if (headingMatch) {
+        // Count the number of # to determine heading level
+        headingLevel = headingMatch[1].length;
+        trimmedLine = headingMatch[2]; // The actual heading text without ###
+      }
+  
+      // Now handle bold text (**bold**)
+      // We'll split the line by ** and toggle bold on/off
+      // Example: "This is **bold** text" -> ["This is ", "bold", " text"]
+      let boldParts = trimmedLine.split(/\*\*/);
+      let isBold = false;
+  
+      // Determine font size for heading
+      let currentFontSize = 12;
+      let currentFontStyle = "normal";
+      if (headingLevel === 3) {
+        // For ### heading, use a larger font size
+        currentFontSize = 14;
+        currentFontStyle = "bold";
+      } else if (headingLevel === 2) {
+        currentFontSize = 16;
+        currentFontStyle = "bold";
+      } else if (headingLevel === 1) {
+        currentFontSize = 18;
+        currentFontStyle = "bold";
+      }
+  
+      // We'll accumulate the line segments into a single line with different styles
+      // For simplicity, we can handle bold inline by splitting further text placements
+      let currentX = leftMargin;
+  
+      // Helper to write a segment of text in current style
+      const writeSegment = (segment, fontStyle, fontSize) => {
+        // If we are close to bottom, add page
+        if (currentY > pageHeight - topMargin) {
+          doc.addPage();
+          currentY = topMargin;
+          currentX = leftMargin;
+        }
+        doc.setFont("Helvetica", fontStyle);
+        doc.setFontSize(fontSize);
+  
+        // Calculate segment width
+        let segmentWidth = doc.getTextWidth(segment);
+  
+        // If segment doesn't fit in this line, move to next line
+        if (currentX + segmentWidth > pageWidth - leftMargin) {
+          // Move to next line
+          currentY += lineHeight;
+          currentX = leftMargin;
+          // Check again if need a new page after line break
+          if (currentY > pageHeight - topMargin) {
+            doc.addPage();
+            currentY = topMargin;
+          }
+        }
+  
+        doc.text(segment, currentX, currentY);
+        currentX += segmentWidth;
+        return currentX;
+      };
+  
+      // Process bold parts
+      for (let i = 0; i < boldParts.length; i++) {
+        let textSegment = boldParts[i];
+        if (isBold) {
+          // This segment should be bold
+          currentX = writeSegment(textSegment, "bold", currentFontSize);
+        } else {
+          // Normal text
+          currentX = writeSegment(textSegment, currentFontStyle, currentFontSize);
+        }
+        isBold = !isBold; // toggle after each **
+      }
+  
+      // After finishing the line, move to the next line if not a heading (headings done already)
       currentY += lineHeight;
     }
   
     doc.save("question-paper.pdf");
   };
+  
+  
   
 
   const RenderTopicSelection = useCallback(() => {
@@ -774,7 +929,7 @@ const GenerateQuestionPaper = () => {
           <button
             style={styles.generateButton}
             onClick={generateQuestionPaper}
-            disabled={!standard || !subject || !marks || isLoading}
+            disabled={!standard || !subject }
           >
             {isLoading ? "Generating..." : "Generate Question Paper"}
           </button>
@@ -782,8 +937,8 @@ const GenerateQuestionPaper = () => {
           {responseText && (
             <div style={styles.resultContainer}>
               <h2 style={styles.resultTitle}>Generated Question Paper</h2>
-              <pre style={styles.responsePre}>{responseText}</pre>
-              <button style={styles.downloadButton} onClick={generatePDF}>
+              {renderContent({ text: responseText })}
+              <button style={styles.downloadButton} onClick={() => generatePDF(responseText)}>
                 Download PDF
               </button>
             </div>
