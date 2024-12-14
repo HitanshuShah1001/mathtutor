@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { API_SEND_OTP, BASE_URL_API, USER } from "../constants/constants";
+import {
+  API_SEND_OTP,
+  BASE_URL_API,
+  OTP_VERIFY,
+  USER,
+} from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
 import { getRequest } from "../utils/ApiCall";
 
@@ -26,7 +31,6 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // New loading state
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(undefined);
   const [chatId, setchatId] = useState(undefined);
@@ -37,7 +41,7 @@ export const AuthProvider = ({ children }) => {
       setUser(JSON.parse(savedUser));
       setIsAuthenticated(true);
     }
-    setLoading(false); // Set loading to false after the check
+    setLoading(false);
   }, []);
 
   const requestOtp = async (mobileNumber) => {
@@ -55,25 +59,42 @@ export const AuthProvider = ({ children }) => {
         }
       );
       console.log(response, "response received");
-
-      // const { accessToken, userData } = response.data;
-      // const chats = await getInitialChats();
-      // setChats(chats);
-      // // Save accessKey in sessionStorage
-      // localStorage.setItem(ACCESS_KEY, accessToken);
-
-      // // Save user data to localStorage for persistence
-      // localStorage.setItem(USER, JSON.stringify({ userData }));
-
-      // // Set user state and mark as authenticated
-      // setUser(userData);
-      // setIsAuthenticated(true);
-
       return true;
     } catch (error) {
       alert(error?.response?.data?.message ?? "Some error occured");
       return false;
     }
+  };
+
+  const verifyOTP = async (mobileNumber, otp) => {
+    const data = JSON.stringify({
+      countryCode: "+91",
+      mobileNumber,
+      otp,
+    });
+
+    try {
+      const response = await axios.post(`${BASE_URL_API}/${OTP_VERIFY}`, data, {
+        headers: { "Content-Type": "application/json" },
+      });
+      console.log(response, "response");
+      return true;
+    } catch (error) {
+      alert(error?.response?.data?.message ?? "Some error occured");
+      return false;
+    }
+    // const { accessToken, userData } = response.data;
+    // const chats = await getInitialChats();
+    // setChats(chats);
+    // // Save accessKey in sessionStorage
+    // localStorage.setItem(ACCESS_KEY, accessToken);
+
+    // // Save user data to localStorage for persistence
+    // localStorage.setItem(USER, JSON.stringify({ userData }));
+
+    // // Set user state and mark as authenticated
+    // setUser(userData);
+    // setIsAuthenticated(true);
   };
 
   const logout = () => {
@@ -92,6 +113,7 @@ export const AuthProvider = ({ children }) => {
         user,
         requestOtp,
         logout,
+        verifyOTP,
         loading,
         chats,
         setChats,
