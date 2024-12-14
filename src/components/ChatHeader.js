@@ -3,12 +3,13 @@ import { Link, useLocation } from "react-router-dom"; // Import useLocation
 import ProfileMenu from "./ProfileMenu";
 import { AuthContext } from "../utils/AuthContext";
 
-export const ChatHeader = () => {
+export const ChatHeader = ({ title }) => {
   const { selectedChat } = useContext(AuthContext);
   const location = useLocation(); // Get the current location
 
   // Check if the current route is /question-paper-generation
-  const isQuestionPaperPage = location.pathname === "/question-paper-generation";
+  const isQuestionPaperPage =
+    location.pathname === "/question-paper-generation";
 
   return (
     <div
@@ -16,15 +17,12 @@ export const ChatHeader = () => {
       style={{ backgroundColor: "#f4f4f4" }}
     >
       <h2 className="text-xl font-semibold text-gray-800">
-        {selectedChat ? selectedChat.title : "New chat"}
+        {selectedChat ? selectedChat.title : title ?? "New chat"}
       </h2>
       <div className="flex items-center space-x-4">
         {/* Conditionally render the appropriate link */}
         {isQuestionPaperPage ? (
-          <Link
-            to="/home"
-            className="text-blue-500 hover:underline"
-          >
+          <Link to="/home" className="text-blue-500 hover:underline">
             Chats
           </Link>
         ) : (

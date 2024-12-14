@@ -71,7 +71,7 @@ const GenerateQuestionPaper = () => {
       setTopics([]);
       setTopicsConfig({});
     }
-  }, []);
+  }, [subject, standard]);
 
   const addTopic = (topic) => {
     setTopicsConfig((prev) => {
@@ -237,10 +237,8 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
 
   return (
     <>
-      <ChatHeader />
+      <ChatHeader title={"Generate Question Paper"} />
       <div style={styles.container}>
-        <h1 style={styles.title}>Generate Question Paper</h1>
-
         <div style={styles.formGroup}>
           <label style={styles.label}>Select Standard</label>
           <select
@@ -270,7 +268,7 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
           </select>
         </div>
 
-        {topics.length > 0 && (
+        {/* {topics.length > 0 && (
           <div style={styles.formGroup}>
             <label style={styles.label}>Select Topics to Include</label>
             <select
@@ -287,7 +285,7 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
               ))}
             </select>
           </div>
-        )}
+        )} */}
 
         <div style={styles.formGroup}>
           <label style={styles.label}>Or Add a Custom Topic</label>
@@ -307,6 +305,41 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
             </button>
           </div>
         </div>
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>Select Topics to Include</label>
+          <div style={styles.topicSelectContainer}>
+            <select
+              style={styles.select}
+              onChange={(e) => {
+                if (e.target.value) handleAddTopicFromDropdown(e.target.value);
+              }}
+            >
+              <option value="">--Select Topic--</option>
+              {topics.map((t, idx) => (
+                <option key={idx} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {selectedTopics.length > 0 && (
+          <div style={styles.selectedTopicsContainer}>
+            {selectedTopics.map((topic, idx) => (
+              <div style={styles.topicChip} key={idx}>
+                {topic}
+                <button
+                  style={styles.removeButton}
+                  onClick={() => handleRemoveTopic(topic)}
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {selectedTopics.length > 0 && (
           <div style={styles.topicConfigContainer}>
