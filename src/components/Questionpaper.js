@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { openai } from "./InitOpenAI";
 import { jsPDF } from "jspdf"; // Import jsPDF
 import { ChatHeader } from "./ChatHeader";
@@ -13,20 +13,6 @@ const GenerateQuestionPaper = () => {
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
-
-  // topicsConfig will hold detailed config for each topic
-  // Structure:
-  // {
-  //   topicName: {
-  //     easyMCQs: number,
-  //     mediumMCQs: number,
-  //     hardMCQs: number,
-  //     mcqMarks: number,
-  //     descCount: number,
-  //     descDifficulties: ["easy","medium","hard",...] length = descCount
-  //     descMarksPerQuestion: [number, number, ...] length = descCount
-  //   }
-  // }
   const [topicsConfig, setTopicsConfig] = useState({});
 
   // Demo topics
@@ -83,16 +69,15 @@ const GenerateQuestionPaper = () => {
             mediumMCQs: 0,
             hardMCQs: 0,
             mcqMarks: 1,
-            descCount: 0,
-            descDifficulties: [],
-            descMarksPerQuestion: [],
+            descEasy: 0,
+            descMedium: 0,
+            descHard: 0,
           },
         };
       }
       return prev;
     });
   };
-
   const handleAddTopicFromDropdown = (topic) => {
     if (topic && !topicsConfig[topic]) {
       addTopic(topic);
@@ -117,47 +102,6 @@ const GenerateQuestionPaper = () => {
   const handleTopicChange = (topic, field, value) => {
     setTopicsConfig((prev) => {
       const updated = { ...prev[topic], [field]: value };
-      // If descCount changed, adjust descDifficulties and descMarksPerQuestion arrays length
-      if (field === "descCount") {
-        const count = parseInt(value, 10) || 0;
-        let descDiff = updated.descDifficulties || [];
-        let descMarksArr = updated.descMarksPerQuestion || [];
-
-        if (count > descDiff.length) {
-          // Add more difficulties defaulting to "easy"
-          descDiff = [
-            ...descDiff,
-            ...Array(count - descDiff.length).fill("easy"),
-          ];
-          descMarksArr = [
-            ...descMarksArr,
-            ...Array(count - descMarksArr.length).fill(1),
-          ];
-        } else if (count < descDiff.length) {
-          // Remove extra difficulties and marks
-          descDiff = descDiff.slice(0, count);
-          descMarksArr = descMarksArr.slice(0, count);
-        }
-        updated.descDifficulties = descDiff;
-        updated.descMarksPerQuestion = descMarksArr;
-      }
-
-      return { ...prev, [topic]: updated };
-    });
-  };
-
-  const handleDescDifficultyChange = (topic, index, difficulty) => {
-    setTopicsConfig((prev) => {
-      const updated = { ...prev[topic] };
-      updated.descDifficulties[index] = difficulty;
-      return { ...prev, [topic]: updated };
-    });
-  };
-
-  const handleDescMarksChange = (topic, index, markValue) => {
-    setTopicsConfig((prev) => {
-      const updated = { ...prev[topic] };
-      updated.descMarksPerQuestion[index] = markValue;
       return { ...prev, [topic]: updated };
     });
   };
@@ -177,7 +121,6 @@ const GenerateQuestionPaper = () => {
 
         return `Topic: ${topic}
   MCQs -> Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}, MCQ Marks Each: ${config.mcqMarks}
-  Descriptive Questions: ${config.descCount}
 ${descDetails}`;
       })
       .join("\n\n");
@@ -233,455 +176,472 @@ Instructions: Create a well-structured and balanced question paper, ensuring top
     doc.save("question-paper.pdf");
   };
 
-  const selectedTopics = Object.keys(topicsConfig);
-
-  return (
-    <>
-      <ChatHeader title={"Generate Question Paper"} />
-      <div style={styles.container}>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Select Standard</label>
+  const RenderTopicSelection = useCallback(() => {
+    return (
+      <div style={styles.formGroup}>
+        <label style={styles.label}>Select Topics</label>
+        <div style={styles.topicSelectionContainer}>
           <select
             style={styles.select}
-            value={standard}
-            onChange={(e) => setStandard(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value) handleAddTopicFromDropdown(e.target.value);
+            }}
           >
-            <option value="">--Select--</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-              <option key={num} value={num}>
-                {num}
+            <option value="">Choose a Topic</option>
+            {topics.map((t, idx) => (
+              <option
+                key={idx}
+                value={t}
+                disabled={!!topicsConfig[t]}
+              >
+                {t} {topicsConfig[t] ? "✓" : ""}
               </option>
             ))}
           </select>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Select Subject</label>
-          <select
-            style={styles.select}
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          >
-            <option value="">--Select--</option>
-            <option value="science">Science</option>
-            <option value="maths">Maths</option>
-          </select>
-        </div>
-
-        {/* {topics.length > 0 && (
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Select Topics to Include</label>
-            <select
-              style={styles.select}
-              onChange={(e) => {
-                if (e.target.value) handleAddTopicFromDropdown(e.target.value);
-              }}
-            >
-              <option value="">--Select Topic--</option>
-              {topics.map((t, idx) => (
-                <option key={idx} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-        )} */}
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Or Add a Custom Topic</label>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
+  
+          <div style={styles.customTopicContainer}>
             <input
               type="text"
-              style={styles.input}
+              style={styles.inputInline}
               value={customTopic}
               onChange={(e) => setCustomTopic(e.target.value)}
-              placeholder="Enter custom topic"
+              placeholder="Or add custom topic"
             />
             <button
-              style={styles.generateButton}
+              style={styles.addButton}
               onClick={handleAddCustomTopic}
             >
-              Add Topic
+              +
             </button>
           </div>
         </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Select Topics to Include</label>
-          <div style={styles.topicSelectContainer}>
-            <select
-              style={styles.select}
-              onChange={(e) => {
-                if (e.target.value) handleAddTopicFromDropdown(e.target.value);
-              }}
-            >
-              <option value="">--Select Topic--</option>
-              {topics.map((t, idx) => (
-                <option key={idx} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {selectedTopics.length > 0 && (
-          <div style={styles.selectedTopicsContainer}>
-            {selectedTopics.map((topic, idx) => (
-              <div style={styles.topicChip} key={idx}>
+  
+        {/* Selected Topics Chips */}
+        {Object.keys(topicsConfig).length > 0 && (
+          <div style={styles.selectedTopicsChips}>
+            {Object.keys(topicsConfig).map((topic) => (
+              <div key={topic} style={styles.topicChip}>
                 {topic}
                 <button
-                  style={styles.removeButton}
+                  style={styles.chipRemoveButton}
                   onClick={() => handleRemoveTopic(topic)}
                 >
-                  &times;
+                  ×
                 </button>
               </div>
             ))}
           </div>
         )}
+      </div>
+    );
+  }, [topicsConfig, topics, customTopic]); // Dependencies
 
-        {selectedTopics.length > 0 && (
-          <div style={styles.topicConfigContainer}>
-            <h2 style={styles.subTitle}>Configure Topics</h2>
-            {selectedTopics.map((topic) => {
-              const config = topicsConfig[topic] || {};
-              return (
-                <div key={topic} style={styles.topicConfig}>
-                  <div style={styles.topicHeader}>
-                    <h3 style={styles.topicTitle}>{topic}</h3>
-                    <button
-                      style={styles.removeButton}
-                      onClick={() => handleRemoveTopic(topic)}
-                    >
-                      &times;
-                    </button>
-                  </div>
-                  <div style={styles.topicFormGroup}>
-                    <label style={styles.label}>Easy MCQs</label>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={config.easyMCQs}
-                      onChange={(e) =>
-                        handleTopicChange(
-                          topic,
-                          "easyMCQs",
-                          parseInt(e.target.value, 10) || 0
-                        )
-                      }
-                      onWheel={(e) => e.preventDefault()}
-                    />
-                  </div>
-                  <div style={styles.topicFormGroup}>
-                    <label style={styles.label}>Medium MCQs</label>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={config.mediumMCQs}
-                      onChange={(e) =>
-                        handleTopicChange(
-                          topic,
-                          "mediumMCQs",
-                          parseInt(e.target.value, 10) || 0
-                        )
-                      }
-                      onWheel={(e) => e.preventDefault()}
-                    />
-                  </div>
-                  <div style={styles.topicFormGroup}>
-                    <label style={styles.label}>Hard MCQs</label>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={config.hardMCQs}
-                      onChange={(e) =>
-                        handleTopicChange(
-                          topic,
-                          "hardMCQs",
-                          parseInt(e.target.value, 10) || 0
-                        )
-                      }
-                      onWheel={(e) => e.preventDefault()}
-                    />
-                  </div>
-                  <div style={styles.topicFormGroup}>
-                    <label style={styles.label}>Marks per MCQ</label>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={config.mcqMarks || 1}
-                      onChange={(e) =>
-                        handleTopicChange(
-                          topic,
-                          "mcqMarks",
-                          parseInt(e.target.value, 10) || 1
-                        )
-                      }
-                      onWheel={(e) => e.preventDefault()}
-                    />
-                  </div>
-                  <div style={styles.topicFormGroup}>
-                    <label style={styles.label}>
-                      Number of Descriptive Questions
-                    </label>
-                    <input
-                      type="number"
-                      style={styles.input}
-                      value={config.descCount}
-                      onChange={(e) =>
-                        handleTopicChange(
-                          topic,
-                          "descCount",
-                          parseInt(e.target.value, 10) || 0
-                        )
-                      }
-                      onWheel={(e) => e.preventDefault()}
-                    />
-                  </div>
+  return (
+    <div style={styles.pageContainer}>
+      <ChatHeader title={"Generate Question Paper"} />
+      <div style={styles.container}>
+        <div style={styles.formContainer}>
+          <div style={styles.columnLeft}>
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>Exam Details</h2>
 
-                  {config.descCount > 0 && (
-                    <div style={{ marginTop: "1rem" }}>
-                      <h4 style={styles.subTitle}>
-                        Descriptive Questions Configuration
-                      </h4>
-                      {config.descDifficulties?.map((diff, i) => (
-                        <div key={i} style={styles.topicFormGroup}>
-                          <label style={styles.label}>
-                            Question {i + 1} Difficulty
-                          </label>
-                          <select
-                            style={styles.select}
-                            value={diff}
-                            onChange={(e) =>
-                              handleDescDifficultyChange(
-                                topic,
-                                i,
-                                e.target.value
-                              )
-                            }
-                          >
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                          </select>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Standard</label>
+                <select
+                  style={styles.select}
+                  value={standard}
+                  onChange={(e) => setStandard(e.target.value)}
+                >
+                  <option value="">Select Standard</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                          <label style={styles.label}>
-                            Marks for Question {i + 1}
-                          </label>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Subject</label>
+                <select
+                  style={styles.select}
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                >
+                  <option value="">Select Subject</option>
+                  <option value="science">Science</option>
+                  <option value="maths">Maths</option>
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Total Marks</label>
+                <input
+                  type="number"
+                  style={styles.input}
+                  value={marks}
+                  onChange={(e) => setMarks(e.target.value)}
+                  placeholder="e.g. 100"
+                />
+              </div>
+
+              {/* <div style={styles.formGroup}>
+                <label style={styles.label}>Number of MCQs</label>
+                <input
+                  type="number"
+                  style={styles.input}
+                  value={mcqs}
+                  onChange={(e) => setMcqs(e.target.value)}
+                  placeholder="e.g. 10"
+                />
+              </div> */}
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Additional Instructions</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={anyotherQuery}
+                  onChange={(e) => setAnyOtherQuery(e.target.value)}
+                  placeholder="e.g. Mark problems as section A"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.columnRight}>
+            <div style={styles.card}>
+              <h2 style={styles.cardTitle}>Topic Configuration</h2>
+
+              {topics.length > 0 && (
+                <RenderTopicSelection />
+              )}
+
+              {Object.keys(topicsConfig).length > 0 && (
+                <div style={styles.topicConfigDetails}>
+                  {Object.entries(topicsConfig).map(([topic, config]) => (
+                    <div key={topic} style={styles.topicConfigCard}>
+                      <div style={styles.topicConfigHeader}>
+                        <h3 style={styles.topicConfigTitle}>{topic}</h3>
+                        <button
+                          style={styles.removeTopicButton}
+                          onClick={() => handleRemoveTopic(topic)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div style={styles.topicConfigGrid}>
+                        <div style={styles.formGroupInline}>
+                          <label>Easy MCQs</label>
                           <input
-                            type="number"
-                            style={styles.input}
-                            value={config.descMarksPerQuestion[i]}
+                            style={styles.inputSmall}
+                            value={config.easyMCQs}
                             onChange={(e) =>
-                              handleDescMarksChange(
+                              handleTopicChange(
                                 topic,
-                                i,
-                                parseInt(e.target.value, 10) || 1
+                                "easyMCQs",
+                                parseInt(e.target.value, 10) || 0
                               )
                             }
-                            onWheel={(e) => e.preventDefault()}
                           />
                         </div>
-                      ))}
+                        <div style={styles.formGroupInline}>
+                          <label>Medium MCQs</label>
+                          <input
+                            style={styles.inputSmall}
+                            value={config.mediumMCQs}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "mediumMCQs",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
+                        </div>
+                        <div style={styles.formGroupInline}>
+                          <label>Hard MCQs</label>
+                          <input
+                            style={styles.inputSmall}
+                            value={config.hardMCQs}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "hardMCQs",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
+                        </div>
+                        <div style={styles.formGroupInline}>
+                          <label>Easy Descriptive</label>
+                          <input
+                            style={styles.inputSmall}
+                            value={config.descEasy}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "descEasy",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
+                        </div>
+                        <div style={styles.formGroupInline}>
+                          <label>Medium Descriptive</label>
+                          <input
+                            style={styles.inputSmall}
+                            value={config.descMedium}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "descMedium",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
+                        </div>
+                        <div style={styles.formGroupInline}>
+                          <label>Hard Descriptive</label>
+                          <input
+                            style={styles.inputSmall}
+                            value={config.descHard}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "descHard",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
-        )}
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Total Marks</label>
-          <input
-            type="number"
-            style={styles.input}
-            value={marks}
-            onChange={(e) => setMarks(e.target.value)}
-            placeholder="e.g. 100"
-            onWheel={(e) => e.preventDefault()}
-          />
         </div>
 
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Number of MCQs (optional)</label>
-          <input
-            type="number"
-            style={styles.input}
-            value={mcqs}
-            onChange={(e) => setMcqs(e.target.value)}
-            placeholder="e.g. 10"
-            onWheel={(e) => e.preventDefault()}
-          />
+        <div style={styles.actionContainer}>
+          <button
+            style={styles.generateButton}
+            onClick={generateQuestionPaper}
+            disabled={!standard || !subject || !marks || isLoading}
+          >
+            {isLoading ? "Generating..." : "Generate Question Paper"}
+          </button>
+
+          {responseText && (
+            <div style={styles.resultContainer}>
+              <h2 style={styles.resultTitle}>Generated Question Paper</h2>
+              <pre style={styles.responsePre}>{responseText}</pre>
+              <button style={styles.downloadButton} onClick={generatePDF}>
+                Download PDF
+              </button>
+            </div>
+          )}
         </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Any other query</label>
-          <input
-            type="text"
-            style={styles.input}
-            value={anyotherQuery}
-            onChange={(e) => setAnyOtherQuery(e.target.value)}
-            placeholder="Mark problems as section A"
-            onWheel={(e) => e.preventDefault()}
-          />
-        </div>
-
-        <button
-          style={styles.generateButton}
-          onClick={generateQuestionPaper}
-          disabled={!standard || !subject || !marks || isLoading}
-        >
-          {isLoading ? "Loading..." : "Generate Prompt"}
-        </button>
-
-        {responseText && (
-          <div style={styles.resultContainer}>
-            <h2 style={styles.subTitle}>Preview Generated Question Paper</h2>
-            <pre style={styles.responsePre}>{responseText}</pre>
-            <button style={styles.generateButton} onClick={generatePDF}>
-              Download PDF
-            </button>
-          </div>
-        )}
       </div>
-    </>
+    </div>
   );
 };
 
 const styles = {
+  pageContainer: {
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    backgroundColor: "#f4f6f9",
+    minHeight: "100vh",
+    padding: "20px",
+  },
   container: {
-    maxWidth: "600px",
-    margin: "0 auto",
-    padding: "1.5rem",
-    fontFamily: "'Helvetica Neue', sans-serif",
-    color: "#333",
+
+    marginTop: 10,
+    backgroundColor: "white",
+    borderRadius: "12px",
+    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+    padding: "30px",
+  },
+  formContainer: {
     display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
+    gap: "30px",
+    marginBottom: "30px",
   },
-  title: {
-    fontSize: "1.75rem",
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: "1.5rem",
+  columnLeft: {
+    flex: 1,
+  },
+  columnRight: {
+    flex: 1,
+  },
+  card: {
+    backgroundColor: "white",
+    border: "1px solid #e0e4e8",
+    borderRadius: "8px",
+    padding: "25px",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+  },
+  cardTitle: {
+    marginTop: 0,
+    marginBottom: "20px",
     color: "#2c3e50",
-  },
-  subTitle: {
-    fontSize: "1.25rem",
-    fontWeight: "600",
-    marginBottom: "1rem",
+    borderBottom: "2px solid #3498db",
+    paddingBottom: "10px",
   },
   formGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
+    marginBottom: "15px",
   },
   label: {
-    fontSize: "1rem",
-    fontWeight: "500",
-    marginBottom: "0.25rem",
-    color: "#2c3e50",
+    display: "block",
+    marginBottom: "8px",
+    color: "#34495e",
+    fontWeight: "600",
   },
   select: {
-    padding: "0.5rem",
-    fontSize: "1rem",
-    border: "1px solid #ccc",
-    borderRadius: "4px",
-    outline: "none",
-    background: "#fff",
+    width: "100%",
+    padding: "10px",
+    borderRadius: "6px",
+    border: "1px solid #d1d8e0",
+    backgroundColor: "white",
+  },
+  input: {
+    width: "100%",
+    padding: "10px",
+    borderRadius: "6px",
+    border: "1px solid #d1d8e0",
+  },
+  generateButton: {
+    backgroundColor: "#3498db",
+    color: "white",
+    padding: "12px 24px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    transition: "background-color 0.3s ease",
+  },
+  actionContainer: {
+    textAlign: "center",
+    marginTop: "20px",
+  },
+  topicSelectionContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+  },
+  customTopicContainer: {
+    display: "flex",
+    gap: "10px",
+  },
+  inputInline: {
+    flex: 1,
+    padding: "8px",
+    borderRadius: "6px",
+    border: "1px solid #d1d8e0",
+  },
+  addButton: {
+    backgroundColor: "#2ecc71",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    padding: "8px 15px",
+  },
+  selectedTopicsChips: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginTop: "15px",
+  },
+  topicChip: {
+    backgroundColor: "#e8f4f8",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  chipRemoveButton: {
+    backgroundColor: "#e74c3c",
+    color: "white",
+    border: "none",
+    borderRadius: "50%",
+    width: "20px",
+    height: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     cursor: "pointer",
   },
-  topicSelectContainer: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
+  topicConfigDetails: {
+    marginTop: "20px",
   },
-  topicConfigContainer: {
-    marginTop: "2rem",
-    borderTop: "1px solid #ccc",
-    paddingTop: "1rem",
+  topicConfigCard: {
+    backgroundColor: "#f9f9fb",
+    border: "1px solid #e0e4e8",
+    borderRadius: "8px",
+    padding: "15px",
+    marginBottom: "15px",
   },
-  topicConfig: {
-    border: "1px solid #ccc",
-    borderRadius: "4px",
-    padding: "1rem",
-    marginBottom: "1rem",
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  topicHeader: {
+  topicConfigHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: "15px",
   },
-  topicTitle: {
-    fontSize: "1.15rem",
-    fontWeight: "600",
+  topicConfigTitle: {
     margin: 0,
+    color: "#2c3e50",
   },
-  selectedTopicsContainer: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "0.5rem",
-    marginTop: "0.5rem",
-  },
-  topicChip: {
-    background: "#e0f7fa",
-    padding: "0.5rem 0.75rem",
-    borderRadius: "20px",
-    display: "inline-flex",
-    alignItems: "center",
-    fontSize: "0.9rem",
-    fontWeight: "500",
-    color: "#006064",
-  },
-  removeButton: {
-    marginLeft: "0.5rem",
-    background: "none",
+  removeTopicButton: {
+    backgroundColor: "#e74c3c",
+    color: "white",
     border: "none",
-    cursor: "pointer",
-    fontSize: "1.5rem",
-    color: "#e74c3c",
-    fontWeight: "bold",
-    padding: "0 0.5rem",
-  },
-  input: {
-    padding: "0.5rem",
-    fontSize: "1rem",
-    border: "1px solid #ccc",
     borderRadius: "4px",
-    outline: "none",
+    padding: "6px 12px",
   },
-  generateButton: {
-    background: "#1abc9c",
-    color: "#fff",
-    border: "none",
-    padding: "0.75rem 1rem",
-    fontSize: "1rem",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontWeight: "600",
-    transition: "background 0.3s",
+  topicConfigGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "10px",
   },
-  resultContainer: {
-    marginTop: "2rem",
-  },
-  responsePre: {
-    background: "#f4f4f4",
-    padding: "1rem",
-    borderRadius: "4px",
-    whiteSpace: "pre-wrap",
-    fontFamily: "monospace",
-    fontSize: "0.95rem",
-    marginBottom: "1rem",
-  },
-  topicFormGroup: {
+  formGroupInline: {
     display: "flex",
     flexDirection: "column",
-    gap: "0.25rem",
+    gap: "5px",
+  },
+  inputSmall: {
+    padding: "8px",
+    borderRadius: "6px",
+    border: "1px solid #d1d8e0",
+    width: "100%",
+  },
+  resultContainer: {
+    marginTop: "30px",
+    backgroundColor: "#f9f9fb",
+    padding: "20px",
+    borderRadius: "8px",
+  },
+  resultTitle: {
+    color: "#2c3e50",
+    borderBottom: "2px solid #3498db",
+    paddingBottom: "10px",
+  },
+  responsePre: {
+    backgroundColor: "white",
+    border: "1px solid #e0e4e8",
+    borderRadius: "6px",
+    padding: "15px",
+    whiteSpace: "pre-wrap",
+    maxHeight: "300px",
+    overflowY: "auto",
+  },
+  downloadButton: {
+    backgroundColor: "#2ecc71",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    padding: "10px 20px",
+    marginTop: "15px",
   },
 };
 
