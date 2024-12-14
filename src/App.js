@@ -13,10 +13,10 @@ import { MathJaxContext } from "better-react-mathjax";
 import VerifyOtp from "./components/VerifyOtp";
 import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
 import { Layout } from "./components/Layout";
+import { UpdateUserDetails } from "./components/UpdateUserDetails";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
-  console.log(USER, ACCESS_KEY);
   return (
     <MathJaxContext>
       <AuthProvider>
@@ -24,6 +24,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/update-user-details" element={<UpdateUserDetails />} />
             <Route
               path="/home"
               element={

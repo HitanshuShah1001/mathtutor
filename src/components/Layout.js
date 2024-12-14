@@ -15,7 +15,7 @@ export const Layout = () => {
     }
     
     fetchData();
-  },[chats, setChats])
+  },[])
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}

@@ -9,7 +9,7 @@ import {
 } from "../utils/LocalStorageOps";
 
 const VerifyOtp = () => {
-  const { setChats, setIsAuthenticated, setUser } = useContext(AuthContext);
+  const { setIsAuthenticated, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -30,14 +30,25 @@ const VerifyOtp = () => {
     }
 
     const isValidAndData = await verifyOTP(mobileNumber, otp);
-    if (isValidAndData.status) {
+    if (isValidAndData && isValidAndData.status) {
       const data = isValidAndData.data;
-      const { accessToken, user } = data.data;
+      const { accessToken, user } = data.data || {};
+      console.log(user,user.email)
       removeDataFromLocalStorage();
-      addDataToLocalStorage({ accessToken, user });
-      setUser(user);
-      setIsAuthenticated(true);
-      navigate('/home')
+      if (user.emailId) {
+        addDataToLocalStorage({ accessToken, user });
+        setUser(user);
+        setIsAuthenticated(true);
+        navigate("/home");
+      } else {
+        // If user object does not exist, user is first-time and not fully registered
+        // Store only the token so we can use it on the next page
+        addDataToLocalStorage({ accessToken });
+        // Navigate to a page where user can complete their profile
+        navigate("/update-user-details", {
+          state: { firstTime: true, id: user.id },
+        });
+      }
     } else {
       setError("Invalid OTP. Please try again.");
       return;

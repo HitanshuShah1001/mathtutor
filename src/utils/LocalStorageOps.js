@@ -5,15 +5,16 @@ export const removeDataFromLocalStorage = () => {
   localStorage.removeItem(USER);
 };
 
-export const addDataToLocalStorage = ({ accessToken, user }) => {
-  console.log(accessToken, user);
+export const addDataToLocalStorage = ({ accessToken, user = undefined }) => {
   localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(USER, JSON.stringify({ user }));
+  if (user) {
+    localStorage.setItem(USER, JSON.stringify({ user }));
+  }
 };
 
 export const getDataFromLocalStorage = () => {
   return {
-    USER: localStorage.getItem(USER),
+    USER: localStorage.getItem(USER) ?? null,
     ACCESS_KEY: localStorage.getItem(ACCESS_KEY),
   };
 };
