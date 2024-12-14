@@ -10,3 +10,10 @@ export const addDataToLocalStorage = ({ accessToken, user }) => {
   localStorage.setItem(ACCESS_KEY, accessToken);
   localStorage.setItem(USER, JSON.stringify({ user }));
 };
+
+export const getDataFromLocalStorage = () => {
+  return {
+    USER: localStorage.getItem(USER),
+    ACCESS_KEY: localStorage.getItem(ACCESS_KEY),
+  };
+};

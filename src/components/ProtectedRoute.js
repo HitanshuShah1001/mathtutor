@@ -1,16 +1,11 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../utils/AuthContext";
+import { getDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { USER, ACCESS_KEY } = getDataFromLocalStorage();
 
-  if (loading) {
-    // Optional: Show a loader while authentication status is being determined
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
+  if (!USER && !ACCESS_KEY) {
     // Redirect to login if not authenticated
     return <Navigate to="/login" replace />;
   }

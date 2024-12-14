@@ -10,10 +10,13 @@ import LoginPage from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 import { MathJaxContext } from "better-react-mathjax";
-import GenerateQuestionPaper from "./components/Questionpaper";
 import VerifyOtp from "./components/VerifyOtp";
+import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
+import { Layout } from "./components/Layout";
 
 function App() {
+  const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
+  console.log(USER, ACCESS_KEY);
   return (
     <MathJaxContext>
       <AuthProvider>
@@ -25,12 +28,20 @@ function App() {
               path="/home"
               element={
                 <ProtectedRoute>
-                  <GenerateQuestionPaper />
+                  <Layout />
                 </ProtectedRoute>
               }
             />
-            {/* Redirect to login by default */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route
+              path="/login"
+              element={
+                USER && ACCESS_KEY ? (
+                  <Navigate to="/home" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
           </Routes>
         </Router>
       </AuthProvider>

@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from "react";
-import { ASSISTANT, BASE_URL_API } from "../constants/constants";
+import { BASE_URL_API } from "../constants/constants";
 import { getRequest } from "../utils/ApiCall";
 
 export const ChatContext = createContext(null);

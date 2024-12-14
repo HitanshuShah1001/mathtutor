@@ -1,8 +1,9 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PhoneIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
+import { getDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 const LoginPage = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -11,6 +12,13 @@ const LoginPage = () => {
 
   const navigate = useNavigate();
   const { requestOtp } = useAuth(); // Make sure you have a requestOTP function in your AuthContext
+  const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
+
+  useEffect(() => {
+    if (USER && ACCESS_KEY) {
+      navigate("/home", { replace: true });
+    }
+  }, [USER, ACCESS_KEY, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

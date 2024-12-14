@@ -7,26 +7,7 @@ import {
   USER,
 } from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
-import { getRequest } from "../utils/ApiCall";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-
-export const getInitialChats = async () => {
-  const access = localStorage.getItem("accessKey");
-  const headers = {
-    Authorization: access,
-  };
-  const params = {
-    userId: 3,
-    messages: 100,
-    limit: 1000,
-  };
-  const result = await getRequest(
-    `${BASE_URL_API}/chat/getPaginatedChats`,
-    headers,
-    params
-  );
-  return result.chats;
-};
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -74,7 +55,6 @@ export const AuthProvider = ({ children }) => {
       });
       return { status: true, data: response };
     } catch (error) {
-      alert(error?.response?.data?.message ?? "Some error occured");
       return false;
     }
   };

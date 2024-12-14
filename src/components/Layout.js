@@ -2,9 +2,9 @@ import React, { useContext, useEffect } from "react";
 import ChatContainer from "./ChatContainer";
 import Sidebar from "./Sidebar";
 import { AuthContext } from "../utils/AuthContext";
-import { getInitialChats } from "./AuthContext";
+import { getInitialChats } from "./ChatContext";
 
-const Layout = () => {
+export const Layout = () => {
   const { chats, setChats, selectedChat } =
     useContext(AuthContext);
 
@@ -32,4 +32,4 @@ const Layout = () => {
   );
 };
 
-export default Layout;
+

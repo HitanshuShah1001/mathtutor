@@ -3,7 +3,6 @@ import React, { useContext, useState } from "react";
 import { KeyIcon } from "lucide-react";
 import { AuthContext, useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getInitialChats } from "./AuthContext";
 import {
   addDataToLocalStorage,
   removeDataFromLocalStorage,
@@ -11,6 +10,7 @@ import {
 
 const VerifyOtp = () => {
   const { setChats, setIsAuthenticated, setUser } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
@@ -30,18 +30,14 @@ const VerifyOtp = () => {
     }
 
     const isValidAndData = await verifyOTP(mobileNumber, otp);
-    console.log(isValidAndData,"is valid and data");
     if (isValidAndData.status) {
-      const data = { isValidAndData };
-      console.log(data,"Data that came");
-      const { accessToken, user } = data;
-      console.log(accessToken, "access token", user, "user that came");
+      const data = isValidAndData.data;
+      const { accessToken, user } = data.data;
       removeDataFromLocalStorage();
       addDataToLocalStorage({ accessToken, user });
-      const chats = await getInitialChats();
-      setChats(chats);
       setUser(user);
       setIsAuthenticated(true);
+      navigate('/home')
     } else {
       setError("Invalid OTP. Please try again.");
       return;

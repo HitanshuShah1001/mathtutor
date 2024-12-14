@@ -13,16 +13,6 @@ const Sidebar = () => {
     useContext(AuthContext);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const handleNewChat = () => {
-    const newChat = [
-      {
-        title: `New Chat ${chats.length + 1}`,
-      },
-      {
-        content: "Hello! I'm your AI assistant. How can I help you today?",
-        role: ASSISTANT,
-      },
-    ];
-
     setchatId(undefined);
     setSelectedChat(undefined);
   };

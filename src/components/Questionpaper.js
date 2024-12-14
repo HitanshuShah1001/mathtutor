@@ -70,7 +70,7 @@ const GenerateQuestionPaper = () => {
       setTopics([]);
       setTopicsConfig({});
     }
-  }, [standard, subject,allTopics]);
+  }, []);
 
   const addTopic = (topic) => {
     setTopicsConfig((prev) => {

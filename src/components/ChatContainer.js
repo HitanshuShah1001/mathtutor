@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { MathJaxContext } from "better-react-mathjax";
 import { ChatMessage } from "./Chatmessage";
-import { ASSISTANT, BASE_URL_API, USER } from "../constants/constants.js";
+import {
+  ACCESS_KEY,
+  ASSISTANT,
+  BASE_URL_API,
+  USER,
+} from "../constants/constants.js";
 import { openai } from "./InitOpenAI.js";
 import { ChatHeader } from "./ChatHeader.js";
 import { ChatInput } from "./ChatInput.js";
@@ -22,21 +27,21 @@ const ChatContainer = () => {
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
-  const access = localStorage.getItem("accessKey");
+  const access = localStorage.getItem(ACCESS_KEY);
   const chatContainerRef = useRef(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     setIsScrolledUp(false);
   };
-  
+
   useEffect(() => {
     if (selectedChat) {
       setMessages(
         [...(selectedChat?.messagePayload?.messages ?? [...[]])].reverse() ?? []
       );
-    }else{
-      setMessages([])
+    } else {
+      setMessages([]);
     }
   }, [selectedChat]);
 
