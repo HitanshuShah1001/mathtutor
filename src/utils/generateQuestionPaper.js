@@ -1,4 +1,4 @@
-import { openai } from "../components/InitOpenAI";
+import { openai } from "./InitOpenAI";
 import { generatePrompt } from "./GeneratePrompt";
 
 export const generateQuestionPaper = async ({

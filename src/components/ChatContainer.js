@@ -7,7 +7,7 @@ import {
   BASE_URL_API,
   USER,
 } from "../constants/constants.js";
-import { openai } from "./InitOpenAI.js";
+import { openai } from "../utils/InitOpenAI.js";
 import { ChatHeader } from "../subcomponents/ChatHeader.js";
 import { ChatInput } from "../subcomponents/ChatInput.js";
 import { ScrollToBottom } from "../subcomponents/ScrollToBottom.js";
