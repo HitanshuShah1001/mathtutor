@@ -61,7 +61,8 @@ ${topicsDetails}
 ${optionalDetails}
 
 IMPORTANT REQUIREMENTS:
-1. **Exact Question Counts**: You must include the exact number of MCQs and descriptive questions for each difficulty level and topic as specified. Do not omit or reduce the number of questions.
+1. Exact Question Counts: You must include the exact number of MCQs and descriptive questions for each difficulty level and topic as specified. Do not omit or reduce the number of questions.
+Output Format: The question paper should be returned in HTML format, utilizing appropriate HTML tags for structure and styling to ensure clarity and readability.
 2. For MCQs, distribute them across the specified topics and difficulty levels, ensuring each count is met exactly.
 3. For descriptive questions, also ensure the exact count is provided for each difficulty level per topic.
 4. Include all optional descriptive questions as specified. The number of optional questions (easy, medium, hard) and their selected topics must match the given counts exactly.

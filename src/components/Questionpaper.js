@@ -10,6 +10,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { MathJax } from "better-react-mathjax";
 import { containsLatex } from "./Chatmessage";
+import DOMPurify from "dompurify";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -39,9 +40,20 @@ const GenerateQuestionPaper = () => {
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
 
+  const QuestionPaper = ({ htmlContent }) => {
+    const sanitizedHTML = DOMPurify.sanitize(htmlContent);
+
+    return (
+      <div
+        className="question-paper"
+        dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
+      />
+    );
+  };
+
   const renderContent = (content) => {
     const text = content.text;
-  
+
     // If the text contains LaTeX, render with MathJax
     if (containsLatex(text)) {
       return (
@@ -50,7 +62,7 @@ const GenerateQuestionPaper = () => {
         </div>
       );
     }
-  
+
     // Otherwise, render as Markdown
     return (
       <div className="markdown-content">
@@ -232,7 +244,7 @@ const GenerateQuestionPaper = () => {
 
   const generateQuestionPaper = async () => {
     try {
-      setResponseText("")
+      setResponseText("");
       setIsLoading(true);
       const prompt = generatePrompt({
         title,
@@ -260,9 +272,9 @@ const GenerateQuestionPaper = () => {
         model: "o1-preview",
         messages: [{ role: "user", content: prompt }],
       });
-      console.log(response,"respone")
+      console.log(response, "respone");
       const content = response.choices?.[0]?.message?.content || "";
-      console.log(content,"content")
+      console.log(content, "content");
       setResponseText(content);
     } catch (e) {
       console.log("error occurred", e);
@@ -272,87 +284,20 @@ const GenerateQuestionPaper = () => {
   };
 
   const generatePDF = (responseText) => {
-    if (!responseText) return;
-  
     const doc = new jsPDF({
-      orientation: "p",
-      unit: "pt",
-      format: "A4",
+      format: "a4",
+      unit: "px",
     });
-  
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const leftMargin = 50;
-    const topMargin = 50;
-    const lineHeight = 18;
-    
-    let currentY = topMargin;
-    
-    // A helper function to draw text, handling page breaks
-    const drawLineOfText = (text, fontStyle = "normal", fontSize = 12) => {
-      if (currentY > pageHeight - topMargin) {
-        doc.addPage();
-        currentY = topMargin;
-      }
-      doc.setFont("Helvetica", fontStyle);
-      doc.setFontSize(fontSize);
-      doc.text(leftMargin, currentY, text);
-      currentY += lineHeight;
-    };
-  
-    // A helper function to draw a horizontal rule (for `---`)
-    const drawHorizontalRule = () => {
-      if (currentY > pageHeight - topMargin) {
-        doc.addPage();
-        currentY = topMargin;
-      }
-      doc.setDrawColor(0, 0, 0);
-      doc.line(leftMargin, currentY, pageWidth - leftMargin, currentY);
-      currentY += lineHeight;
-    };
-  
-    // Split the response by lines for processing
-    const lines = responseText.split('\n');
-  
-    for (let line of lines) {
-      let trimmedLine = line.trim();
-  
-      // Check for horizontal rule (---)
-      if (trimmedLine === '---') {
-        drawHorizontalRule();
-        continue;
-      }
-  
-      // Check for headings (e.g., ### Heading)
-      let headingLevel = 0;
-      let headingPattern = /^(#+)\s+(.*)/;
-      let headingMatch = trimmedLine.match(headingPattern);
-      if (headingMatch) {
-        headingLevel = headingMatch[1].length;
-        trimmedLine = headingMatch[2];
-      }
-  
-      // Process the content with headings and normal text
-      let currentFontSize = 12;
-      let currentFontStyle = "normal";
-      if (headingLevel === 3) {
-        currentFontSize = 14;
-        currentFontStyle = "bold";
-      } else if (headingLevel === 2) {
-        currentFontSize = 16;
-        currentFontStyle = "bold";
-      } else if (headingLevel === 1) {
-        currentFontSize = 18;
-        currentFontStyle = "bold";
-      }
-  
-      // Add each line to the PDF
-      drawLineOfText(trimmedLine, currentFontStyle, currentFontSize);
-    }
-  
-    doc.save("question-paper.pdf");
+
+    // Adding the fonts.
+    doc.setFont("Inter-Regular", "normal");
+
+    doc.html(responseText, {
+      async callback(doc) {
+        await doc.save("document");
+      },
+    });
   };
-  
 
   const RenderTopicSelection = useCallback(() => {
     return (
@@ -882,7 +827,8 @@ const GenerateQuestionPaper = () => {
           {responseText && (
             <div style={styles.resultContainer}>
               <h2 style={styles.resultTitle}>Generated Question Paper</h2>
-              {renderContent({ text: responseText })}
+              {responseText && <QuestionPaper htmlContent={responseText} />}
+
               <button
                 style={styles.downloadButton}
                 onClick={() => generatePDF(responseText)}
