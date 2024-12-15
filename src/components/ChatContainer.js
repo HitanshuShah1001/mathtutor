@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { MathJaxContext } from "better-react-mathjax";
-import { ChatMessage } from "./Chatmessage";
+import { ChatMessage } from "../subcomponents/Chatmessage.js";
 import {
   ACCESS_KEY,
   ASSISTANT,
@@ -8,10 +8,10 @@ import {
   USER,
 } from "../constants/constants.js";
 import { openai } from "./InitOpenAI.js";
-import { ChatHeader } from "./ChatHeader.js";
-import { ChatInput } from "./ChatInput.js";
-import { ScrollToBottom } from "./ScrollToBottom.js";
-import { ShowLoading } from "./ShowLoading.js";
+import { ChatHeader } from "../subcomponents/ChatHeader.js";
+import { ChatInput } from "../subcomponents/ChatInput.js";
+import { ScrollToBottom } from "../subcomponents/ScrollToBottom.js";
+import { ShowLoading } from "../subcomponents/ShowLoading.js";
 import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
 import S3 from "aws-sdk/clients/s3";
 import { postRequest } from "../utils/ApiCall.js";

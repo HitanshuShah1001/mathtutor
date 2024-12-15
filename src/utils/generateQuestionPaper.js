@@ -49,7 +49,7 @@ export const generateQuestionPaper = async ({
       hardDescOptionalTopics,
     });
     const response = await openai.chat.completions.create({
-      model: "o1-preview",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
     });
     const content = response.choices?.[0]?.message?.content || "";

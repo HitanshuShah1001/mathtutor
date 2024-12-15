@@ -1,10 +1,10 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from "react";
-import { ChatHeader } from "./ChatHeader";
+import { ChatHeader } from "../subcomponents/ChatHeader";
 import { styles } from "../Questionpaperstyles";
-import { generatePDF } from "../utils/generatePdf";
 import { allTopics } from "../constants/allTopics";
-import { QuestionPaper } from "./RenderQuestionPaper";
 import { generateQuestionPaper } from "../utils/generateQuestionPaper";
+import { GenerateQuestionPaperAndDownloadPdf } from "../subcomponents/Generatequestionpaperanddownloadpdf";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -168,12 +168,6 @@ const GenerateQuestionPaper = () => {
               onChange={(e) => setCustomTopic(e.target.value)}
               placeholder="Or add custom topic"
             />
-            {/* <input
-                  style={styles.input}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="12 Std. Question Paper"
-                /> */}
             <button style={styles.addButton} onClick={handleAddCustomTopic}>
               +
             </button>
@@ -234,7 +228,8 @@ const GenerateQuestionPaper = () => {
                 </select>
               </div>
 
-              <div style={styles.formGroup}> //subject selection
+              <div style={styles.formGroup}>
+                {" "}
                 <label style={styles.label}>Subject</label>
                 <select
                   style={styles.select}
@@ -661,46 +656,38 @@ const GenerateQuestionPaper = () => {
         <div style={styles.actionContainer}>
           <button
             style={styles.generateButton}
-            onClick={() => generateQuestionPaper({
-              setIsLoading,
-              setResponseText,
-              title,
-              topicsConfig,
-              standard,
-              subject,
-              marks,
-              mcqs,
-              anyotherQuery,
-              easyMCQMarks,
-              mediumMCQMarks,
-              hardMCQMarks,
-              easyDescMarks,
-              mediumDescMarks,
-              hardDescMarks,
-              easyDescOptionalCount,
-              mediumDescOptionalCount,
-              hardDescOptionalCount,
-              easyDescOptionalTopics,
-              mediumDescOptionalTopics,
-              hardDescOptionalTopics,
-            })}
+            onClick={() =>
+              generateQuestionPaper({
+                setIsLoading,
+                setResponseText,
+                title,
+                topicsConfig,
+                standard,
+                subject,
+                marks,
+                mcqs,
+                anyotherQuery,
+                easyMCQMarks,
+                mediumMCQMarks,
+                hardMCQMarks,
+                easyDescMarks,
+                mediumDescMarks,
+                hardDescMarks,
+                easyDescOptionalCount,
+                mediumDescOptionalCount,
+                hardDescOptionalCount,
+                easyDescOptionalTopics,
+                mediumDescOptionalTopics,
+                hardDescOptionalTopics,
+              })
+            }
             disabled={!standard || !subject}
           >
             {isLoading ? "Generating..." : "Generate Question Paper"}
           </button>
 
           {responseText && (
-            <div style={styles.resultContainer}>
-              <h2 style={styles.resultTitle}>Generated Question Paper</h2>
-              {responseText && <QuestionPaper htmlContent={responseText} />}
-
-              <button
-                style={styles.downloadButton}
-                onClick={() => generatePDF(responseText)}
-              >
-                Download PDF
-              </button>
-            </div>
+            <GenerateQuestionPaperAndDownloadPdf responseText={responseText} />
           )}
         </div>
       </div>
