@@ -69,6 +69,11 @@ Output Format: The question paper should be returned in HTML format, utilizing a
 5. The question paper should be clearly organized into sections and each question should clearly indicate its marks.
 6. Ensure a logical progression and a variety of question types where possible.
 7. Follow any additional instructions or formatting guidelines provided.
+8. Do not include marks of the question with each question.
+9. Give appropriate numbers to each question and sections.
+10.The output should not contain any other thing apart from html content.
+11. Include an answer sheet with the paper as well. Differentiate between the question paper and answer sheet with the html tag with the answersheet included in a seperate html content file.
+
 
 Your final output should be a complete question paper meeting all these conditions, with every single required question included.
 `.trim();
