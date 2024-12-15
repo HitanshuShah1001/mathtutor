@@ -1,18 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { openai } from "./InitOpenAI";
-import { jsPDF } from "jspdf"; // Import jsPDF
 import { ChatHeader } from "./ChatHeader";
 import { styles } from "../Questionpaperstyles";
-import { generatePrompt } from "../utils/GeneratePrompt";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { MathJax } from "better-react-mathjax";
-import { containsLatex } from "./Chatmessage";
-import DOMPurify from "dompurify";
-import html2canvas from "html2canvas";
-
+import { generatePDF } from "../utils/generatePdf";
+import { allTopics } from "../constants/allTopics";
+import { QuestionPaper } from "./RenderQuestionPaper";
+import { generateQuestionPaper } from "../utils/generateQuestionPaper";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -41,100 +33,6 @@ const GenerateQuestionPaper = () => {
   const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
-
-  const QuestionPaper = ({ htmlContent }) => {
-    const sanitizedHTML = DOMPurify.sanitize(htmlContent);
-
-    return (
-      <div
-        className="question-paper"
-        dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
-      />
-    );
-  };
-
-  const renderContent = (content) => {
-    const text = content.text;
-
-    // If the text contains LaTeX, render with MathJax
-    if (containsLatex(text)) {
-      return (
-        <div className="latex-content">
-          <MathJax>{text}</MathJax>
-        </div>
-      );
-    }
-
-    // Otherwise, render as Markdown
-    return (
-      <div className="markdown-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            code({ node, inline, className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || "");
-              return !inline && match ? (
-                <SyntaxHighlighter
-                  style={materialDark}
-                  language={match[1]}
-                  PreTag="div"
-                  {...props}
-                >
-                  {String(children).replace(/\n$/, "")}
-                </SyntaxHighlighter>
-              ) : (
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              );
-            },
-            a: ({ node, ...props }) => (
-              <a
-                {...props}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              />
-            ),
-          }}
-          className="prose max-w-full"
-        >
-          {text}
-        </ReactMarkdown>
-      </div>
-    );
-  };
-
-  const allTopics = {
-    science: {
-      1: ["Living and Non-living", "Basic Shapes in Nature"],
-      2: ["Plants and Their Uses", "Types of Animals"],
-      3: ["Solar System Basics", "Simple Machines"],
-      4: ["Food and Nutrition", "Environmental Pollution"],
-      5: ["Human Body Systems", "States of Matter"],
-      6: ["Electricity and Circuits", "Respiration in Plants"],
-      7: ["Acids and Bases", "Heat and Temperature"],
-      8: ["Light and Sound", "Cell Structure"],
-      9: ["Atoms and Molecules", "Ecosystems"],
-      10: ["Genetics Basics", "Newton's Laws"],
-      11: ["Chemical Reactions", "Electromagnetism"],
-      12: ["Organic Chemistry", "Modern Physics"],
-    },
-    maths: {
-      1: ["Counting and Numbers", "Basic Shapes"],
-      2: ["Addition and Subtraction", "Measurement Basics"],
-      3: ["Multiplication and Division", "Patterns and Sequences"],
-      4: ["Fractions", "Basic Geometry"],
-      5: ["Decimals", "Angles and Triangles"],
-      6: ["Ratios and Proportions", "Integers"],
-      7: ["Algebraic Expressions", "Coordinate Geometry"],
-      8: ["Linear Equations", "Data Handling"],
-      9: ["Polynomials", "Trigonometry Basics"],
-      10: ["Quadratic Equations", "Circles"],
-      11: ["Limits and Continuity", "Probability"],
-      12: ["Differential Calculus", "Integral Calculus"],
-    },
-  };
 
   useEffect(() => {
     if (standard && subject) {
@@ -244,76 +142,6 @@ const GenerateQuestionPaper = () => {
     setHardDescOptionalTopics((prev) => prev.filter((x) => x !== t));
   };
 
-  const generateQuestionPaper = async () => {
-    try {
-      setResponseText("");
-      setIsLoading(true);
-      const prompt = generatePrompt({
-        title,
-        topicsConfig,
-        standard,
-        subject,
-        marks,
-        mcqs,
-        anyotherQuery,
-        easyMCQMarks,
-        mediumMCQMarks,
-        hardMCQMarks,
-        easyDescMarks,
-        mediumDescMarks,
-        hardDescMarks,
-        easyDescOptionalCount,
-        mediumDescOptionalCount,
-        hardDescOptionalCount,
-        easyDescOptionalTopics,
-        mediumDescOptionalTopics,
-        hardDescOptionalTopics,
-      });
-      console.log(prompt, "prompt");
-      const response = await openai.chat.completions.create({
-        model: "o1-preview",
-        messages: [{ role: "user", content: prompt }],
-      });
-      console.log(response, "respone");
-      const content = response.choices?.[0]?.message?.content || "";
-      console.log(content, "content");
-      setResponseText(content);
-    } catch (e) {
-      console.log("error occurred", e);
-    } finally {
-      setIsLoading(false); // Hide loader after response
-    }
-  };
-
-  const generatePDF = (responseText) => {
-    // Create a temporary container for the HTML content.
-    // This ensures that the element can be rendered properly, including external CSS.
-    const tempContainer = document.createElement("div");
-    tempContainer.style.position = "fixed";
-    tempContainer.style.top = "-9999px"; // Hide off-screen
-    tempContainer.style.left = "-9999px";
-    tempContainer.style.fontSize = "18px"; // Incre
-    tempContainer.innerHTML = responseText;
-    document.body.appendChild(tempContainer);
-  
-    // Use html2canvas to capture the rendered HTML element as a canvas
-    html2canvas(tempContainer, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "pt", "a4");
-  
-      // Calculate image dimensions to fit into A4 size
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-  
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save("Question_Paper.pdf");
-  
-      // Clean up after generating the PDF
-      document.body.removeChild(tempContainer);
-    });
-  };
-  
-
   const RenderTopicSelection = useCallback(() => {
     return (
       <div style={styles.formGroup}>
@@ -406,7 +234,7 @@ const GenerateQuestionPaper = () => {
                 </select>
               </div>
 
-              <div style={styles.formGroup}>
+              <div style={styles.formGroup}> //subject selection
                 <label style={styles.label}>Subject</label>
                 <select
                   style={styles.select}
@@ -833,7 +661,29 @@ const GenerateQuestionPaper = () => {
         <div style={styles.actionContainer}>
           <button
             style={styles.generateButton}
-            onClick={generateQuestionPaper}
+            onClick={() => generateQuestionPaper({
+              setIsLoading,
+              setResponseText,
+              title,
+              topicsConfig,
+              standard,
+              subject,
+              marks,
+              mcqs,
+              anyotherQuery,
+              easyMCQMarks,
+              mediumMCQMarks,
+              hardMCQMarks,
+              easyDescMarks,
+              mediumDescMarks,
+              hardDescMarks,
+              easyDescOptionalCount,
+              mediumDescOptionalCount,
+              hardDescOptionalCount,
+              easyDescOptionalTopics,
+              mediumDescOptionalTopics,
+              hardDescOptionalTopics,
+            })}
             disabled={!standard || !subject}
           >
             {isLoading ? "Generating..." : "Generate Question Paper"}
