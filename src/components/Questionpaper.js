@@ -5,6 +5,7 @@ import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { generateQuestionPaper } from "../utils/generateQuestionPaper";
 import { GenerateQuestionPaperAndDownloadPdf } from "../subcomponents/Generatequestionpaperanddownloadpdf";
+import { generateJsonToPassToReceiveJson } from "../utils/generateJsonToPassToReceiveJson";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -18,12 +19,7 @@ const GenerateQuestionPaper = () => {
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
-  const [easyMCQMarks, setEasyMCQMarks] = useState(1);
-  const [mediumMCQMarks, setMediumMCQMarks] = useState(2);
-  const [hardMCQMarks, setHardMCQMarks] = useState(4);
-  const [easyDescMarks, setEasyDescMarks] = useState(1);
-  const [mediumDescMarks, setMediumDescMarks] = useState(2);
-  const [hardDescMarks, setHardDescMarks] = useState(4);
+
 
   // New states for optional descriptive questions and their selected topics
   const [easyDescOptionalCount, setEasyDescOptionalCount] = useState(0);
@@ -583,22 +579,13 @@ const GenerateQuestionPaper = () => {
           <button
             style={styles.generateButton}
             onClick={() =>
-              generateQuestionPaper({
-                setIsLoading,
-                setResponseText,
-                title,
+              generateJsonToPassToReceiveJson({
                 topicsConfig,
                 standard,
                 subject,
                 marks,
                 mcqs,
                 anyotherQuery,
-                easyMCQMarks,
-                mediumMCQMarks,
-                hardMCQMarks,
-                easyDescMarks,
-                mediumDescMarks,
-                hardDescMarks,
                 easyDescOptionalCount,
                 mediumDescOptionalCount,
                 hardDescOptionalCount,
