@@ -20,7 +20,6 @@ const GenerateQuestionPaper = () => {
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
 
-
   // New states for optional descriptive questions and their selected topics
   const [easyDescOptionalCount, setEasyDescOptionalCount] = useState(0);
   const [mediumDescOptionalCount, setMediumDescOptionalCount] = useState(0);
@@ -57,9 +56,6 @@ const GenerateQuestionPaper = () => {
             mediumMCQs: 0,
             hardMCQs: 0,
             mcqMarks: 1,
-            descEasy: 0,
-            descMedium: 0,
-            descHard: 0,
           },
         };
       }
@@ -519,48 +515,6 @@ const GenerateQuestionPaper = () => {
                               handleTopicChange(
                                 topic,
                                 "hardMCQs",
-                                parseInt(e.target.value, 10) || 0
-                              )
-                            }
-                          />
-                        </div>
-                        <div style={styles.formGroupInline}>
-                          <label>Easy Descriptive</label>
-                          <input
-                            style={styles.inputSmall}
-                            value={config.descEasy}
-                            onChange={(e) =>
-                              handleTopicChange(
-                                topic,
-                                "descEasy",
-                                parseInt(e.target.value, 10) || 0
-                              )
-                            }
-                          />
-                        </div>
-                        <div style={styles.formGroupInline}>
-                          <label>Medium Descriptive</label>
-                          <input
-                            style={styles.inputSmall}
-                            value={config.descMedium}
-                            onChange={(e) =>
-                              handleTopicChange(
-                                topic,
-                                "descMedium",
-                                parseInt(e.target.value, 10) || 0
-                              )
-                            }
-                          />
-                        </div>
-                        <div style={styles.formGroupInline}>
-                          <label>Hard Descriptive</label>
-                          <input
-                            style={styles.inputSmall}
-                            value={config.descHard}
-                            onChange={(e) =>
-                              handleTopicChange(
-                                topic,
-                                "descHard",
                                 parseInt(e.target.value, 10) || 0
                               )
                             }

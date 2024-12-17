@@ -12,5 +12,5 @@ export const generateJsonToPassToReceiveJson = ({
   mediumDescOptionalTopics,
   hardDescOptionalTopics,
 }) => {
-
+  console.log(topicsConfig,"topcis config that was received");
 };
