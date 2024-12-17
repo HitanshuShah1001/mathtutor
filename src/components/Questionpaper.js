@@ -674,7 +674,7 @@ const GenerateQuestionPaper = () => {
           <button
             style={styles.generateButton}
             onClick={() =>
-              generateJsonToPassToReceiveJson({
+              generateQuestionPaper({
                 topicsConfig,
                 standard,
                 subject,
@@ -687,6 +687,8 @@ const GenerateQuestionPaper = () => {
                 easyDescOptionalTopics,
                 mediumDescOptionalTopics,
                 hardDescOptionalTopics,
+                setIsLoading,
+                setResponseText,
               })
             }
             disabled={!standard || !subject}

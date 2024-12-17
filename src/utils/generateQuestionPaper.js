@@ -1,59 +1,52 @@
 import { openai } from "./InitOpenAI";
-import { generatePrompt } from "./GeneratePrompt";
+import { generateJsonToPassToReceiveJson } from "./generateJsonToPassToReceiveJson";
+import { RESPONSE_FORMAT, SYSTEM_PROMPT } from "../constants/constants";
 
 export const generateQuestionPaper = async ({
   setIsLoading,
   setResponseText,
-  title,
   topicsConfig,
   standard,
   subject,
   marks,
-  mcqs,
-  anyotherQuery,
-  easyMCQMarks,
-  mediumMCQMarks,
-  hardMCQMarks,
-  easyDescMarks,
-  mediumDescMarks,
-  hardDescMarks,
-  easyDescOptionalCount,
-  mediumDescOptionalCount,
-  hardDescOptionalCount,
-  easyDescOptionalTopics,
-  mediumDescOptionalTopics,
-  hardDescOptionalTopics,
 }) => {
   try {
     setResponseText("");
     setIsLoading(true);
-    const prompt = generatePrompt({
-      title,
+    const blueprint = generateJsonToPassToReceiveJson({
       topicsConfig,
       standard,
       subject,
       marks,
-      mcqs,
-      anyotherQuery,
-      easyMCQMarks,
-      mediumMCQMarks,
-      hardMCQMarks,
-      easyDescMarks,
-      mediumDescMarks,
-      hardDescMarks,
-      easyDescOptionalCount,
-      mediumDescOptionalCount,
-      hardDescOptionalCount,
-      easyDescOptionalTopics,
-      mediumDescOptionalTopics,
-      hardDescOptionalTopics,
     });
+    console.log(blueprint, "blue print ");
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Generate a question paper following the blueprint  provided ${blueprint}`,
+        },
+      ],
+      response_format: { type: "json_schema", json_schema: RESPONSE_FORMAT },
     });
+
     const content = response.choices?.[0]?.message?.content || "";
-    setResponseText(content);
+    console.log(content, "content");
+
+    const finalResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: `Generate a question paper in a latex format for the given input ${content}`,
+        },
+      ],
+    });
+    console.log(finalResponse,"final response")
+    // setResponseText(content);
   } catch (e) {
     console.log("error occurred", e);
   } finally {

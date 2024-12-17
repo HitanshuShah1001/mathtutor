@@ -114,7 +114,7 @@ export const RESPONSE_FORMAT = {
   },
 };
 
-export const SYSTEM_PROMPT = `Given an input blueprint for creating a question paper along with a grade for which the question paper has to be set, output a math question paper along with its solutions as expected in the output response format.
+export const SYSTEM_PROMPT = `Given an input blueprint for creating a question paper along with a grade for which the question paper has to be set, output a  json for generating a math question paper along with its solutions as expected in the output response format.
 
 Important Instructions.
 1. Marks for a question indicate the complexity of the question. A question with higher marks should take more steps/time/complexity to solve.
