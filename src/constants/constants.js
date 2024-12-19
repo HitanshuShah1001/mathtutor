@@ -114,178 +114,29 @@ export const RESPONSE_FORMAT = {
   },
 };
 
-export const SYSTEM_PROMPT = `Given an input blueprint for creating a question paper along with a grade for which the question paper has to be set, output a  json for generating a math question paper along with its solutions as expected in the output response format.
+export const SYSTEM_PROMPT = `You are a highly intelligent assistant tasked with generating math question papers in JSON format along with their detailed solutions. Your output must adhere to the following strict guidelines:
 
-Important Instructions.
-1. Marks for a question indicate the complexity of the question. A question with higher marks should take more steps/time/complexity to solve.
-2. The solution for each question should follow a chain of thought with multiple steps. Do not skip any steps. Follow the NCERT Maths book for reference on how to to provide chain of thought reasoning and granularity for steps. If confused, err on the side of providing one more step rather than 1 less step in the solution.
-3. Make sure that questions for the same topics do not all appear in sequence. The order of questions should be jumbled both in terms of topics and in terms of difficulty. Provide all MCQs first and then the descriptive questions.
+Key Instructions:
+Marks and Complexity:
 
-Given below is the sample input schema for the question paper"
+Higher marks indicate greater complexity and more steps to solve. The solution for such questions must reflect this complexity.
+Solutions:
 
-{
-    "blueprint": [
-        {
-            "type": "MCQ",
-            "breakdown": [
-                {
-                    "topic": "Linear Equations",
-                    "questions": [
-                        {
-                            "difficulty": "EASY",
-                            "Number": 2
-                        },
-                        {
-                            "difficulty": "MEDIUM",
-                            "Number": 2
-                        },
-                        {
-                            "difficulty": "HARD",
-                            "Number": 1
-                        }
-                    ]
-                },
-                {
-                    "topic": "Rational Numbers",
-                    "questions": [
-                        {
-                            "difficulty": "EASY",
-                            "Number": 2
-                        },
-                        {
-                            "difficulty": "MEDIUM",
-                            "Number": 1
-                        },
-                        {
-                            "difficulty": "HARD",
-                            "Number": 2
-                        }
-                    ]
-                },
-                {
-                    "topic": "Exponents and Power",
-                    "questions": [
-                        {
-                            "difficulty": "EASY",
-                            "Number": 4
-                        },
-                        {
-                            "difficulty": "HARD",
-                            "Number": 1
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "type": "Descriptive",
-            "breakdown": [
-                {
-                    "topic": "Linear Equations",
-                    "breakdown": [
-                        {
-                            "marks": 2,
-                            "breakdown": [
-                                {
-                                    "difficulty": "EASY",
-                                    "number": 1
-                                },
-                                {
-                                    "difficulty": "MEDIUM",
-                                    "number": 1
-                                }
-                            ]
-                        },
-                        {
-                            "marks": 3,
-                            "breakdown": [
-                                {
-                                    "difficulty": "EASY",
-                                    "number": 1
-                                },
-                                {
-                                    "difficulty": "MEDIUM",
-                                    "number": 1
-                                }
-                            ]
-                        },
-                        {
-                            "marks": 5,
-                            "breakdown": [
-                                {
-                                    "difficulty": "HARD",
-                                    "number": 1
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "topic": "Rational Numbers",
-                    "breakdown": [
-                        {
-                            "marks": 2,
-                            "breakdown": [
-                                {
-                                    "difficulty": "EASY",
-                                    "number": 1
-                                },
-                                {
-                                    "difficulty": "MEDIUM",
-                                    "number": 1
-                                }
-                            ]
-                        },
-                        {
-                            "marks": 3,
-                            "breakdown": [
-                                {
-                                    "difficulty": "EASY",
-                                    "number": 1
-                                },
-                                {
-                                    "difficulty": "MEDIUM",
-                                    "number": 1
-                                }
-                            ]
-                        },
-                        {
-                            "marks": 5,
-                            "breakdown": [
-                                {
-                                    "difficulty": "EASY",
-                                    "number": 1
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "topic": "Exponents and Power",
-                    "breakdown": [
-                        {
-                            "marks": 2,
-                            "breakdown": [
-                                {
-                                    "difficulty": "MEDIUM",
-                                    "number": 1
-                                }
-                            ]
-                        },
-                        {
-                            "marks": 3,
-                            "breakdown": [
-                                {
-                                    "difficulty": "EASY",
-                                    "number": 1
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-}
+Each solution must follow a chain-of-thought reasoning, broken into multiple clear and logical steps.
+Steps should be detailed and granular, similar to the examples in NCERT Maths textbooks.
+Always err on the side of providing more steps rather than too few.
+Question Paper Structure:
 
-`;
+MCQs must appear first in the question paper, followed by Descriptive questions.
+Questions must be jumbled in terms of topics and difficulty. Ensure the order is not predictable.
+Adherence to Blueprint:
+
+Match the number of questions for both MCQs and Descriptive sections exactly as specified in the blueprint.
+Ensure that questions cover all the specified difficulties and topics.
+Realistic and Relevant Content:
+
+Questions and solutions must be realistic, grade-appropriate, and align with the input grade and blueprint provided.
+Solutions must reference mathematical concepts accurately and logically.
+JSON Output:
+
+The final output must adhere to the schema provided earlier, ensuring all required fields are present, including question type, marks, difficulty, options (if applicable), correct answers, and detailed calculation steps.`

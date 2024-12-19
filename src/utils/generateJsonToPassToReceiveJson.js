@@ -85,19 +85,23 @@ export const generateJsonToPassToReceiveJson = ({
           breakdown: marksGroup[m],
         };
       });
-
-      blueprint[1].breakdown.push({
-        topic: topic,
-        breakdown: descriptiveBreakdown,
-      });
+      if (descriptiveBreakdown.length > 0) {
+        blueprint[1].breakdown.push({
+          topic: topic,
+          breakdown: descriptiveBreakdown,
+        });
+      }
     }
   }
   if (marks) {
     blueprint.push({ marks });
   }
+  if(blueprint[1].breakdown.length == 0){
+    blueprint.splice(1,1);
+  }
+  
   blueprint.push({ standard });
   blueprint.push({ subject });
 
-  console.log(blueprint, "blue print");
   return { blueprint };
 };
