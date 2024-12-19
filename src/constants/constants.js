@@ -114,29 +114,155 @@ export const RESPONSE_FORMAT = {
   },
 };
 
-export const SYSTEM_PROMPT = `You are a highly intelligent assistant tasked with generating math question papers in JSON format along with their detailed solutions. Your output must adhere to the following strict guidelines:
+export const SYSTEM_PROMPT = `You are a highly intelligent assistant tasked with generating question papers in JSON format along with their detailed solutions. Your output must adhere to the following strict guidelines:
 
 Key Instructions:
-Marks and Complexity:
+Marks and Complexity: Higher marks indicate greater complexity and more steps to solve. The solution for such questions must reflect this complexity.
 
-Higher marks indicate greater complexity and more steps to solve. The solution for such questions must reflect this complexity.
 Solutions:
+- Each solution must follow a chain-of-thought reasoning, broken into multiple clear and logical steps.
+- Steps should be detailed and granular, similar to the examples in NCERT Maths textbooks.
+- Always err on the side of providing more steps rather than too few.
+- Do not summarize or say that only a subset is provided. Instead, return what the exact number of questions that were asked for
 
-Each solution must follow a chain-of-thought reasoning, broken into multiple clear and logical steps.
-Steps should be detailed and granular, similar to the examples in NCERT Maths textbooks.
-Always err on the side of providing more steps rather than too few.
 Question Paper Structure:
+- MCQs must appear first in the question paper, followed by Descriptive questions.
+- Questions must be jumbled in terms of topics and difficulty. Ensure the order is not predictable.
+- Each MCQ should be of 1 Mark.
+- The correct answer should not always be only the same option for each question.
 
-MCQs must appear first in the question paper, followed by Descriptive questions.
-Questions must be jumbled in terms of topics and difficulty. Ensure the order is not predictable.
 Adherence to Blueprint:
+- Match the number of questions for both MCQs and Descriptive sections exactly as specified.
+- Ensure that questions cover all the specified difficulties and topics.
 
-Match the number of questions for both MCQs and Descriptive sections exactly as specified in the blueprint.
-Ensure that questions cover all the specified difficulties and topics.
 Realistic and Relevant Content:
+- Questions and solutions must be realistic, grade-appropriate, and align with the given blueprint.
+- Solutions must reference mathematical concepts accurately and logically.
 
-Questions and solutions must be realistic, grade-appropriate, and align with the input grade and blueprint provided.
-Solutions must reference mathematical concepts accurately and logically.
 JSON Output:
+- The final output must adhere to the schema provided earlier, ensuring all required fields are present, including question type, marks, difficulty, options (if applicable), correct answers, and detailed calculation steps.
+`;
 
-The final output must adhere to the schema provided earlier, ensuring all required fields are present, including question type, marks, difficulty, options (if applicable), correct answers, and detailed calculation steps.`
+
+export const DEMO_CONFIG = [
+  {
+      "topic": "Algebra",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Algebra",
+      "difficulty": "MEDIUM",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Algebra",
+      "difficulty": "HARD",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "EASY",
+      "marks": 1,
+      "type": "MCQ"
+  },
+  {
+      "topic": " Calculus",
+      "difficulty": "easy",
+      "marks": "2",
+      "type": "DESCRIPTIVE"
+  },
+  {
+      "topic": " Calculus",
+      "difficulty": "easy",
+      "marks": "2",
+      "type": "DESCRIPTIVE"
+  },
+  {
+      "topic": " Calculus",
+      "difficulty": "easy",
+      "marks": "2",
+      "type": "DESCRIPTIVE"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "hard",
+      "marks": "1",
+      "type": "DESCRIPTIVE"
+  },
+  {
+      "topic": "Relations and Functions",
+      "difficulty": "hard",
+      "marks": "1",
+      "type": "DESCRIPTIVE"
+  },
+  {
+      "topic": "Vectors and 3D Geometry",
+      "difficulty": "medium",
+      "marks": "4",
+      "type": "DESCRIPTIVE"
+  },
+  {
+      "topic": "Vectors and 3D Geometry",
+      "difficulty": "medium",
+      "marks": "4",
+      "type": "DESCRIPTIVE"
+  }
+]

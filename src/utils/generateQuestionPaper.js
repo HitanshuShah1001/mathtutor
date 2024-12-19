@@ -1,54 +1,40 @@
 import { openai } from "./InitOpenAI";
-import { generateJsonToPassToReceiveJson } from "./generateJsonToPassToReceiveJson";
-import { RESPONSE_FORMAT, SYSTEM_PROMPT } from "../constants/constants";
+import { DEMO_CONFIG } from "../constants/constants";
+import { GENERATE_USER_PROMPT, GENERATE_USER_PROMPT_HTML } from "./Questionpaperutils";
 
 export const generateQuestionPaper = async ({
   setIsLoading,
   setResponseText,
-  topicsConfig,
-  standard,
-  subject,
-  marks,
 }) => {
   try {
     setResponseText("");
     setIsLoading(true);
-    const blueprint = generateJsonToPassToReceiveJson({
-      topicsConfig,
-      standard,
-      subject,
-      marks,
-    });
-    console.log(blueprint, "blue print ");
+    const blueprint = DEMO_CONFIG;
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "o1-mini",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Generate a JSON representation of a math question paper along with detailed solutions, based on the following blueprint: :-  ${JSON.stringify(blueprint)}`,
+          content: GENERATE_USER_PROMPT(JSON.stringify(blueprint)),
         },
       ],
-      response_format: { type: "json_schema", json_schema: RESPONSE_FORMAT },
-
     });
     const content = response.choices?.[0]?.message?.content || "";
-    console.log(content, "content");
-    return;
-    const finalResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+    console.log(content,"cotnent")
+    const responseToHtml = await openai.chat.completions.create({
+      model: "o1-mini",
       messages: [
         {
           role: "user",
-          content: `Generate a question paper in a html format for the given input ${content}`,
+          content: GENERATE_USER_PROMPT_HTML(JSON.stringify(content)),
         },
       ],
     });
-    console.log(finalResponse,"final response")
-    // setResponseText(content);
+    const contentHTML = responseToHtml.choices?.[0]?.message?.content || "";
+    console.log(contentHTML,"cotnent after")
   } catch (e) {
     console.log("error occurred", e);
   } finally {
-    setIsLoading(false); // Hide loader after response
+    setIsLoading(false);
   }
 };

@@ -25,6 +25,6 @@ export const allTopics = {
       9: ["Polynomials", "Trigonometry Basics"],
       10: ["Quadratic Equations", "Circles"],
       11: ["Limits and Continuity", "Probability"],
-      12: ["Differential Calculus", "Integral Calculus"],
+      12: [" Calculus","Relations and Functions","Algebra","Probability","Vectors and 3D Geometry","Linear Programming"],
     },
   };
