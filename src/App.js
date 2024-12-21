@@ -13,10 +13,11 @@ import { MathJaxContext } from "better-react-mathjax";
 import VerifyOtp from "./components/VerifyOtp";
 import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
 import { Layout } from "./components/Layout";
+import { UpdateUserDetails } from "./components/UpdateUserDetails";
+import GenerateQuestionPaper from "./components/Questionpaper";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
-  console.log(USER, ACCESS_KEY);
   return (
     <MathJaxContext>
       <AuthProvider>
@@ -25,10 +26,16 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/verify-otp" element={<VerifyOtp />} />
             <Route
-              path="/home"
+              path="/update-user-details"
+              element={<UpdateUserDetails />}
+            />
+            <Route path="/" element={<Navigate to="/question-paper-generation" replace />} />
+
+            <Route
+              path="/question-paper-generation"
               element={
                 <ProtectedRoute>
-                  <Layout />
+                  <GenerateQuestionPaper />
                 </ProtectedRoute>
               }
             />
@@ -36,7 +43,7 @@ function App() {
               path="/login"
               element={
                 USER && ACCESS_KEY ? (
-                  <Navigate to="/home" replace />
+                  <Navigate to="/question-paper-generation" replace />
                 ) : (
                   <Navigate to="/login" replace />
                 )

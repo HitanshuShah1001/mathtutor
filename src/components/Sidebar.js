@@ -5,7 +5,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react";
-import { ASSISTANT } from "../constants/constants";
 import { AuthContext } from "../utils/AuthContext";
 
 const Sidebar = () => {

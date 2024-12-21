@@ -9,38 +9,43 @@ import {
 } from "../utils/LocalStorageOps";
 
 const VerifyOtp = () => {
-  const { setChats, setIsAuthenticated, setUser } = useContext(AuthContext);
+  const { setIsAuthenticated, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
-
   const { verifyOTP } = useAuth();
 
   const handleSubmit = async (e) => {
-    const mobileNumber = location.state?.phoneNumber || "";
     e.preventDefault();
     setError("");
 
-    const otpRegex = /^\d{6}$/;
-    if (!otpRegex.test(otp)) {
+    if (!/^\d{6}$/.test(otp)) {
       setError("Please enter a valid 6-digit OTP.");
       return;
     }
 
+    const mobileNumber = location.state?.phoneNumber || "";
     const isValidAndData = await verifyOTP(mobileNumber, otp);
-    if (isValidAndData.status) {
-      const data = isValidAndData.data;
-      const { accessToken, user } = data.data;
+
+    if (isValidAndData?.status) {
+      const { accessToken, user } = isValidAndData.data?.data || {};
       removeDataFromLocalStorage();
-      addDataToLocalStorage({ accessToken, user });
-      setUser(user);
-      setIsAuthenticated(true);
-      navigate('/home')
+
+      if (user?.emailId) {
+        addDataToLocalStorage({ accessToken, user });
+        setUser(user);
+        setIsAuthenticated(true);
+        navigate("/question-paper-generation", { replace: true });
+      } else {
+        addDataToLocalStorage({ accessToken });
+        navigate("/update-user-details", {
+          state: { firstTime: true, id: user?.id },
+        });
+      }
     } else {
       setError("Invalid OTP. Please try again.");
-      return;
     }
   };
 
@@ -54,12 +59,8 @@ const VerifyOtp = () => {
           onMouseLeave={() => setIsHovered(false)}
         >
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              Verify OTP
-            </h2>
-            <p className="text-gray-500">
-              Enter the 6-digit code sent to your phone
-            </p>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">Verify OTP</h2>
+            <p className="text-gray-500">Enter the 6-digit code sent to your phone</p>
           </div>
           {error && (
             <div
@@ -69,7 +70,6 @@ const VerifyOtp = () => {
               {error}
             </div>
           )}
-
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <KeyIcon className="text-gray-400" size={20} />
@@ -83,15 +83,10 @@ const VerifyOtp = () => {
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
             />
           </div>
-
           <button
             type="submit"
             className={`w-full py-3 rounded-lg text-white font-semibold transition-all duration-300 
-              ${
-                isHovered
-                  ? "bg-blue-600 hover:bg-blue-700 transform hover:scale-105"
-                  : "bg-blue-500 hover:bg-blue-600"
-              }`}
+              ${isHovered ? "bg-blue-600 hover:bg-blue-700 transform hover:scale-105" : "bg-blue-500 hover:bg-blue-600"}`}
           >
             Verify OTP
           </button>

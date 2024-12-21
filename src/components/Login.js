@@ -16,7 +16,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (USER && ACCESS_KEY) {
-      navigate("/home", { replace: true });
+      navigate("/question-paper-generation", { replace: true });
     }
   }, [USER, ACCESS_KEY, navigate]);
 

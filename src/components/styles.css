@@ -1,0 +1,34 @@
+.latex-content {
+    margin: 20px 0;
+  }
+  
+  .markdown-content {
+    margin: 20px 0;
+    font-size: 1.1em;
+  }
+  
+  .prose {
+    max-width: 100%;
+    line-height: 1.6;
+  }
+  
+  code {
+    font-family: 'Courier New', monospace;
+  }
+  
+  a {
+    color: #1E40AF;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  .text-blue-600 {
+    color: #2563eb;
+  }
+  
+  .hover\:underline:hover {
+    text-decoration: underline;
+  }
+  

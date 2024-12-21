@@ -6,15 +6,16 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { MathJax } from "better-react-mathjax";
 
+export const containsLatex = (text) => {
+  const inlineMathRegex = /\\\(.*?\\\)/g;
+  const blockMathRegex = /\\\[.*?\\\]/gs;
+  return inlineMathRegex.test(text) || blockMathRegex.test(text);
+};
 export const ChatMessage = ({ message, role, mediaUrl }) => {
   const [copied, setCopied] = useState(false);
 
   // Helper function to check if the message contains LaTeX
-  const containsLatex = (text) => {
-    const inlineMathRegex = /\\\(.*?\\\)/g;
-    const blockMathRegex = /\\\[.*?\\\]/gs;
-    return inlineMathRegex.test(text) || blockMathRegex.test(text);
-  };
+  
 
   const handleCopy = () => {
     const textToCopy = Array.isArray(message)

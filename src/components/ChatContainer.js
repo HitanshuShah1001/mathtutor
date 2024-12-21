@@ -1,17 +1,17 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { MathJaxContext } from "better-react-mathjax";
-import { ChatMessage } from "./Chatmessage";
+import { ChatMessage } from "../subcomponents/Chatmessage.js";
 import {
   ACCESS_KEY,
   ASSISTANT,
   BASE_URL_API,
   USER,
 } from "../constants/constants.js";
-import { openai } from "./InitOpenAI.js";
-import { ChatHeader } from "./ChatHeader.js";
-import { ChatInput } from "./ChatInput.js";
-import { ScrollToBottom } from "./ScrollToBottom.js";
-import { ShowLoading } from "./ShowLoading.js";
+import { openai } from "../utils/InitOpenAI.js";
+import { ChatHeader } from "../subcomponents/ChatHeader.js";
+import { ChatInput } from "../subcomponents/ChatInput.js";
+import { ScrollToBottom } from "../subcomponents/ScrollToBottom.js";
+import { ShowLoading } from "../subcomponents/ShowLoading.js";
 import AWS from "aws-sdk/global"; // Import global AWS namespace (recommended)
 import S3 from "aws-sdk/clients/s3";
 import { postRequest } from "../utils/ApiCall.js";
@@ -97,6 +97,7 @@ const ChatContainer = () => {
   const handleSendMessage = async ({ inputMessage, image = undefined }) => {
     if (!inputMessage.trim()) return;
     let userContentForAi;
+    let newUserMessage = {};
 
     if (image) {
       const ImageUrl = await uploadImageToS3(image);
@@ -105,13 +106,12 @@ const ChatContainer = () => {
         { type: "image_url", image_url: { url: ImageUrl } },
       ];
       newUserMessage["mediaUrl"] = ImageUrl;
+      newUserMessage["content"] = inputMessage;
     } else {
       userContentForAi = inputMessage;
+      newUserMessage["content"] = inputMessage;
     }
-    const newUserMessage = {
-      content: userContentForAi,
-      role: USER,
-    };
+
     // Prepare the full message history for context
     const conversationHistory = messages?.map((msg) => {
       const content = msg.mediaUrl

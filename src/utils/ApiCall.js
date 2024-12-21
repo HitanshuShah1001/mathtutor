@@ -28,7 +28,6 @@ export const getRequest = async (url, headers = {}, params = {}) => {
 
   try {
     const response = await fetch(finalUrl, requestOptions);
-    
 
     const result = await response.json();
     return result;
