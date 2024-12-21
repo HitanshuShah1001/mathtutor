@@ -21,7 +21,7 @@ export const ChatHeader = ({ title }) => {
       </h2>
       <div className="flex items-center space-x-4">
         {/* Conditionally render the appropriate link */}
-        {isQuestionPaperPage ? (
+        {/* {isQuestionPaperPage ? (
           <Link to="/home" className="text-blue-500 hover:underline">
             Chats
           </Link>
@@ -32,7 +32,7 @@ export const ChatHeader = ({ title }) => {
           >
             Question Paper Generation
           </Link>
-        )}
+        )} */}
         <ProfileMenu />
       </div>
     </div>

@@ -4,7 +4,6 @@ import { ChatHeader } from "../subcomponents/ChatHeader";
 import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { generateQuestionPaper } from "../utils/generateQuestionPaper";
-import { GenerateQuestionPaperAndDownloadPdf } from "../subcomponents/Generatequestionpaperanddownloadpdf";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -27,6 +26,36 @@ const GenerateQuestionPaper = () => {
   const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
+
+  // Initialize state from localStorage
+  useEffect(() => {
+    const savedStandard = localStorage.getItem("standard");
+    const savedSubject = localStorage.getItem("subject");
+    const savedTopicsConfig = localStorage.getItem("topicsConfig");
+    const savedMCQs = localStorage.getItem("mcqs");
+
+    if (savedStandard) setStandard(savedStandard);
+    if (savedSubject) setSubject(savedSubject);
+    if (savedTopicsConfig) setTopicsConfig(JSON.parse(savedTopicsConfig));
+    if (savedMCQs) setMcqs(savedMCQs);
+  }, []);
+
+  // Watchers to save state to localStorage
+  useEffect(() => {
+    localStorage.setItem("standard", standard);
+  }, [standard]);
+
+  useEffect(() => {
+    localStorage.setItem("subject", subject);
+  }, [subject]);
+
+  useEffect(() => {
+    localStorage.setItem("topicsConfig", JSON.stringify(topicsConfig));
+  }, [topicsConfig]);
+
+  useEffect(() => {
+    localStorage.setItem("mcqs", mcqs);
+  }, [mcqs]);
 
   useEffect(() => {
     if (standard && subject) {
@@ -694,10 +723,6 @@ const GenerateQuestionPaper = () => {
           >
             {isLoading ? "Generating..." : "Generate Question Paper"}
           </button>
-
-          {responseText && (
-            <GenerateQuestionPaperAndDownloadPdf responseText={responseText} />
-          )}
         </div>
       </div>
     </div>

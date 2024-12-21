@@ -1,10 +1,14 @@
 import { openai } from "./InitOpenAI";
-import { DEMO_CONFIG, models, USER } from "../constants/constants";
+import { models, USER } from "../constants/constants";
 import {
   GENERATE_USER_PROMPT,
-  GENERATE_USER_PROMPT_HTML,
+  USER_PROMPT_GENERATE_QUESTION_PAPER,
 } from "./Questionpaperutils";
-import { generateQuestionsArray } from "./generateJsonToPassToReceiveJson";
+import {
+  generateQuestionsArray,
+  reorderQuestionsByType,
+} from "./generateJsonToPassToReceiveJson";
+import { handleGeneratePDFs } from "./generatePdf";
 
 export const generateQuestionPaper = async ({
   setIsLoading,
@@ -14,8 +18,10 @@ export const generateQuestionPaper = async ({
   try {
     setResponseText("");
     setIsLoading(true);
-    const blueprint = generateQuestionsArray(topicsConfig);
-    console.log(blueprint,"BLUEPRINT")
+    const blueprint = reorderQuestionsByType(
+      generateQuestionsArray(topicsConfig)
+    );
+
     const response = await openai.chat.completions.create({
       model: models.O1_MINI,
       messages: [
@@ -27,18 +33,17 @@ export const generateQuestionPaper = async ({
     });
     const content = response.choices?.[0]?.message?.content || "";
     console.log(content, "content");
-    return;
     const responseToHtml = await openai.chat.completions.create({
       model: models.O1_MINI,
       messages: [
         {
           role: USER,
-          content: GENERATE_USER_PROMPT_HTML(JSON.stringify(content)),
+          content: USER_PROMPT_GENERATE_QUESTION_PAPER(content),
         },
       ],
     });
     const contentHTML = responseToHtml.choices?.[0]?.message?.content || "";
-    console.log(contentHTML, "cotnent after");
+    handleGeneratePDFs(contentHTML)
   } catch (e) {
     console.log("error occurred", e);
   } finally {

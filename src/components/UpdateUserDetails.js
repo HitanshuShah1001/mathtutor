@@ -52,7 +52,7 @@ export const UpdateUserDetails = () => {
       addDataToLocalStorage({ accessToken:ACCESS_KEY, user });
 
       // Navigate to home after completion
-      navigate("/home");
+      navigate("/question-paper-generation", { replace: true });
     } catch (err) {
       setError(
         "An error occurred while completing your profile. Please try again."

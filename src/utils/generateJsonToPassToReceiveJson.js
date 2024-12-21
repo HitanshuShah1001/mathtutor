@@ -20,7 +20,7 @@ export function generateQuestionsArray(inputData) {
         }
       }
     }
-    for (let [key, value] of Object.entries(config)) {
+    for (let [_, value] of Object.entries(config)) {
       if (value?.length > 0) {
         for (let val of value) {
           for (let i = 0; i < parseInt(val?.noOfQuestions); i++) {
@@ -36,4 +36,29 @@ export function generateQuestionsArray(inputData) {
     }
   }
   return outputArray;
+}
+
+/**
+ * Reorders questions by type, placing Multiple Choice Questions (MCQs) first.
+ * @param {Array} questions - Array of question objects.
+ * @returns {Array} - Reordered array with MCQs first followed by Descriptive Questions.
+ * @throws {Error} - If the input is not an array.
+ */
+export function reorderQuestionsByType(questions) {
+  if (!Array.isArray(questions)) {
+    throw new Error("Input must be an array of objects.");
+  }
+
+  const mcqs = [];
+  const descriptive = [];
+
+  questions.forEach((question) => {
+    if (question.type === "Multiple Choice Question") {
+      mcqs.push(question);
+    } else if (question.type === "Descriptive Question") {
+      descriptive.push(question);
+    }
+  });
+
+  return [...mcqs, ...descriptive];
 }
