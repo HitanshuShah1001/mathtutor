@@ -25,16 +25,13 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/verify-otp" element={<VerifyOtp />} />
-            <Route path="/update-user-details" element={<UpdateUserDetails />} />
             <Route
-              path="/home"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
+              path="/update-user-details"
+              element={<UpdateUserDetails />}
             />
-             <Route
+            <Route path="/" element={<Navigate to="/question-paper-generation" replace />} />
+
+            <Route
               path="/question-paper-generation"
               element={
                 <ProtectedRoute>
@@ -46,7 +43,7 @@ function App() {
               path="/login"
               element={
                 USER && ACCESS_KEY ? (
-                  <Navigate to="/home" replace />
+                  <Navigate to="/question-paper-generation" replace />
                 ) : (
                   <Navigate to="/login" replace />
                 )

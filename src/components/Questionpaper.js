@@ -5,7 +5,6 @@ import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { generateQuestionPaper } from "../utils/generateQuestionPaper";
 import { GenerateQuestionPaperAndDownloadPdf } from "../subcomponents/Generatequestionpaperanddownloadpdf";
-import { generateJsonToPassToReceiveJson } from "../utils/generateJsonToPassToReceiveJson";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
