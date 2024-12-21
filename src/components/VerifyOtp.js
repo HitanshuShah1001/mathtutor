@@ -33,7 +33,6 @@ const VerifyOtp = () => {
     if (isValidAndData && isValidAndData.status) {
       const data = isValidAndData.data;
       const { accessToken, user } = data.data || {};
-      console.log(user,user.email)
       removeDataFromLocalStorage();
       if (user.emailId) {
         addDataToLocalStorage({ accessToken, user });

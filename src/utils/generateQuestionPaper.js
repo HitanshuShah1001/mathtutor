@@ -15,7 +15,7 @@ export const generateQuestionPaper = async ({
     setResponseText("");
     setIsLoading(true);
     const blueprint = generateQuestionsArray(topicsConfig);
-    console.log(blueprint)
+    console.log(blueprint,"BLUEPRINT")
     const response = await openai.chat.completions.create({
       model: models.O1_MINI,
       messages: [
@@ -26,7 +26,7 @@ export const generateQuestionPaper = async ({
       ],
     });
     const content = response.choices?.[0]?.message?.content || "";
-    console.log(content, "cotnent");
+    console.log(content, "content");
     return;
     const responseToHtml = await openai.chat.completions.create({
       model: models.O1_MINI,

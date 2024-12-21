@@ -2,11 +2,9 @@ import { difficulty } from "../constants/constants";
 
 export function generateQuestionsArray(inputData) {
   let outputArray = [];
-  console.log(inputData);
   for (const topic in inputData) {
     const config = inputData[topic];
     for (let [key, value] of Object.entries(config)) {
-      console.log(key, value);
       if (key.includes("MCQ")) {
         for (let i = 0; i < value; i++) {
           outputArray.push({
@@ -17,13 +15,12 @@ export function generateQuestionsArray(inputData) {
               ? difficulty.MEDIUM
               : difficulty.HARD,
             marks: config.mcqMarks || 1,
-            type: "MCQ",
+            type: "Multiple Choice Question",
           });
         }
       }
     }
     for (let [key, value] of Object.entries(config)) {
-      console.log(key, value);
       if (value?.length > 0) {
         for (let val of value) {
           for (let i = 0; i < parseInt(val?.noOfQuestions); i++) {
@@ -31,13 +28,12 @@ export function generateQuestionsArray(inputData) {
               topic,
               difficulty: val.difficulty.toUpperCase(),
               marks: val.marks,
-              type: "DESCRIPTIVE",
+              type: "Descriptive Question",
             });
           }
         }
       }
     }
   }
-  console.log(outputArray, "outpuarray");
   return outputArray;
 }
