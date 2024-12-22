@@ -1,0 +1,11 @@
+Student_Name,Total_Attendance,Maths_Test1_Marks,Maths_Test1_Topics,Maths_Test2_Marks,Maths_Test2_Topics,Maths_Test3_Marks,Maths_Test3_Topics,Science_Test1_Marks,Science_Test1_Topics,Science_Test2_Marks,Science_Test2_Topics,Science_Test3_Marks,Science_Test3_Topics
+John Doe,28,8,"Basic Algebra",25,"Geometry",45,"Quadratic Equations",9,"Cell Structure",23,"Periodic Table",42,"Electric Circuits"
+Jane Smith,27,7,"Linear Equations",21,"Polygons & Angles",47,"Trigonometry",8,"States of Matter",25,"Chemical Bonds",40,"Photosynthesis"
+Aria Johnson,30,10,"Prime Factorization",28,"Probability",48,"Coordinate Geometry",10,"Human Digestive System",27,"Organic Chemistry",44,"Heat & Temperature"
+Mark Davis,26,6,"Polynomial Basics",18,"Triangles",35,"Functions",7,"Microorganisms",20,"Motion & Forces",38,"Ecosystems"
+Emily Patel,25,9,"Fractions & Decimals",22,"Circles",49,"Advanced Algebra",6,"Plant Cells",24,"Acids & Bases",41,"Light & Refraction"
+Chris Brown,29,5,"Number Patterns",19,"Mensuration",40,"Progressions",8,"Atoms & Molecules",23,"Chemical Reactions",38,"Sound & Waves"
+Sophia Li,30,10,"Exponents",30,"Coordinate Geometry",50,"Calculus Introduction",10,"Tissues & Organs",28,"Genetics",46,"Magnetism"
+Daniel Ray,24,3,"Ratio & Proportion",15,"Angles & Parallel Lines",33,"Statistics",5,"Nutrition in Animals",18,"Metals & Non-metals",35,"Force & Pressure"
+Nina Singh,28,8,"Integers & Rational Numbers",27,"Quadrilateral Properties",45,"Polynomials",9,"Life Processes",26,"Solutions & Mixtures",44,"Energy Conversion"
+Oliver Martin,29,4,"Logarithms Basics",20,"Circles & Arcs",37,"Intro to Trigonometry",7,"Plant Physiology",21,"Reactions & Equations",39,"Electricity"
