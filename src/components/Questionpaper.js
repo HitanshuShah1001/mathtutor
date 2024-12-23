@@ -163,6 +163,21 @@ const GenerateQuestionPaper = () => {
     setHardDescOptionalTopics((prev) => prev.filter((x) => x !== t));
   };
 
+  // NEW: Handler to remove a single descriptive config entry
+  const handleRemoveDescriptiveQuestion = (topic, index) => {
+    setTopicsConfig((prev) => {
+      const updatedArray = [...prev[topic].descriptiveQuestionConfig];
+      updatedArray.splice(index, 1);
+      return {
+        ...prev,
+        [topic]: {
+          ...prev[topic],
+          descriptiveQuestionConfig: updatedArray,
+        },
+      };
+    });
+  };
+
   const RenderTopicSelection = useCallback(() => {
     return (
       <div style={styles.formGroup}>
@@ -552,7 +567,7 @@ const GenerateQuestionPaper = () => {
                         </div>
                       </div>
 
-                      {/* Map over descriptiveQuestionConfig to display inputs */}
+                      {/* Descriptive Question Configs */}
                       {config.descriptiveQuestionConfig &&
                         config.descriptiveQuestionConfig.length > 0 && (
                           <div style={styles.descriptiveConfigContainer}>
@@ -658,11 +673,31 @@ const GenerateQuestionPaper = () => {
                                       }}
                                     />
                                   </div>
+                                  <div
+                                    style={{
+                                      alignItems: "center",
+                                      flexDirection: "column",
+                                    }}
+                                  >
+                                    <button
+                                      style={styles.chipRemoveButton}
+                                      onClick={() =>
+                                        handleRemoveDescriptiveQuestion(
+                                          topic,
+                                          index
+                                        )
+                                      }
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                  {/* NEW: Remove button for each descriptive config */}
                                 </div>
                               )
                             )}
                           </div>
                         )}
+
                       <div style={styles.plusIconContainer}>
                         <button
                           style={styles.plusButton}
