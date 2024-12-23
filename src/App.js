@@ -47,7 +47,7 @@ function App() {
               path="/report-analyser"
               element={
                 <ProtectedRoute>
-                  <ChatContainer />
+                  <ResultAnalyser />
                 </ProtectedRoute>
               }
             />
