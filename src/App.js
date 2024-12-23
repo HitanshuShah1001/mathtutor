@@ -15,6 +15,7 @@ import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
 import { UpdateUserDetails } from "./components/UpdateUserDetails";
 import GenerateQuestionPaper from "./components/Questionpaper";
 import { ResultAnalyser } from "./components/ResultVisualiser";
+import ChatContainer from "./components/ChatContainer";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -46,7 +47,7 @@ function App() {
               path="/report-analyser"
               element={
                 <ProtectedRoute>
-                  <ResultAnalyser />
+                  <ChatContainer />
                 </ProtectedRoute>
               }
             />

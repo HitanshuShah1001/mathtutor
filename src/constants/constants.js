@@ -156,4 +156,34 @@ export const RESPONSE_FORMAT = {
   },
 };
 
+// constants.js
+export const MESSAGE_STATUS = {
+  WARN_RUN_STATUS: "[getResults] Run status is not completed:",
+  ERROR_GET_RESULTS: "Error in getResults:",
+  ERROR_CREATE_THREAD: "Error creating thread:",
+  ERROR_CREATE_MESSAGE: "Error creating message:",
+  ERROR_CREATE_RUN: "Error creating run:",
+  ERROR_GET_RUN: "Error getting run status:",
+};
 
+export const API_ENDPOINTS = {
+  THREADS: "/api/threads",
+  MESSAGES: "/api/messages",
+  RUNS: "/api/runs",
+};
+
+export const RUN_STATUS = {
+  COMPLETED: "completed",
+  FAILED: "failed",
+};
+
+export const UI_MESSAGES = {
+  SYSTEM_MESSAGE: "I am Claude, an AI assistant. How can I help you today?",
+  ASSISTANT_NAME: "Assistant",
+  USER_NAME: "You",
+};
+
+export const THREAD_ID = "thread_id";
+
+
+export const ASSISTANT_ID = "asst_2bwaorGljw9JSlanqjfI1ylN";

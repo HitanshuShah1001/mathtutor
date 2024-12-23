@@ -24,6 +24,7 @@ export const ChatInput = ({
       if (result?.error) {
         alert(result?.error?.message);
       } else {
+        alert("File uploaded successfully!");
         await sessionStorage.setItem("file_id", result.id);
       }
     } catch (error) {
