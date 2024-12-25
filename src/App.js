@@ -12,9 +12,10 @@ import "./App.css";
 import { MathJaxContext } from "better-react-mathjax";
 import VerifyOtp from "./components/VerifyOtp";
 import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
-import { Layout } from "./components/Layout";
 import { UpdateUserDetails } from "./components/UpdateUserDetails";
 import GenerateQuestionPaper from "./components/Questionpaper";
+import { ResultAnalyser } from "./components/ResultVisualiser";
+import { SelectStandard } from "./components/SelectStandardAndGrade";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -29,7 +30,10 @@ function App() {
               path="/update-user-details"
               element={<UpdateUserDetails />}
             />
-            <Route path="/" element={<Navigate to="/question-paper-generation" replace />} />
+            <Route
+              path="/"
+              element={<Navigate to="/question-paper-generation" replace />}
+            />
 
             <Route
               path="/question-paper-generation"
@@ -38,6 +42,18 @@ function App() {
                   <GenerateQuestionPaper />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="/report-analyser"
+              element={
+                <ProtectedRoute>
+                  <ResultAnalyser />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/select-standard-and-file"
+              element={<SelectStandard />}
             />
             <Route
               path="/login"

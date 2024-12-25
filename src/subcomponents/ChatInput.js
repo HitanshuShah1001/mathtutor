@@ -1,6 +1,5 @@
-import { SendIcon, ImageIcon, XIcon } from "lucide-react";
+import { SendIcon, XIcon, FileIcon } from "lucide-react"; // or whichever icons you prefer
 import { useState, useRef } from "react";
-
 
 export const ChatInput = ({
   handleSendMessage,
@@ -8,66 +7,82 @@ export const ChatInput = ({
   isLoading,
   setInputMessage,
 }) => {
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
-  const inputRef = useRef(null);
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Revoke the old object URL to avoid memory leaks
-      if (imagePreviewUrl) {
-        URL.revokeObjectURL(imagePreviewUrl);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const uploadFileToOpenAiAndGettingId = async () => {
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("purpose", "assistants"); // Adjust purpose as needed
+    try {
+      const response = await fetch("https://api.openai.com/v1/files", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+        },
+        body: formData,
+      });
+      const result = await response.json();
+      if (result?.error) {
+        alert(result?.error?.message);
+      } else {
+        alert("File uploaded successfully!");
+        await sessionStorage.setItem("file_id", result.id);
       }
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreviewUrl(previewUrl);
-      setImageFile(file);
+    } catch (error) {
+      console.error("Error uploading file to OpenAI:", error);
     }
   };
 
-  
-  const handleImageUploadButtonClick = () => {
-    inputRef.current.click();
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
   };
 
-  const handleImageDelete = () => {
-    if (imagePreviewUrl) {
-      URL.revokeObjectURL(imagePreviewUrl);
+  const handleFileUploadButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
-    setImageFile(null);
-    setImagePreviewUrl(null);
+  };
+
+  const handleFileDelete = () => {
+    setSelectedFile(null);
   };
 
   const handleSend = () => {
-    handleSendMessage({inputMessage, image: imageFile });
-    setInputMessage("");
-    setImageFile(null);
-    if (imagePreviewUrl) {
-      URL.revokeObjectURL(imagePreviewUrl);
-      setImagePreviewUrl(null);
+    if (selectedFile) {
+      uploadFileToOpenAiAndGettingId(selectedFile);
+    } else {
+      handleSendMessage({
+        inputMessage,
+        file: selectedFile,
+      });
     }
+
+    // Reset states
+    setInputMessage("");
+    setSelectedFile(null);
   };
 
   return (
     <div className="bg-white p-4 border-t border-gray-200">
-      {imagePreviewUrl && (
-        <div className="relative mt-2 inline-block">
-          <img
-            src={imagePreviewUrl}
-            alt="Selected"
-            className="w-full h-auto max-h-64 object-contain rounded-lg"
-          />
+      {selectedFile && (
+        <div className="flex items-center space-x-2 mb-2">
+          <FileIcon size={18} className="text-gray-600" />
+          <span className="text-sm">{selectedFile.name}</span>
           <button
             type="button"
-            onClick={handleImageDelete}
-            className="absolute top-1 right-1 p-1 bg-gray-800 bg-opacity-50 rounded-full text-white hover:bg-opacity-75"
+            onClick={handleFileDelete}
+            className="p-1 bg-gray-800 text-white rounded-full hover:bg-gray-700"
           >
             <XIcon size={16} />
           </button>
         </div>
       )}
+
       <div className="flex items-center space-x-2">
-      
         <textarea
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
@@ -77,42 +92,52 @@ export const ChatInput = ({
               handleSend();
             }
           }}
-          placeholder="Send a message"
+          placeholder="Type a message"
           className="flex-1 p-2 border rounded-lg resize-none max-h-24 overflow-y-auto"
           rows={1}
+          disabled={isLoading}
         />
-        {/* Hidden file input for image upload */}
+
         <input
+          ref={fileInputRef}
           type="file"
-          accept="image/*"
-          id="image-upload"
+          accept="
+            .csv,
+            .pdf,
+            .txt,
+            .doc,
+            .docx,
+            application/pdf,
+            application/vnd.ms-excel,
+            text/csv
+          "
           style={{ display: "none" }}
-          onChange={handleImageUpload}
-          ref={inputRef}
+          onChange={handleFileUpload}
+          disabled={isLoading}
         />
-        {/* Image upload button */}
+
         <button
           type="button"
-          onClick={handleImageUploadButtonClick}
+          onClick={handleFileUploadButtonClick}
+          disabled={isLoading}
           className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600"
         >
-          <ImageIcon size={20} />
+          Upload
         </button>
+
         <button
           onClick={handleSend}
-          disabled={(!inputMessage.trim() && !imageFile) || isLoading}
-          className={`p-2 rounded-full 
-                ${
-                  (inputMessage.trim() || imageFile) && !isLoading
-                    ? "bg-blue-500 hover:bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                }`}
+          disabled={(!inputMessage.trim() && !selectedFile) || isLoading}
+          className={`p-2 rounded-full transition-colors
+            ${
+              (inputMessage.trim() || selectedFile) && !isLoading
+                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
         >
           <SendIcon size={20} />
         </button>
       </div>
-      {/* Display selected image preview with delete option */}
-      
     </div>
   );
 };

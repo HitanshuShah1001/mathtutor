@@ -161,6 +161,7 @@ export const styles = {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
+    marginBottom: 10
   },
   topicConfigDetails: {
     marginTop: "20px",
