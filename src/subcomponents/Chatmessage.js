@@ -12,10 +12,7 @@ export const containsLatex = (text) => {
   return inlineMathRegex.test(text) || blockMathRegex.test(text);
 };
 export const ChatMessage = ({ message, role, mediaUrl }) => {
-  const [copied, setCopied] = useState(false);
-
-  // Helper function to check if the message contains LaTeX
-  
+  const [copied, setCopied] = useState(false);  
 
   const handleCopy = () => {
     const textToCopy = Array.isArray(message)

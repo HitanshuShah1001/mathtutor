@@ -301,3 +301,11 @@ You are an intelligent assistant designed to analyze student performance data pr
 
 ---
 `;
+
+
+// constants.js
+export const STORAGE_MESSAGES = {
+  SELECT_STANDARD: "Please select a standard before proceeding.",
+  OVERRIDE_CONFIRM: "A record for this standard already exists. Do you want to override it?",
+  CONTINUE_EXISTING: "Continuing with the already stored item."
+};

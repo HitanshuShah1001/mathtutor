@@ -56,7 +56,6 @@ export function ResultAnalyser() {
   async function createThread() {
     try {
       const thread = await openai.beta.threads.create();
-      sessionStorage.setItem(THREAD_ID, thread.id);
       return thread.id;
     } catch (error) {
       console.error(MESSAGE_STATUS.ERROR_CREATE_THREAD, error);
@@ -89,23 +88,27 @@ export function ResultAnalyser() {
   async function getResults(threadId) {
     try {
       setIsLoading(true);
-      
+
       const run = await openai.beta.threads.runs.createAndPoll(threadId, {
         assistant_id: ASSISTANT_ID,
       });
 
       if (run.status === "completed") {
+        setMessages([]);
         const messages = await openai.beta.threads.messages.list(run.thread_id);
         for (const message of messages.data.reverse()) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: message.id,
-              role: ASSISTANT,
-              content: message.content[0].text.value,
-            },
-          ]);
-          console.log(`${message.role} > ${message.content[0].text.value}`);
+          for (let individualMessage of message.content) {
+            if (individualMessage.type === "text") {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: message.id,
+                  role: ASSISTANT,
+                  content: individualMessage.text.value,
+                },
+              ]);
+            }
+          }
         }
       }
     } catch (error) {

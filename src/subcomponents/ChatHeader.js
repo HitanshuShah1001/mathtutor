@@ -22,7 +22,10 @@ export const ChatHeader = ({ title }) => {
       <div className="flex items-center space-x-4">
         {/* Conditionally render the appropriate link */}
         {isQuestionPaperPage ? (
-          <Link to="/report-analyser" className="text-blue-500 hover:underline">
+          <Link
+            to="/select-standard-and-file"
+            className="text-blue-500 hover:underline"
+          >
             Analyse Reports
           </Link>
         ) : (
