@@ -37,19 +37,36 @@ export const SelectStandard = ({ onNext }) => {
           selectedStandard,
           JSON.stringify({
             assistant: assistant.id,
-            thread: newThread.id,
+            thread: newThread,
             file: fileData.id,
           })
         );
-        navigate("/report-analyser");
+        navigate("/report-analyser", {
+          state: {
+            assistant_id: assistant.id,
+            thread_id: newThread,
+            file_id: fileData.id,
+          },
+        });
       }
     };
 
     if (existingData) {
+      const {
+        assistant: assistant_id,
+        thread: thread_id,
+        file: file_id,
+      } = JSON.parse(existingData);
       const override = window.confirm(STORAGE_MESSAGES.OVERRIDE_CONFIRM);
       if (!override) {
         alert(STORAGE_MESSAGES.CONTINUE_EXISTING);
-        navigate("/report-analyser");
+        navigate("/report-analyser", {
+          state: {
+            assistant_id,
+            thread_id,
+            file_id,
+          },
+        });
       } else {
         await saveData(true);
       }

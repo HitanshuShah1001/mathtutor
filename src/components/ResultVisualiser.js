@@ -6,13 +6,8 @@ import { ChatMessage } from "../subcomponents/Chatmessage";
 import { ShowLoading } from "../subcomponents/ShowLoading";
 import { ScrollToBottom } from "../subcomponents/ScrollToBottom";
 import { ChatInput } from "../subcomponents/ChatInput";
-import {
-  ASSISTANT,
-  ASSISTANT_ID,
-  MESSAGE_STATUS,
-  THREAD_ID,
-  USER,
-} from "../constants/constants";
+import { ASSISTANT, MESSAGE_STATUS, USER } from "../constants/constants";
+import { useLocation } from "react-router-dom";
 
 const openai = new OpenAI({
   apiKey: process.env.REACT_APP_OPENAI_API_KEY,
@@ -20,10 +15,12 @@ const openai = new OpenAI({
 });
 
 export function ResultAnalyser() {
+  const location = useLocation();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
+  const threadId = location.state?.thread_id;
+  const assistant_id = location.state?.assistant_id;
   const [isScrolledUp, setIsScrolledUp] = useState(false);
 
   const chatContainerRef = useRef(null);
@@ -53,23 +50,13 @@ export function ResultAnalyser() {
     };
   }, [messages]);
 
-  async function createThread() {
-    try {
-      const thread = await openai.beta.threads.create();
-      return thread.id;
-    } catch (error) {
-      console.error(MESSAGE_STATUS.ERROR_CREATE_THREAD, error);
-      return null;
-    }
-  }
-
-  async function createMessage(threadId, content) {
+  async function createMessage(content) {
     try {
       const message = await openai.beta.threads.messages.create(threadId, {
         role: USER,
         content,
       });
-
+      console.log(message, "message creatd -- step 1");
       setMessages((prev) => [
         ...prev,
         {
@@ -85,16 +72,17 @@ export function ResultAnalyser() {
     }
   }
 
-  async function getResults(threadId) {
+  async function getResults() {
     try {
       setIsLoading(true);
-
+      console.log("In get results", "step 2");
       const run = await openai.beta.threads.runs.createAndPoll(threadId, {
-        assistant_id: ASSISTANT_ID,
+        assistant_id: assistant_id,
       });
-
+      console.log(run, "run -- step 3");
       if (run.status === "completed") {
         setMessages([]);
+        console.log("In get results", "step 4", run);
         const messages = await openai.beta.threads.messages.list(run.thread_id);
         for (const message of messages.data.reverse()) {
           for (let individualMessage of message.content) {
@@ -120,27 +108,9 @@ export function ResultAnalyser() {
 
   async function handleSendMessage() {
     if (!inputMessage.trim()) return;
-
-    let threadId = sessionStorage.getItem(THREAD_ID);
-
-    if (!threadId) {
-      threadId = await createThread();
-      if (!threadId) {
-        return;
-      }
-    }
-
-    await createMessage(threadId, inputMessage.trim());
-
+    await createMessage(inputMessage.trim());
     setInputMessage("");
   }
-
-  useEffect(() => {
-    const existingThreadId = sessionStorage.getItem(THREAD_ID);
-    if (existingThreadId) {
-      console.log("found existing thread");
-    }
-  }, []);
 
   return (
     <MathJaxContext>
