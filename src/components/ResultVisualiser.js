@@ -11,7 +11,7 @@ import { useLocation } from "react-router-dom";
 
 const openai = new OpenAI({
   apiKey: process.env.REACT_APP_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true, // For demos only, not production-safe!
+  dangerouslyAllowBrowser: true,
 });
 
 export function ResultAnalyser() {
@@ -22,7 +22,6 @@ export function ResultAnalyser() {
   const threadId = location.state?.thread_id;
   const assistant_id = location.state?.assistant_id;
   const [isScrolledUp, setIsScrolledUp] = useState(false);
-
   const chatContainerRef = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -56,7 +55,6 @@ export function ResultAnalyser() {
         role: USER,
         content,
       });
-      console.log(message, "message creatd -- step 1");
       setMessages((prev) => [
         ...prev,
         {
@@ -65,7 +63,6 @@ export function ResultAnalyser() {
           content,
         },
       ]);
-
       await getResults(threadId);
     } catch (err) {
       console.error(MESSAGE_STATUS.ERROR_CREATE_MESSAGE, err);
@@ -75,14 +72,11 @@ export function ResultAnalyser() {
   async function getResults() {
     try {
       setIsLoading(true);
-      console.log("In get results", "step 2");
       const run = await openai.beta.threads.runs.createAndPoll(threadId, {
         assistant_id: assistant_id,
       });
-      console.log(run, "run -- step 3");
       if (run.status === "completed") {
         setMessages([]);
-        console.log("In get results", "step 4", run);
         const messages = await openai.beta.threads.messages.list(run.thread_id);
         for (const message of messages.data.reverse()) {
           for (let individualMessage of message.content) {
@@ -98,6 +92,7 @@ export function ResultAnalyser() {
             }
           }
         }
+        scrollToBottom();
       }
     } catch (error) {
       console.error(MESSAGE_STATUS.ERROR_GET_RESULTS, error);
@@ -110,38 +105,58 @@ export function ResultAnalyser() {
     if (!inputMessage.trim()) return;
     await createMessage(inputMessage.trim());
     setInputMessage("");
+    scrollToBottom();
   }
 
   return (
     <MathJaxContext>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-screen">
         <ChatHeader />
+        
+        {/* Messages container with fixed height and scrollable content */}
+        <div className="flex-1 relative">
+          <div 
+            ref={chatContainerRef}
+            className="absolute inset-0 overflow-y-auto bg-white"
+          >
+            {messages?.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message.content}
+                role={message.role}
+                mediaUrl={message.mediaUrl ?? null}
+              />
+            ))}
 
-        <div
-          ref={chatContainerRef}
-          className="flex-1 overflow-y-auto bg-white relative"
-        >
-          {messages?.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message.content}
-              role={message.role}
-              mediaUrl={message.mediaUrl ?? null}
-            />
-          ))}
+            {isLoading && <ShowLoading />}
 
-          {isLoading && <ShowLoading />}
+            <div ref={chatEndRef} />
 
-          <div ref={chatEndRef} />
-
-          <ScrollToBottom
-            isScrolledUp={isScrolledUp}
-            scrollToBottom={scrollToBottom}
-          />
+            {isScrolledUp && (
+              <button
+                onClick={scrollToBottom}
+                className="fixed bottom-24 right-4 p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-colors"
+              >
+                <svg 
+                  className="w-6 h-6" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Fixed input at the bottom */}
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0 }}>
+        {/* Chat input with fixed position at bottom */}
+        <div className="bg-white">
           <ChatInput
             isLoading={isLoading}
             handleSendMessage={handleSendMessage}
