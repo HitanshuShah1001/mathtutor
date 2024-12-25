@@ -84,7 +84,7 @@ export const SelectStandard = ({ onNext }) => {
           <div className="bg-white shadow-2xl rounded-2xl p-8 space-y-6 transition-all duration-300 transform hover:scale-105">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                Select Standard
+                Configure Assistant
               </h2>
             </div>
 
