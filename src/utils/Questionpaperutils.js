@@ -19,6 +19,8 @@ Question Generation Rules:
      - For "DESCRIPTIVE":
        - Create a detailed question that necessitates written explanation or computation.
        - Match the depth and complexity to the marks and difficulty level.
+       - Include a detailed solution or explanation for the question.
+       
 
 4. **Difficulty Level**:
    - Use the difficulty key to adjust complexity:
