@@ -17,6 +17,7 @@ const GenerateQuestionPaper = () => {
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
+  const [configuredMarks, setConfiguredMarks] = useState(0);
 
   // New states for optional descriptive questions and their selected topics
   const [easyDescOptionalCount, setEasyDescOptionalCount] = useState(0);
@@ -26,6 +27,30 @@ const GenerateQuestionPaper = () => {
   const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
+
+  const calculateTotalMarks = useCallback(() => {
+    let total = 0;
+
+    // Calculate marks from all topics
+    Object.values(topicsConfig).forEach((config) => {
+      // MCQ marks (1 mark each)
+      total +=
+        (config.easyMCQs || 0) +
+        (config.mediumMCQs || 0) +
+        (config.hardMCQs || 0);
+
+      // Descriptive question marks
+      if (config.descriptiveQuestionConfig) {
+        config.descriptiveQuestionConfig.forEach((descConfig) => {
+          total +=
+            (parseInt(descConfig.marks) || 0) *
+            (parseInt(descConfig.noOfQuestions) || 0);
+        });
+      }
+    });
+
+    setConfiguredMarks(total);
+  }, [topicsConfig]);
 
   // Initialize state from localStorage
   useEffect(() => {
@@ -56,6 +81,10 @@ const GenerateQuestionPaper = () => {
   useEffect(() => {
     localStorage.setItem("mcqs", mcqs);
   }, [mcqs]);
+
+  useEffect(() => {
+    calculateTotalMarks();
+  }, [topicsConfig, calculateTotalMarks]);
 
   useEffect(() => {
     if (standard && subject) {
@@ -178,9 +207,37 @@ const GenerateQuestionPaper = () => {
     });
   };
 
+  // Update the generate button to be disabled if marks exceed total
+  const isMarksExceeded = configuredMarks > parseInt(marks);
+
+  const MarksConfig = useCallback(() => {
+    return (
+      marks!=="" && (
+        <span
+          style={{
+            color: configuredMarks > parseInt(marks) ? "red" : "green",
+            fontWeight: "bold",
+          }}
+        >
+          Configured Marks: {configuredMarks} / {marks || "?"}
+        </span>
+      )
+    );
+  }, [marks]);
   const RenderTopicSelection = useCallback(() => {
     return (
       <div style={styles.formGroup}>
+        <div style={styles.marksTracker}>
+          <MarksConfig />
+
+          {configuredMarks > parseInt(marks) && (
+            <span
+              style={{ color: "red", fontSize: "0.9em", marginLeft: "8px" }}
+            >
+              (Exceeds total marks!)
+            </span>
+          )}
+        </div>
         <label style={styles.label}>Select Topics</label>
         <div style={styles.topicSelectionContainer}>
           <select
@@ -756,7 +813,11 @@ const GenerateQuestionPaper = () => {
             }
             disabled={!standard || !subject}
           >
-            {isLoading ? "Generating..." : "Generate Question Paper"}
+            {isMarksExceeded
+              ? "Total marks exceeded"
+              : isLoading
+              ? "Generating..."
+              : "Generate Question Paper"}
           </button>
         </div>
       </div>
