@@ -24,8 +24,8 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/verify-otp" element={<VerifyOtp />} />
+            {/* <Route path="/login" element={<LoginPage />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} /> */}
             <Route
               path="/update-user-details"
               element={<UpdateUserDetails />}
@@ -38,24 +38,24 @@ function App() {
             <Route
               path="/question-paper-generation"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <GenerateQuestionPaper />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             />
             <Route
               path="/report-analyser"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <ResultAnalyser />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             />
             <Route
               path="/select-standard-and-file"
               element={<SelectStandard />}
             />
-            <Route
+            {/* <Route
               path="/login"
               element={
                 USER && ACCESS_KEY ? (
@@ -64,7 +64,7 @@ function App() {
                   <Navigate to="/login" replace />
                 )
               }
-            />
+            /> */}
           </Routes>
         </Router>
       </AuthProvider>
