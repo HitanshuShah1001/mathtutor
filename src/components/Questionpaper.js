@@ -18,10 +18,6 @@ const GenerateQuestionPaper = () => {
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
 
-  const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
-  const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
-  const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
-
   const calculateTotalMarks = useCallback(() => {
     let total = 0;
 
@@ -85,15 +81,9 @@ const GenerateQuestionPaper = () => {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
       setTopicsConfig({});
-      setEasyDescOptionalTopics([]);
-      setMediumDescOptionalTopics([]);
-      setHardDescOptionalTopics([]);
     } else {
       setTopics([]);
       setTopicsConfig({});
-      setEasyDescOptionalTopics([]);
-      setMediumDescOptionalTopics([]);
-      setHardDescOptionalTopics([]);
     }
   }, [subject, standard]);
 
@@ -542,14 +532,6 @@ const GenerateQuestionPaper = () => {
             onClick={() =>
               generateQuestionPaper({
                 topicsConfig,
-                standard,
-                subject,
-                marks,
-                mcqs,
-                anyotherQuery,
-                easyDescOptionalTopics,
-                mediumDescOptionalTopics,
-                hardDescOptionalTopics,
                 setIsLoading,
               })
             }
