@@ -20,7 +20,7 @@ export function generateQuestionsArray(inputData) {
         }
       }
     }
-    for (let [_, value] of Object.entries(config)) {
+    for (let [, value] of Object.entries(config)) {
       if (value?.length > 0) {
         for (let val of value) {
           for (let i = 0; i < parseInt(val?.noOfQuestions); i++) {

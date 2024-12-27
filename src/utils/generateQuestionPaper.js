@@ -12,11 +12,9 @@ import { handleGeneratePDFs } from "./generatePdf";
 
 export const generateQuestionPaper = async ({
   setIsLoading,
-  setResponseText,
   topicsConfig,
 }) => {
   try {
-    setResponseText("");
     setIsLoading(true);
     const blueprint = reorderQuestionsByType(
       generateQuestionsArray(topicsConfig)
