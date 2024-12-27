@@ -17,6 +17,7 @@ const GenerateQuestionPaper = () => {
   const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
+  const [configuredMarks, setConfiguredMarks] = useState(0);
 
   // New states for optional descriptive questions and their selected topics
   const [easyDescOptionalCount, setEasyDescOptionalCount] = useState(0);
@@ -26,6 +27,30 @@ const GenerateQuestionPaper = () => {
   const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
   const [hardDescOptionalTopics, setHardDescOptionalTopics] = useState([]);
+
+  const calculateTotalMarks = useCallback(() => {
+    let total = 0;
+
+    // Calculate marks from all topics
+    Object.values(topicsConfig).forEach((config) => {
+      // MCQ marks (1 mark each)
+      total +=
+        (config.easyMCQs || 0) +
+        (config.mediumMCQs || 0) +
+        (config.hardMCQs || 0);
+
+      // Descriptive question marks
+      if (config.descriptiveQuestionConfig) {
+        config.descriptiveQuestionConfig.forEach((descConfig) => {
+          total +=
+            (parseInt(descConfig.marks) || 0) *
+            (parseInt(descConfig.noOfQuestions) || 0);
+        });
+      }
+    });
+
+    setConfiguredMarks(total);
+  }, [topicsConfig]);
 
   // Initialize state from localStorage
   useEffect(() => {
@@ -56,6 +81,10 @@ const GenerateQuestionPaper = () => {
   useEffect(() => {
     localStorage.setItem("mcqs", mcqs);
   }, [mcqs]);
+
+  useEffect(() => {
+    calculateTotalMarks();
+  }, [topicsConfig, calculateTotalMarks]);
 
   useEffect(() => {
     if (standard && subject) {
@@ -178,9 +207,32 @@ const GenerateQuestionPaper = () => {
     });
   };
 
+  // Update the generate button to be disabled if marks exceed total
+  const isMarksExceeded = configuredMarks > parseInt(marks);
+
   const RenderTopicSelection = useCallback(() => {
     return (
       <div style={styles.formGroup}>
+        <div style={styles.marksTracker}>
+          {marks !== "" && (
+            <span
+              style={{
+                color: configuredMarks > parseInt(marks) ? "red" : "green",
+                fontWeight: "bold",
+              }}
+            >
+              Configured Marks: {configuredMarks} / {marks || "?"}
+            </span>
+          )}
+
+          {configuredMarks > parseInt(marks) && (
+            <span
+              style={{ color: "red", fontSize: "0.9em", marginLeft: "8px" }}
+            >
+              (Exceeds total marks!)
+            </span>
+          )}
+        </div>
         <label style={styles.label}>Select Topics</label>
         <div style={styles.topicSelectionContainer}>
           <select
@@ -288,206 +340,6 @@ const GenerateQuestionPaper = () => {
                   placeholder="e.g. 100"
                 />
               </div>
-
-              {/* New fields for optional descriptive questions */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  No. of Easy Descriptive Optional Questions
-                </label>
-                <input
-                  style={styles.input}
-                  value={easyDescOptionalCount}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10) || 0;
-                    setEasyDescOptionalCount(val);
-                    if (val === 0) setEasyDescOptionalTopics([]);
-                    else if (easyDescOptionalTopics.length > val) {
-                      setEasyDescOptionalTopics(
-                        easyDescOptionalTopics.slice(0, val)
-                      );
-                    }
-                  }}
-                />
-                {easyDescOptionalCount > 0 && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>
-                      Select {easyDescOptionalCount} Easy Descriptive Topics
-                    </label>
-                    <select
-                      style={styles.select}
-                      onChange={(e) => {
-                        if (e.target.value)
-                          handleAddEasyDescOptionalTopic(e.target.value);
-                      }}
-                    >
-                      <option value="">Choose a Topic</option>
-                      {topics.map((t, idx) => (
-                        <option
-                          key={idx}
-                          value={t}
-                          disabled={
-                            easyDescOptionalTopics.includes(t) ||
-                            easyDescOptionalTopics.length >=
-                              easyDescOptionalCount
-                          }
-                        >
-                          {t} {easyDescOptionalTopics.includes(t) ? "✓" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {easyDescOptionalTopics.length > 0 && (
-                      <div style={styles.selectedTopicsChips}>
-                        {easyDescOptionalTopics.map((t) => (
-                          <div key={t} style={styles.topicChip}>
-                            {t}
-                            <button
-                              style={styles.chipRemoveButton}
-                              onClick={() =>
-                                handleRemoveEasyDescOptionalTopic(t)
-                              }
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  No. of Medium Descriptive Optional Questions
-                </label>
-                <input
-                  style={styles.input}
-                  value={mediumDescOptionalCount}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10) || 0;
-                    setMediumDescOptionalCount(val);
-                    if (val === 0) setMediumDescOptionalTopics([]);
-                    else if (mediumDescOptionalTopics.length > val) {
-                      setMediumDescOptionalTopics(
-                        mediumDescOptionalTopics.slice(0, val)
-                      );
-                    }
-                  }}
-                />
-                {mediumDescOptionalCount > 0 && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>
-                      Select {mediumDescOptionalCount} Medium Descriptive Topics
-                    </label>
-                    <select
-                      style={styles.select}
-                      onChange={(e) => {
-                        if (e.target.value)
-                          handleAddMediumDescOptionalTopic(e.target.value);
-                      }}
-                    >
-                      <option value="">Choose a Topic</option>
-                      {topics.map((t, idx) => (
-                        <option
-                          key={idx}
-                          value={t}
-                          disabled={
-                            mediumDescOptionalTopics.includes(t) ||
-                            mediumDescOptionalTopics.length >=
-                              mediumDescOptionalCount
-                          }
-                        >
-                          {t} {mediumDescOptionalTopics.includes(t) ? "✓" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {mediumDescOptionalTopics.length > 0 && (
-                      <div style={styles.selectedTopicsChips}>
-                        {mediumDescOptionalTopics.map((t) => (
-                          <div key={t} style={styles.topicChip}>
-                            {t}
-                            <button
-                              style={styles.chipRemoveButton}
-                              onClick={() =>
-                                handleRemoveMediumDescOptionalTopic(t)
-                              }
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  No. of Hard Descriptive Optional Questions
-                </label>
-                <input
-                  style={styles.input}
-                  value={hardDescOptionalCount}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10) || 0;
-                    setHardDescOptionalCount(val);
-                    if (val === 0) setHardDescOptionalTopics([]);
-                    else if (hardDescOptionalTopics.length > val) {
-                      setHardDescOptionalTopics(
-                        hardDescOptionalTopics.slice(0, val)
-                      );
-                    }
-                  }}
-                />
-                {hardDescOptionalCount > 0 && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>
-                      Select {hardDescOptionalCount} Hard Descriptive Topics
-                    </label>
-                    <select
-                      style={styles.select}
-                      onChange={(e) => {
-                        if (e.target.value)
-                          handleAddHardDescOptionalTopic(e.target.value);
-                      }}
-                    >
-                      <option value="">Choose a Topic</option>
-                      {topics.map((t, idx) => (
-                        <option
-                          key={idx}
-                          value={t}
-                          disabled={
-                            hardDescOptionalTopics.includes(t) ||
-                            hardDescOptionalTopics.length >=
-                              hardDescOptionalCount
-                          }
-                        >
-                          {t} {hardDescOptionalTopics.includes(t) ? "✓" : ""}
-                        </option>
-                      ))}
-                    </select>
-                    {hardDescOptionalTopics.length > 0 && (
-                      <div style={styles.selectedTopicsChips}>
-                        {hardDescOptionalTopics.map((t) => (
-                          <div key={t} style={styles.topicChip}>
-                            {t}
-                            <button
-                              style={styles.chipRemoveButton}
-                              onClick={() =>
-                                handleRemoveHardDescOptionalTopic(t)
-                              }
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
               <div style={styles.formGroup}>
                 <label style={styles.label}>Additional Instructions</label>
                 <input
@@ -756,7 +608,11 @@ const GenerateQuestionPaper = () => {
             }
             disabled={!standard || !subject}
           >
-            {isLoading ? "Generating..." : "Generate Question Paper"}
+            {isMarksExceeded
+              ? "Total marks exceeded"
+              : isLoading
+              ? "Generating..."
+              : "Generate Question Paper"}
           </button>
         </div>
       </div>
