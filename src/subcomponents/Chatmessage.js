@@ -66,7 +66,9 @@ export const ChatMessage = ({ message, role, mediaUrl }) => {
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
-            />
+            >
+              {props.children}
+            </a>
           ),
         }}
         className="prose max-w-full"

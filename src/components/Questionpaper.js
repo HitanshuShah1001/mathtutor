@@ -14,15 +14,9 @@ const GenerateQuestionPaper = () => {
   const [title, setTitle] = useState("");
   const [mcqs, setMcqs] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
-  const [responseText, setResponseText] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
-
-  // New states for optional descriptive questions and their selected topics
-  const [easyDescOptionalCount, setEasyDescOptionalCount] = useState(0);
-  const [mediumDescOptionalCount, setMediumDescOptionalCount] = useState(0);
-  const [hardDescOptionalCount, setHardDescOptionalCount] = useState(0);
 
   const [easyDescOptionalTopics, setEasyDescOptionalTopics] = useState([]);
   const [mediumDescOptionalTopics, setMediumDescOptionalTopics] = useState([]);
@@ -147,49 +141,6 @@ const GenerateQuestionPaper = () => {
       const updated = { ...prev[topic], [field]: value };
       return { ...prev, [topic]: updated };
     });
-  };
-
-  // Handlers for adding/removing optional descriptive topics
-  const handleAddEasyDescOptionalTopic = (topic) => {
-    if (
-      topic &&
-      !easyDescOptionalTopics.includes(topic) &&
-      easyDescOptionalTopics.length < easyDescOptionalCount
-    ) {
-      setEasyDescOptionalTopics((prev) => [...prev, topic]);
-    }
-  };
-
-  const handleRemoveEasyDescOptionalTopic = (t) => {
-    setEasyDescOptionalTopics((prev) => prev.filter((x) => x !== t));
-  };
-
-  const handleAddMediumDescOptionalTopic = (topic) => {
-    if (
-      topic &&
-      !mediumDescOptionalTopics.includes(topic) &&
-      mediumDescOptionalTopics.length < mediumDescOptionalCount
-    ) {
-      setMediumDescOptionalTopics((prev) => [...prev, topic]);
-    }
-  };
-
-  const handleRemoveMediumDescOptionalTopic = (t) => {
-    setMediumDescOptionalTopics((prev) => prev.filter((x) => x !== t));
-  };
-
-  const handleAddHardDescOptionalTopic = (topic) => {
-    if (
-      topic &&
-      !hardDescOptionalTopics.includes(topic) &&
-      hardDescOptionalTopics.length < hardDescOptionalCount
-    ) {
-      setHardDescOptionalTopics((prev) => [...prev, topic]);
-    }
-  };
-
-  const handleRemoveHardDescOptionalTopic = (t) => {
-    setHardDescOptionalTopics((prev) => prev.filter((x) => x !== t));
   };
 
   // NEW: Handler to remove a single descriptive config entry
@@ -596,14 +547,10 @@ const GenerateQuestionPaper = () => {
                 marks,
                 mcqs,
                 anyotherQuery,
-                easyDescOptionalCount,
-                mediumDescOptionalCount,
-                hardDescOptionalCount,
                 easyDescOptionalTopics,
                 mediumDescOptionalTopics,
                 hardDescOptionalTopics,
                 setIsLoading,
-                setResponseText,
               })
             }
             disabled={!standard || !subject}
