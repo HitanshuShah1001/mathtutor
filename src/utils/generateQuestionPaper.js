@@ -1,10 +1,10 @@
 import { openai } from "./InitOpenAI";
-import { models, USER } from "../constants/constants";
+import { JSON_SCHEMA, models, USER } from "../constants/constants";
 import {
   GENERATE_USER_PROMPT,
+  generateContent,
   QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA,
   QUESTION_PAPER_SCHEMA,
-  Schema,
   USER_PROMPT_GENERATE_QUESTION_PAPER,
 } from "./Questionpaperutils";
 import {
@@ -21,7 +21,7 @@ export const generateQuestionPaper = async ({ setIsLoading, topicsConfig }) => {
     );
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-2024-08-06",
+      model: models.GPT_4O_2024_11_20,
       messages: [
         {
           role: USER,
@@ -29,15 +29,14 @@ export const generateQuestionPaper = async ({ setIsLoading, topicsConfig }) => {
         },
       ],
       response_format: {
-        type: "json_schema",
+        type: JSON_SCHEMA,
         json_schema: QUESTION_PAPER_SCHEMA,
       },
     });
 
-    const content = response.choices?.[0]?.message?.content || "";
-    console.log(content,"content received");
+    const content = generateContent(response);
     const responseToHtml = await openai.chat.completions.create({
-      model: "gpt-4o-2024-08-06",
+      model: models.GPT_4O_2024_11_20,
       messages: [
         {
           role: USER,
@@ -45,13 +44,12 @@ export const generateQuestionPaper = async ({ setIsLoading, topicsConfig }) => {
         },
       ],
       response_format: {
-        type: "json_schema",
+        type: JSON_SCHEMA,
         json_schema: QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA,
       },
     });
 
-    const contentHTML = responseToHtml.choices?.[0]?.message?.content || "";
-    console.log(contentHTML,"contentHTML received");
+    const contentHTML = generateContent(responseToHtml);
     handleGeneratePDFs(contentHTML);
   } catch (e) {
     console.log("error occurred", e);

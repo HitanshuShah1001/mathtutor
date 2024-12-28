@@ -425,3 +425,9 @@ export const QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA = {
     },
   },
 };
+
+
+
+export function generateContent(response){
+  return response.choices?.[0]?.message?.content || "";
+}
