@@ -23,8 +23,8 @@ function splitIntoTwoDocs(html) {
 }
 
 export async function handleGeneratePDFs(combinedHTML) {
-  const { QuestionPaper, AnswerSheet } = JSON.parse(combinedHTML);
-
+  const { QuestionPaper, AnswerSheet } = combinedHTML;
+  console.log('IN HERE')
   // 2) Create a PDF for the Question Paper
   const questionDoc = new jsPDF({
     unit: "pt", // "pt" = points
@@ -54,4 +54,3 @@ export async function handleGeneratePDFs(combinedHTML) {
   });
   answerDoc.save("AnswerKey.pdf");
 }
-

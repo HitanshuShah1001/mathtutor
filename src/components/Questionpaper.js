@@ -17,6 +17,7 @@ const GenerateQuestionPaper = () => {
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
+  const [responseText, setResponseText] = useState(null);
 
   const calculateTotalMarks = useCallback(() => {
     let total = 0;
@@ -223,6 +224,7 @@ const GenerateQuestionPaper = () => {
     );
   }, [topicsConfig, topics, customTopic]); // Dependencies
 
+  console.log(!isLoading)
   return (
     <div style={styles.pageContainer}>
       <ChatHeader title={"Generate Question Paper"} />
@@ -533,9 +535,10 @@ const GenerateQuestionPaper = () => {
               generateQuestionPaper({
                 topicsConfig,
                 setIsLoading,
+                setResponseText,
               })
             }
-            disabled={!standard || !subject}
+            disabled={!standard || !subject || isLoading || isMarksExceeded}
           >
             {isMarksExceeded
               ? "Total marks exceeded"
@@ -544,6 +547,59 @@ const GenerateQuestionPaper = () => {
               : "Generate Question Paper"}
           </button>
         </div>
+        {responseText && (
+          <div className="w-full space-y-6 mt-8">
+            {/* Question Paper */}
+            <div className="w-full">
+              
+              <div>
+                <div
+                  className="prose max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: responseText.QuestionPaper,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Answer Sheet */}
+            <div className="w-full">
+              
+              <div>
+                <div
+                  className="prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: responseText.AnswerSheet }}
+                />
+              </div>
+            </div>
+
+            {/* Print Buttons */}
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => {
+                  const printWindow = window.open("", "_blank");
+                  printWindow.document.write(responseText.QuestionPaper);
+                  printWindow.document.close();
+                  printWindow.print();
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Print Question Paper
+              </button>
+              <button
+                onClick={() => {
+                  const printWindow = window.open("", "_blank");
+                  printWindow.document.write(responseText.AnswerSheet);
+                  printWindow.document.close();
+                  printWindow.print();
+                }}
+                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+              >
+                Print Answer Sheet
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

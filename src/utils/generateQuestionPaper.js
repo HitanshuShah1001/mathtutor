@@ -13,7 +13,11 @@ import {
 } from "./generateJsonToPassToReceiveJson";
 import { handleGeneratePDFs } from "./generatePdf";
 
-export const generateQuestionPaper = async ({ setIsLoading, topicsConfig }) => {
+export const generateQuestionPaper = async ({
+  setIsLoading,
+  topicsConfig,
+  setResponseText,
+}) => {
   try {
     setIsLoading(true);
     const blueprint = reorderQuestionsByType(
@@ -50,7 +54,10 @@ export const generateQuestionPaper = async ({ setIsLoading, topicsConfig }) => {
     });
 
     const contentHTML = generateContent(responseToHtml);
-    handleGeneratePDFs(contentHTML);
+    const contentHTMLINTOJSON = JSON.parse(contentHTML);
+    setResponseText(contentHTMLINTOJSON);
+    // handleGeneratePDFs(contentHTMLINTOJSON);
+   
   } catch (e) {
     console.log("error occurred", e);
   } finally {
