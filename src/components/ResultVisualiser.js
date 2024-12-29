@@ -71,13 +71,51 @@ export function ResultAnalyser() {
     }
   }
 
+  const fetchInitialMessages = async () => {
+    try {
+      setIsLoading(true);
+      const messages = await openai.beta.threads.messages.list(threadId);
+      // Process and set messages
+      const processedMessages = messages.data.reverse().flatMap((message) =>
+        message.content
+          .map((individualMessage) => {
+            if (individualMessage.type === "text") {
+              return {
+                id: message.id,
+                role: message.role,
+                content: individualMessage.text.value,
+                // attachments: message.file_ids
+                //   ? [{ file_id: message.file_ids[0] }]
+                //   : undefined,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      );
+
+      setMessages(processedMessages);
+    } catch (error) {
+      console.error("Error fetching initial messages:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    if (threadId) {
+      fetchInitialMessages();
+    }
+  }, [threadId]);
+  
   async function getResults() {
     try {
       setIsLoading(true);
       const run = await openai.beta.threads.runs.createAndPoll(threadId, {
         assistant_id: assistant_id,
       });
-      console.log(run,"run in progress")
+      console.log(run, "run in progress");
       if (run.status === "completed") {
         console.log(run, "run");
         setMessages([]);
@@ -90,7 +128,7 @@ export function ResultAnalyser() {
                 ...prev,
                 {
                   id: message.id,
-                  role: ASSISTANT,
+                  role: message.role,
                   content: individualMessage.text.value,
                 },
               ]);

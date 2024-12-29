@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { materialDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { MathJax } from "better-react-mathjax";
+import { ASSISTANT } from "../constants/constants";
 
 export const containsLatex = (text) => {
   const inlineMathRegex = /\\\(.*?\\\)/g;
@@ -13,7 +14,7 @@ export const containsLatex = (text) => {
 };
 
 export const ChatMessage = ({ message, role, mediaUrl }) => {
-  const [copied, setCopied] = useState(false);  
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     const textToCopy = Array.isArray(message)
@@ -89,7 +90,7 @@ export const ChatMessage = ({ message, role, mediaUrl }) => {
         className={`w-10 h-10 shrink-0 mr-4 rounded-full flex items-center justify-center 
         ${role === "USER" ? "bg-blue-500" : "bg-green-500"}`}
       >
-        {role === "USER" ? (
+        {role != ASSISTANT ? (
           <UserIcon className="text-white" size={20} />
         ) : (
           <ActivityIcon className="text-white" size={20} />
@@ -97,7 +98,9 @@ export const ChatMessage = ({ message, role, mediaUrl }) => {
       </div>
 
       {/* Content Section */}
-      <div className="flex-1 min-w-0 pr-12"> {/* Added pr-12 for copy icon space */}
+      <div className="flex-1 min-w-0 pr-12">
+        {" "}
+        {/* Added pr-12 for copy icon space */}
         {mediaUrl && (
           <div className="my-2">
             <img
