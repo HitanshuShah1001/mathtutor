@@ -161,7 +161,7 @@ export function ResultAnalyser() {
 
   return (
     <MathJaxContext>
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen" style={{overflow:'hidden'}}>
         <ChatHeader />
 
         {/* Messages container with fixed height and scrollable content */}
