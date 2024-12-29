@@ -80,7 +80,7 @@ export const ChatInput = ({
           </div>
         )}
 
-        <div className="flex gap-3 items-end bg-white border border-gray-200 rounded-2xl shadow-lg hover:shadow-xl transition-shadow p-2">
+        <div className="flex gap-3 items-end bg-white border border-gray-100 rounded-2xl shadow-lg hover:shadow-xl transition-shadow p-1">
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
