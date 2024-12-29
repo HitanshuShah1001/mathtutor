@@ -1,4 +1,4 @@
-import { SendIcon, XIcon, FileIcon } from "lucide-react"; // or whichever icons you prefer
+import { SendIcon, XIcon, FileIcon } from "lucide-react";
 import { useState, useRef } from "react";
 
 export const ChatInput = ({
@@ -6,12 +6,16 @@ export const ChatInput = ({
   inputMessage,
   isLoading,
   setInputMessage,
+  setChatLevelFileId,
+  chatLevelFileId,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
+
   const uploadFileToOpenAiAndGettingId = async () => {
     const formData = new FormData();
     formData.append("file", selectedFile);
-    formData.append("purpose", "assistants"); // Adjust purpose as needed
+    formData.append("purpose", "assistants");
     try {
       const response = await fetch("https://api.openai.com/v1/files", {
         method: "POST",
@@ -25,25 +29,17 @@ export const ChatInput = ({
         alert(result?.error?.message);
       } else {
         alert("File uploaded successfully!");
-        await sessionStorage.setItem("file_id", result.id);
+        setChatLevelFileId(result.id);
       }
     } catch (error) {
       console.error("Error uploading file to OpenAI:", error);
     }
   };
 
-  const fileInputRef = useRef(null);
-
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-    }
-  };
-
-  const handleFileUploadButtonClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
     }
   };
 
@@ -54,89 +50,90 @@ export const ChatInput = ({
   const handleSend = () => {
     if (selectedFile) {
       uploadFileToOpenAiAndGettingId(selectedFile);
+      handleSendMessage({
+        inputMessage,
+        file_id: chatLevelFileId,
+      });
     } else {
       handleSendMessage({
         inputMessage,
-        file: selectedFile,
       });
     }
-
-    // Reset states
     setInputMessage("");
     setSelectedFile(null);
   };
 
   return (
-    <div className="bg-white p-4 border-t border-gray-200">
-      {selectedFile && (
-        <div className="flex items-center space-x-2 mb-2">
-          <FileIcon size={18} className="text-gray-600" />
-          <span className="text-sm">{selectedFile.name}</span>
-          <button
-            type="button"
-            onClick={handleFileDelete}
-            className="p-1 bg-gray-800 text-white rounded-full hover:bg-gray-700"
-          >
-            <XIcon size={16} />
-          </button>
+    <div className="w-full px-6 pb-6 pt-2 bg-gradient-to-t from-white via-white to-transparent">
+      <div className="w-full">
+        {selectedFile && (
+          <div className="flex items-center gap-3 mb-3 bg-indigo-50 p-3 rounded-xl">
+            <FileIcon size={18} className="text-indigo-600" />
+            <span className="text-sm text-indigo-900 font-medium truncate flex-1">{selectedFile.name}</span>
+            <button
+              type="button"
+              onClick={handleFileDelete}
+              className="p-1.5 hover:bg-indigo-100 rounded-lg transition-colors"
+            >
+              <XIcon size={16} className="text-indigo-600" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-3 items-end bg-white border border-gray-100 rounded-2xl shadow-lg hover:shadow-xl transition-shadow p-1">
+          <textarea
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Type your message..."
+            className="flex-1 p-4 max-h-48 min-h-[56px] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-700 placeholder-gray-400 text-base leading-relaxed"
+            rows={1}
+            disabled={isLoading}
+          />
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.pdf,.txt,.doc,.docx,application/pdf,application/vnd.ms-excel,text/csv"
+            className="hidden"
+            onChange={handleFileUpload}
+            disabled={isLoading}
+          />
+
+          <div className="flex gap-2 px-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              className="p-3 hover:bg-gray-100 rounded-xl transition-colors text-gray-500 hover:text-indigo-600"
+            >
+              <FileIcon size={20} />
+            </button>
+
+            <button
+              onClick={handleSend}
+              disabled={(!inputMessage.trim() && !selectedFile) || isLoading}
+              className={`p-3 rounded-xl transition-all duration-200 flex items-center justify-center min-w-[44px] ${
+                (inputMessage.trim() || selectedFile) && !isLoading
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg hover:shadow-indigo-500/25 hover:-translate-y-0.5"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <SendIcon size={20} />
+            </button>
+          </div>
         </div>
-      )}
 
-      <div className="flex items-center space-x-2">
-        <textarea
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          placeholder="Type a message"
-          className="flex-1 p-2 border rounded-lg resize-none max-h-24 overflow-y-auto"
-          rows={1}
-          disabled={isLoading}
-        />
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="
-            .csv,
-            .pdf,
-            .txt,
-            .doc,
-            .docx,
-            application/pdf,
-            application/vnd.ms-excel,
-            text/csv
-          "
-          style={{ display: "none" }}
-          onChange={handleFileUpload}
-          disabled={isLoading}
-        />
-
-        <button
-          type="button"
-          onClick={handleFileUploadButtonClick}
-          disabled={isLoading}
-          className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600"
-        >
-          Upload
-        </button>
-
-        <button
-          onClick={handleSend}
-          disabled={(!inputMessage.trim() && !selectedFile) || isLoading}
-          className={`p-2 rounded-full transition-colors
-            ${
-              (inputMessage.trim() || selectedFile) && !isLoading
-                ? "bg-blue-500 hover:bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-        >
-          <SendIcon size={20} />
-        </button>
+        <div className="text-left mt-3">
+          <p className="text-xs text-gray-400">
+            Powered by Tutorless AI
+          </p>
+        </div>
       </div>
     </div>
   );

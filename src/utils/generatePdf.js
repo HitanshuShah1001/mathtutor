@@ -22,11 +22,9 @@ function splitIntoTwoDocs(html) {
   return docs;
 }
 
-
 export async function handleGeneratePDFs(combinedHTML) {
-
-  const [questionPaperHTML, answerKeyHTML] = splitIntoTwoDocs(combinedHTML);
-
+  const { QuestionPaper, AnswerSheet } = combinedHTML;
+  console.log('IN HERE')
   // 2) Create a PDF for the Question Paper
   const questionDoc = new jsPDF({
     unit: "pt", // "pt" = points
@@ -34,7 +32,7 @@ export async function handleGeneratePDFs(combinedHTML) {
   });
 
   // .html() is asynchronous in modern jsPDF
-  await questionDoc.html(questionPaperHTML, {
+  await questionDoc.html(QuestionPaper, {
     x: 10,
     y: 10,
     width: 580, // content width in points
@@ -48,7 +46,7 @@ export async function handleGeneratePDFs(combinedHTML) {
     format: "letter",
   });
 
-  await answerDoc.html(answerKeyHTML, {
+  await answerDoc.html(AnswerSheet, {
     x: 10,
     y: 10,
     width: 580,

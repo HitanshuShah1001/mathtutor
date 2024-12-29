@@ -75,8 +75,6 @@ Display the question number, the full answer, and the explanation.
 Use styling for clarity (e.g., bold question numbers, indent explanations).
 This is the json attached ${content}`;
 
-
-
 export const SYSTEM_PROMPT = `You are a highly intelligent assistant tasked with generating question papers in JSON format along with their detailed solutions. Your output must adhere to the following strict guidelines:
 
 Key Instructions:
@@ -332,3 +330,104 @@ export const USER_PROMPT_GENERATE_QUESTION_PAPER = (config) => {
 - That is all. 
 `;
 };
+
+export const QUESTION_PAPER_SCHEMA = {
+  name: "Question_Paper_Schema",
+  schema: {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title: "QuestionPaperSchema",
+    type: "object",
+    properties: {
+      MCQ: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            number: {
+              type: "integer",
+            },
+            question: {
+              type: "string",
+            },
+            options: {
+              type: "object",
+              properties: {
+                A: {
+                  type: "string",
+                },
+                B: {
+                  type: "string",
+                },
+                C: {
+                  type: "string",
+                },
+                D: {
+                  type: "string",
+                },
+              },
+              required: ["A", "B", "C", "D"],
+              additionalProperties: false,
+            },
+            correct_answer: {
+              type: "string",
+              enum: ["A", "B", "C", "D"],
+            },
+            explanation: {
+              type: "string",
+            },
+          },
+          required: [
+            "number",
+            "question",
+            "options",
+            "correct_answer",
+            "explanation",
+          ],
+          additionalProperties: false,
+        },
+      },
+      Descriptive: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            number: {
+              type: "integer",
+            },
+            question: {
+              type: "string",
+            },
+            solution: {
+              type: "string",
+            },
+            explanation: {
+              type: "string",
+            },
+          },
+          required: ["number", "question", "solution", "explanation"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["MCQ", "Descriptive"],
+    additionalProperties: false,
+  },
+};
+
+export const QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA = {
+  name: "Question_Paper_And_Answer_Sheet_Schema",
+  schema: {
+    title: "QuestionPaperAndAnswerSheetSchema",
+    type: "object",
+    properties: {
+      QuestionPaper: { type: "string" },
+      AnswerSheet: { type: "string" },
+    },
+  },
+};
+
+
+
+export function generateContent(response){
+  return response.choices?.[0]?.message?.content || "";
+}

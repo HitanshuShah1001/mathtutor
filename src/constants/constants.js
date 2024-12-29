@@ -309,3 +309,6 @@ export const STORAGE_MESSAGES = {
   OVERRIDE_CONFIRM: "A record for this standard already exists. Do you want to override it?",
   CONTINUE_EXISTING: "Continuing with the already stored item."
 };
+
+
+export const JSON_SCHEMA = "json_schema";

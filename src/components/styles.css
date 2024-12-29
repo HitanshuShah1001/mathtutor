@@ -32,3 +32,7 @@
     text-decoration: underline;
   }
   
+
+  .bottom-24 {
+    bottom: 10rem !important
+  }
