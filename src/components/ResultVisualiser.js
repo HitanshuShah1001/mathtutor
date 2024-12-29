@@ -77,6 +77,7 @@ export function ResultAnalyser() {
       setIsLoading(true);
       const messages = await openai.beta.threads.messages.list(threadId);
       // Process and set messages
+      console.log(messages,"messages that were received")
       const processedMessages = messages.data.reverse().flatMap((message) =>
         message.content
           .map((individualMessage) => {
@@ -94,7 +95,7 @@ export function ResultAnalyser() {
           })
           .filter(Boolean)
       );
-
+      console.log(processedMessages,"prcoessed messages")
       setMessages(processedMessages);
     } catch (error) {
       console.error("Error fetching initial messages:", error);
@@ -108,7 +109,7 @@ export function ResultAnalyser() {
     if (threadId) {
       fetchInitialMessages();
     }
-  }, [threadId]);
+  }, []);
   
   async function getResults() {
     try {
@@ -121,7 +122,6 @@ export function ResultAnalyser() {
         console.log(run, "run");
         setMessages([]);
         const messages = await openai.beta.threads.messages.list(run.thread_id);
-        console.log(messages.data.reverse(), "messages");
         for (const message of messages.data) {
           for (let individualMessage of message.content) {
             if (individualMessage.type === "text") {

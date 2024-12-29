@@ -64,8 +64,8 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pb-6">
-      <div className="w-full px-6">
+    <div className="w-full px-6 pb-6 pt-2 bg-gradient-to-t from-white via-white to-transparent">
+      <div className="w-full">
         {selectedFile && (
           <div className="flex items-center gap-3 mb-3 bg-indigo-50 p-3 rounded-xl">
             <FileIcon size={18} className="text-indigo-600" />
