@@ -6,6 +6,8 @@ export const ChatInput = ({
   inputMessage,
   isLoading,
   setInputMessage,
+  setChatLevelFileId,
+  chatLevelFileId,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const uploadFileToOpenAiAndGettingId = async () => {
@@ -25,7 +27,8 @@ export const ChatInput = ({
         alert(result?.error?.message);
       } else {
         alert("File uploaded successfully!");
-        await sessionStorage.setItem("file_id", result.id);
+        setChatLevelFileId(result.id);
+        // await localStorage.setItem("file_id", result.id);
       }
     } catch (error) {
       console.error("Error uploading file to OpenAI:", error);
@@ -54,10 +57,13 @@ export const ChatInput = ({
   const handleSend = () => {
     if (selectedFile) {
       uploadFileToOpenAiAndGettingId(selectedFile);
+      handleSendMessage({
+        inputMessage,
+        file_id: chatLevelFileId,
+      });
     } else {
       handleSendMessage({
         inputMessage,
-        file: selectedFile,
       });
     }
 
