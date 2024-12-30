@@ -122,7 +122,7 @@ export function ResultAnalyser() {
         console.log(run, "run");
         setMessages([]);
         const messages = await openai.beta.threads.messages.list(run.thread_id);
-        for (const message of messages.data) {
+        for (const message of messages.data.reverse()) {
           for (let individualMessage of message.content) {
             if (individualMessage.type === "text") {
               setMessages((prev) => [
