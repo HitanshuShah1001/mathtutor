@@ -236,7 +236,7 @@ const GenerateQuestionPaper = () => {
         )}
       </div>
     );
-  }, [topicsConfig, topics, customTopic,marks]); // Dependencies
+  }, [topicsConfig, topics, customTopic, marks]); // Dependencies
 
   if (responseText) {
     return (
@@ -379,261 +379,262 @@ const GenerateQuestionPaper = () => {
                 </div>
               </div>
             </div>
+            {marks && (
+              <div style={styles.columnRight}>
+                <div style={styles.card}>
+                  <h2 style={styles.cardTitle}>Topic Configuration</h2>
 
-            <div style={styles.columnRight}>
-              <div style={styles.card}>
-                <h2 style={styles.cardTitle}>Topic Configuration</h2>
+                  {topics.length > 0 && <RenderTopicSelection />}
 
-                {topics.length > 0 && <RenderTopicSelection />}
-
-                {Object.keys(topicsConfig).length > 0 && (
-                  <div style={styles.topicConfigDetails}>
-                    {Object.entries(topicsConfig).map(([topic, config]) => (
-                      <div key={topic} style={styles.topicConfigCard}>
-                        <div style={styles.topicConfigHeader}>
-                          <h3 style={styles.topicConfigTitle}>{topic}</h3>
-                          <button
-                            style={styles.removeTopicButton}
-                            onClick={() => handleRemoveTopic(topic)}
-                          >
-                            Remove
-                          </button>
-                        </div>
-
-                        {/* MCQ Inputs */}
-                        <div style={styles.topicConfigGrid}>
-                          <div style={styles.formGroupInline}>
-                            <label>Easy MCQs</label>
-                            <input
-                              style={styles.inputSmall}
-                              value={config.easyMCQs}
-                              onChange={(e) =>
-                                handleTopicChange(
-                                  topic,
-                                  "easyMCQs",
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                            />
+                  {Object.keys(topicsConfig).length > 0 && (
+                    <div style={styles.topicConfigDetails}>
+                      {Object.entries(topicsConfig).map(([topic, config]) => (
+                        <div key={topic} style={styles.topicConfigCard}>
+                          <div style={styles.topicConfigHeader}>
+                            <h3 style={styles.topicConfigTitle}>{topic}</h3>
+                            <button
+                              style={styles.removeTopicButton}
+                              onClick={() => handleRemoveTopic(topic)}
+                            >
+                              Remove
+                            </button>
                           </div>
-                          <div style={styles.formGroupInline}>
-                            <label>Medium MCQs</label>
-                            <input
-                              style={styles.inputSmall}
-                              value={config.mediumMCQs}
-                              onChange={(e) =>
-                                handleTopicChange(
-                                  topic,
-                                  "mediumMCQs",
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                            />
-                          </div>
-                          <div style={styles.formGroupInline}>
-                            <label>Hard MCQs</label>
-                            <input
-                              style={styles.inputSmall}
-                              value={config.hardMCQs}
-                              onChange={(e) =>
-                                handleTopicChange(
-                                  topic,
-                                  "hardMCQs",
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
 
-                        {/* Descriptive Question Configs */}
-                        {config.descriptiveQuestionConfig &&
-                          config.descriptiveQuestionConfig.length > 0 && (
-                            <div style={styles.descriptiveConfigContainer}>
-                              <h4 style={styles.descriptiveConfigTitle}>
-                                Descriptive Questions
-                              </h4>
-                              {config.descriptiveQuestionConfig.map(
-                                (descConfig, index) => (
-                                  <div
-                                    key={index}
-                                    style={styles.descriptiveConfigRow}
-                                  >
-                                    <div style={styles.descriptiveFieldGroup}>
-                                      <label>Marks</label>
-                                      <input
-                                        style={styles.inputSmall}
-                                        value={descConfig.marks}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setTopicsConfig((prev) => {
-                                            const updatedArray = [
-                                              ...prev[topic]
-                                                .descriptiveQuestionConfig,
-                                            ];
-
-                                            updatedArray[index] = {
-                                              ...updatedArray[index],
-                                              marks: val,
-                                            };
-                                            return {
-                                              ...prev,
-                                              [topic]: {
-                                                ...prev[topic],
-                                                descriptiveQuestionConfig:
-                                                  updatedArray,
-                                              },
-                                            };
-                                          });
-                                        }}
-                                      />
-                                    </div>
-
-                                    <div style={styles.descriptiveFieldGroup}>
-                                      <label>Difficulty</label>
-                                      <select
-                                        style={styles.inputSmall}
-                                        value={descConfig.difficulty}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setTopicsConfig((prev) => {
-                                            const updatedArray = [
-                                              ...prev[topic]
-                                                .descriptiveQuestionConfig,
-                                            ];
-                                            updatedArray[index] = {
-                                              ...updatedArray[index],
-                                              difficulty: val,
-                                            };
-                                            return {
-                                              ...prev,
-                                              [topic]: {
-                                                ...prev[topic],
-                                                descriptiveQuestionConfig:
-                                                  updatedArray,
-                                              },
-                                            };
-                                          });
-                                        }}
-                                      >
-                                        <option value="">
-                                          Select Difficulty
-                                        </option>
-                                        <option value="easy">Easy</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="hard">Hard</option>
-                                      </select>
-                                    </div>
-
-                                    <div style={styles.descriptiveFieldGroup}>
-                                      <label>No. Of Questions</label>
-                                      <input
-                                        style={styles.inputSmall}
-                                        value={descConfig.noOfQuestions}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          const newNoOfQuestions =
-                                            val !== "" ? parseInt(val) : 0;
-                                          if (descConfig?.marks) {
-                                            let oldQuestionTotal =
-                                              descConfig?.noOfQuestions === ""
-                                                ? 0
-                                                : parseInt(
-                                                    descConfig?.noOfQuestions
-                                                  );
-                                            console.log(oldQuestionTotal);
-                                            let oldMarks =
-                                              parseInt(oldQuestionTotal) *
-                                              parseInt(descConfig.marks);
-                                            let newMarksForQuestion =
-                                              parseInt(descConfig.marks) *
-                                              newNoOfQuestions;
-                                            console.log();
-                                            let newMarks =
-                                              configuredMarks -
-                                              oldMarks +
-                                              newMarksForQuestion;
-                                            setConfiguredMarks(newMarks);
-                                          }
-                                          setTopicsConfig((prev) => {
-                                            const updatedArray = [
-                                              ...prev[topic]
-                                                .descriptiveQuestionConfig,
-                                            ];
-                                            updatedArray[index] = {
-                                              ...updatedArray[index],
-                                              noOfQuestions: val,
-                                            };
-                                            return {
-                                              ...prev,
-                                              [topic]: {
-                                                ...prev[topic],
-                                                descriptiveQuestionConfig:
-                                                  updatedArray,
-                                              },
-                                            };
-                                          });
-                                        }}
-                                      />
-                                    </div>
-                                    <div
-                                      style={{
-                                        alignItems: "center",
-                                        flexDirection: "column",
-                                      }}
-                                    >
-                                      <button
-                                        style={styles.chipRemoveButton}
-                                        onClick={() =>
-                                          handleRemoveDescriptiveQuestion(
-                                            topic,
-                                            index
-                                          )
-                                        }
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                    {/* NEW: Remove button for each descriptive config */}
-                                  </div>
-                                )
-                              )}
+                          {/* MCQ Inputs */}
+                          <div style={styles.topicConfigGrid}>
+                            <div style={styles.formGroupInline}>
+                              <label>Easy MCQs</label>
+                              <input
+                                style={styles.inputSmall}
+                                value={config.easyMCQs}
+                                onChange={(e) =>
+                                  handleTopicChange(
+                                    topic,
+                                    "easyMCQs",
+                                    parseInt(e.target.value, 10) || 0
+                                  )
+                                }
+                              />
                             </div>
-                          )}
+                            <div style={styles.formGroupInline}>
+                              <label>Medium MCQs</label>
+                              <input
+                                style={styles.inputSmall}
+                                value={config.mediumMCQs}
+                                onChange={(e) =>
+                                  handleTopicChange(
+                                    topic,
+                                    "mediumMCQs",
+                                    parseInt(e.target.value, 10) || 0
+                                  )
+                                }
+                              />
+                            </div>
+                            <div style={styles.formGroupInline}>
+                              <label>Hard MCQs</label>
+                              <input
+                                style={styles.inputSmall}
+                                value={config.hardMCQs}
+                                onChange={(e) =>
+                                  handleTopicChange(
+                                    topic,
+                                    "hardMCQs",
+                                    parseInt(e.target.value, 10) || 0
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
 
-                        <div style={styles.plusIconContainer}>
-                          <button
-                            style={styles.plusButton}
-                            onClick={() => {
-                              setTopicsConfig((prev) => {
-                                const newDescConfig = [
-                                  ...(prev[topic].descriptiveQuestionConfig ||
-                                    []),
-                                  {
-                                    marks: "",
-                                    difficulty: "",
-                                    noOfQuestions: "",
-                                  },
-                                ];
-                                return {
-                                  ...prev,
-                                  [topic]: {
-                                    ...prev[topic],
-                                    descriptiveQuestionConfig: newDescConfig,
-                                  },
-                                };
-                              });
-                            }}
-                          >
-                            +
-                          </button>
+                          {/* Descriptive Question Configs */}
+                          {config.descriptiveQuestionConfig &&
+                            config.descriptiveQuestionConfig.length > 0 && (
+                              <div style={styles.descriptiveConfigContainer}>
+                                <h4 style={styles.descriptiveConfigTitle}>
+                                  Descriptive Questions
+                                </h4>
+                                {config.descriptiveQuestionConfig.map(
+                                  (descConfig, index) => (
+                                    <div
+                                      key={index}
+                                      style={styles.descriptiveConfigRow}
+                                    >
+                                      <div style={styles.descriptiveFieldGroup}>
+                                        <label>Marks</label>
+                                        <input
+                                          style={styles.inputSmall}
+                                          value={descConfig.marks}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setTopicsConfig((prev) => {
+                                              const updatedArray = [
+                                                ...prev[topic]
+                                                  .descriptiveQuestionConfig,
+                                              ];
+
+                                              updatedArray[index] = {
+                                                ...updatedArray[index],
+                                                marks: val,
+                                              };
+                                              return {
+                                                ...prev,
+                                                [topic]: {
+                                                  ...prev[topic],
+                                                  descriptiveQuestionConfig:
+                                                    updatedArray,
+                                                },
+                                              };
+                                            });
+                                          }}
+                                        />
+                                      </div>
+
+                                      <div style={styles.descriptiveFieldGroup}>
+                                        <label>Difficulty</label>
+                                        <select
+                                          style={styles.inputSmall}
+                                          value={descConfig.difficulty}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setTopicsConfig((prev) => {
+                                              const updatedArray = [
+                                                ...prev[topic]
+                                                  .descriptiveQuestionConfig,
+                                              ];
+                                              updatedArray[index] = {
+                                                ...updatedArray[index],
+                                                difficulty: val,
+                                              };
+                                              return {
+                                                ...prev,
+                                                [topic]: {
+                                                  ...prev[topic],
+                                                  descriptiveQuestionConfig:
+                                                    updatedArray,
+                                                },
+                                              };
+                                            });
+                                          }}
+                                        >
+                                          <option value="">
+                                            Select Difficulty
+                                          </option>
+                                          <option value="easy">Easy</option>
+                                          <option value="medium">Medium</option>
+                                          <option value="hard">Hard</option>
+                                        </select>
+                                      </div>
+
+                                      <div style={styles.descriptiveFieldGroup}>
+                                        <label>No. Of Questions</label>
+                                        <input
+                                          style={styles.inputSmall}
+                                          value={descConfig.noOfQuestions}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            const newNoOfQuestions =
+                                              val !== "" ? parseInt(val) : 0;
+                                            if (descConfig?.marks) {
+                                              let oldQuestionTotal =
+                                                descConfig?.noOfQuestions === ""
+                                                  ? 0
+                                                  : parseInt(
+                                                      descConfig?.noOfQuestions
+                                                    );
+                                              console.log(oldQuestionTotal);
+                                              let oldMarks =
+                                                parseInt(oldQuestionTotal) *
+                                                parseInt(descConfig.marks);
+                                              let newMarksForQuestion =
+                                                parseInt(descConfig.marks) *
+                                                newNoOfQuestions;
+                                              console.log();
+                                              let newMarks =
+                                                configuredMarks -
+                                                oldMarks +
+                                                newMarksForQuestion;
+                                              setConfiguredMarks(newMarks);
+                                            }
+                                            setTopicsConfig((prev) => {
+                                              const updatedArray = [
+                                                ...prev[topic]
+                                                  .descriptiveQuestionConfig,
+                                              ];
+                                              updatedArray[index] = {
+                                                ...updatedArray[index],
+                                                noOfQuestions: val,
+                                              };
+                                              return {
+                                                ...prev,
+                                                [topic]: {
+                                                  ...prev[topic],
+                                                  descriptiveQuestionConfig:
+                                                    updatedArray,
+                                                },
+                                              };
+                                            });
+                                          }}
+                                        />
+                                      </div>
+                                      <div
+                                        style={{
+                                          alignItems: "center",
+                                          flexDirection: "column",
+                                        }}
+                                      >
+                                        <button
+                                          style={styles.chipRemoveButton}
+                                          onClick={() =>
+                                            handleRemoveDescriptiveQuestion(
+                                              topic,
+                                              index
+                                            )
+                                          }
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                      {/* NEW: Remove button for each descriptive config */}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                          <div style={styles.plusIconContainer}>
+                            <button
+                              style={styles.plusButton}
+                              onClick={() => {
+                                setTopicsConfig((prev) => {
+                                  const newDescConfig = [
+                                    ...(prev[topic].descriptiveQuestionConfig ||
+                                      []),
+                                    {
+                                      marks: "",
+                                      difficulty: "",
+                                      noOfQuestions: "",
+                                    },
+                                  ];
+                                  return {
+                                    ...prev,
+                                    [topic]: {
+                                      ...prev[topic],
+                                      descriptiveQuestionConfig: newDescConfig,
+                                    },
+                                  };
+                                });
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div style={styles.actionContainer}>
