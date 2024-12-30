@@ -23,41 +23,35 @@ export const generateQuestionPaper = async ({
     const blueprint = reorderQuestionsByType(
       generateQuestionsArray(topicsConfig)
     );
-
     const response = await openai.chat.completions.create({
-      model: models.GPT_4O_2024_11_20,
+      model: models.O1_MINI,
       messages: [
         {
           role: USER,
           content: GENERATE_USER_PROMPT(JSON.stringify(blueprint)),
         },
       ],
-      response_format: {
-        type: JSON_SCHEMA,
-        json_schema: QUESTION_PAPER_SCHEMA,
-      },
     });
 
     const content = generateContent(response);
     const responseToHtml = await openai.chat.completions.create({
-      model: models.GPT_4O_2024_11_20,
+      model: models.O1_MINI,
       messages: [
         {
           role: USER,
           content: USER_PROMPT_GENERATE_QUESTION_PAPER(content),
         },
       ],
-      response_format: {
-        type: JSON_SCHEMA,
-        json_schema: QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA,
-      },
+      // response_format: {
+      //   type: JSON_SCHEMA,
+      //   json_schema: QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA,
+      // },
     });
 
     const contentHTML = generateContent(responseToHtml);
     const contentHTMLINTOJSON = JSON.parse(contentHTML);
     setResponseText(contentHTMLINTOJSON);
     // handleGeneratePDFs(contentHTMLINTOJSON);
-   
   } catch (e) {
     console.log("error occurred", e);
   } finally {
