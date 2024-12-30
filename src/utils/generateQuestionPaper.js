@@ -31,6 +31,10 @@ export const generateQuestionPaper = async ({
           content: GENERATE_USER_PROMPT(JSON.stringify(blueprint)),
         },
       ],
+      // response_format: {
+      //   type: JSON_SCHEMA,
+      //   json_schema: QUESTION_PAPER_SCHEMA,
+      // },
     });
 
     const content = generateContent(response);
@@ -51,7 +55,7 @@ export const generateQuestionPaper = async ({
     const contentHTML = generateContent(responseToHtml);
     const contentHTMLINTOJSON = JSON.parse(contentHTML);
     setResponseText(contentHTMLINTOJSON);
-    // handleGeneratePDFs(contentHTMLINTOJSON);
+    handleGeneratePDFs(contentHTMLINTOJSON);
   } catch (e) {
     console.log("error occurred", e);
   } finally {
