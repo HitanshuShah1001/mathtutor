@@ -20,30 +20,6 @@ const GenerateQuestionPaper = () => {
   const [configuredMarks, setConfiguredMarks] = useState(0);
   const [responseText, setResponseText] = useState(null);
 
-  const calculateTotalMarks = useCallback(() => {
-    let total = 0;
-
-    // Calculate marks from all topics
-    Object.values(topicsConfig).forEach((config) => {
-      // MCQ marks (1 mark each)
-      total +=
-        (config.easyMCQs || 0) +
-        (config.mediumMCQs || 0) +
-        (config.hardMCQs || 0);
-
-      // Descriptive question marks
-      if (config.descriptiveQuestionConfig) {
-        config.descriptiveQuestionConfig.forEach((descConfig) => {
-          total +=
-            (parseInt(descConfig.marks) || 0) *
-            (parseInt(descConfig.noOfQuestions) || 0);
-        });
-      }
-    });
-
-    setConfiguredMarks(total);
-  }, [topicsConfig]);
-
   // Initialize state from localStorage
   useEffect(() => {
     const savedStandard = localStorage.getItem("standard");
@@ -55,6 +31,7 @@ const GenerateQuestionPaper = () => {
     if (savedSubject) setSubject(savedSubject);
     if (savedTopicsConfig) setTopicsConfig(JSON.parse(savedTopicsConfig));
     if (savedMCQs) setMcqs(savedMCQs);
+    setConfiguredMarks(0);
   }, []);
 
   // Watchers to save state to localStorage
@@ -73,10 +50,6 @@ const GenerateQuestionPaper = () => {
   useEffect(() => {
     localStorage.setItem("mcqs", mcqs);
   }, [mcqs]);
-
-  useEffect(() => {
-    calculateTotalMarks();
-  }, [topicsConfig, calculateTotalMarks]);
 
   useEffect(() => {
     if (standard && subject) {
@@ -129,6 +102,16 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleTopicChange = (topic, field, value) => {
+    let prevConfig = topicsConfig[topic][field] ?? 0;
+    if (prevConfig < value) {
+      const DIFFERENCEINMARKS = value - prevConfig;
+      let newConfiguredMarks = configuredMarks + DIFFERENCEINMARKS;
+      setConfiguredMarks(newConfiguredMarks);
+    } else {
+      const DIFFERENCEINMARKS = prevConfig - value;
+      let newConfiguredMarks = configuredMarks - DIFFERENCEINMARKS;
+      setConfiguredMarks(newConfiguredMarks);
+    }
     setTopicsConfig((prev) => {
       const updated = { ...prev[topic], [field]: value };
       return { ...prev, [topic]: updated };
@@ -137,6 +120,15 @@ const GenerateQuestionPaper = () => {
 
   // NEW: Handler to remove a single descriptive config entry
   const handleRemoveDescriptiveQuestion = (topic, index) => {
+    console.log(topicsConfig[topic].descriptiveQuestionConfig, "topic");
+    let config = topicsConfig[topic].descriptiveQuestionConfig;
+    let marks = config[index].marks;
+    let noOfQuestions = config[index].noOfQuestions;
+    if (marks !== "" && noOfQuestions !== "") {
+      let newUpdatedMarks =
+        configuredMarks - parseInt(marks) * parseInt(noOfQuestions);
+      setConfiguredMarks(newUpdatedMarks);
+    }
     setTopicsConfig((prev) => {
       const updatedArray = [...prev[topic].descriptiveQuestionConfig];
       updatedArray.splice(index, 1);
@@ -177,16 +169,14 @@ const GenerateQuestionPaper = () => {
     return (
       <div style={styles.formGroup}>
         <div style={styles.marksTracker}>
-          {marks !== "" && (
-            <span
-              style={{
-                color: configuredMarks > parseInt(marks) ? "red" : "green",
-                fontWeight: "bold",
-              }}
-            >
-              Configured Marks: {configuredMarks} / {marks || "?"}
-            </span>
-          )}
+          <span
+            style={{
+              color: configuredMarks > parseInt(marks) ? "red" : "green",
+              fontWeight: "bold",
+            }}
+          >
+            Configured Marks: {configuredMarks}
+          </span>
 
           {configuredMarks > parseInt(marks) && (
             <span
@@ -478,6 +468,7 @@ const GenerateQuestionPaper = () => {
                                               ...prev[topic]
                                                 .descriptiveQuestionConfig,
                                             ];
+
                                             updatedArray[index] = {
                                               ...updatedArray[index],
                                               marks: val,
@@ -538,6 +529,29 @@ const GenerateQuestionPaper = () => {
                                         value={descConfig.noOfQuestions}
                                         onChange={(e) => {
                                           const val = e.target.value;
+                                          const newNoOfQuestions =
+                                            val !== "" ? parseInt(val) : 0;
+                                          if (descConfig?.marks) {
+                                            let oldQuestionTotal =
+                                              descConfig?.noOfQuestions === ""
+                                                ? 0
+                                                : parseInt(
+                                                    descConfig?.noOfQuestions
+                                                  );
+                                            console.log(oldQuestionTotal);
+                                            let oldMarks =
+                                              parseInt(oldQuestionTotal) *
+                                              parseInt(descConfig.marks);
+                                            let newMarksForQuestion =
+                                              parseInt(descConfig.marks) *
+                                              newNoOfQuestions;
+                                            console.log();
+                                            let newMarks =
+                                              configuredMarks -
+                                              oldMarks +
+                                              newMarksForQuestion;
+                                            setConfiguredMarks(newMarks);
+                                          }
                                           setTopicsConfig((prev) => {
                                             const updatedArray = [
                                               ...prev[topic]
