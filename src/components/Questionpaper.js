@@ -166,6 +166,9 @@ const GenerateQuestionPaper = () => {
   };
 
   const RenderTopicSelection = useCallback(() => {
+    let renderContent = marks
+      ? `${configuredMarks} / ${marks}`
+      : configuredMarks;
     return (
       <div style={styles.formGroup}>
         <div style={styles.marksTracker}>
@@ -175,7 +178,7 @@ const GenerateQuestionPaper = () => {
               fontWeight: "bold",
             }}
           >
-            Configured Marks: {configuredMarks}
+            Configured Marks: {renderContent}
           </span>
 
           {configuredMarks > parseInt(marks) && (
@@ -233,7 +236,7 @@ const GenerateQuestionPaper = () => {
         )}
       </div>
     );
-  }, [topicsConfig, topics, customTopic]); // Dependencies
+  }, [topicsConfig, topics, customTopic,marks]); // Dependencies
 
   if (responseText) {
     return (
