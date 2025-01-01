@@ -7,6 +7,8 @@ import { generateQuestionPaper } from "../utils/generateQuestionPaper";
 import { Download } from "lucide-react";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import { putRequest } from "../utils/ApiCall";
+import { Blueprintmodal, modalStyles } from "./BlueprintModal";
+
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -21,6 +23,15 @@ const GenerateQuestionPaper = () => {
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
   const [responseText, setResponseText] = useState(null);
+
+  // New States for Modal and Blueprints
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [blueprints, setBlueprints] = useState([]);
+  const [isLoadingBlueprints, setIsLoadingBlueprints] = useState(false);
+  const [blueprintError, setBlueprintError] = useState("");
+  const [cursor, setCursor] = useState(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const limit = 5; // Number of blueprints per page
 
   // Initialize state from localStorage
   useEffect(() => {
@@ -201,6 +212,7 @@ const GenerateQuestionPaper = () => {
       alert("Blueprint saved successfully");
     }
   };
+
   const RenderTopicSelection = useCallback(() => {
     let renderContent = marks
       ? `${configuredMarks} / ${marks}`
@@ -273,6 +285,88 @@ const GenerateQuestionPaper = () => {
       </div>
     );
   }, [topicsConfig, topics, customTopic, marks]); // Dependencies
+
+  // NEW: Function to fetch blueprints
+  const fetchBlueprints = async () => {
+    setIsLoadingBlueprints(true);
+    setBlueprintError("");
+    try {
+      const url = new URL(
+        `${BASE_URL_API}/blueprint/getPaginatedBlueprints`
+      );
+      url.searchParams.append("limit", 100);
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBlueprints(data.blueprints);
+        setHasNextPage(data.hasNextPage);
+        setCursor(data.nextCursor);
+      } else {
+        setBlueprintError(data.message || "Failed to fetch blueprints.");
+      }
+    } catch (error) {
+      console.error("Error fetching blueprints:", error);
+      setBlueprintError("An error occurred while fetching blueprints.");
+    } finally {
+      setIsLoadingBlueprints(false);
+    }
+  };
+
+  // NEW: Handler to open modal and fetch blueprints
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    fetchBlueprints();
+  };
+
+  // NEW: Handler to load a blueprint into the form
+  const handleLoadBlueprint = (blueprint) => {
+    setTitle(blueprint.name);
+    setStandard(blueprint.grade.toString());
+    setSubject(blueprint.subject);
+    setMarks(blueprint.totalMarks.toString());
+
+    // Reset topicsConfig
+    const newTopicsConfig = {};
+    blueprint.breakdown.forEach((topic) => {
+      newTopicsConfig[topic.topic] = {
+        easyMCQs: topic.easyMCQs,
+        mediumMCQs: topic.mediumMCQs,
+        hardMCQs: topic.hardMCQs,
+        mcqMarks: topic.mcqMarks,
+        descriptiveQuestionConfig: topic.descriptiveQuestionConfig.map(
+          (desc) => ({
+            marks: desc.marks.toString(),
+            difficulty: desc.difficulty,
+            noOfQuestions: desc.noOfQuestions.toString(),
+          })
+        ),
+      };
+    });
+    setTopicsConfig(newTopicsConfig);
+    setConfiguredMarks(0);
+
+    // Calculate configuredMarks
+    let totalConfiguredMarks = 0;
+    blueprint.breakdown.forEach((topic) => {
+      totalConfiguredMarks +=
+        (topic.easyMCQs + topic.mediumMCQs + topic.hardMCQs) *
+        topic.mcqMarks;
+      topic.descriptiveQuestionConfig.forEach((desc) => {
+        totalConfiguredMarks += desc.marks * desc.noOfQuestions;
+      });
+    });
+    setConfiguredMarks(totalConfiguredMarks);
+
+    // Close modal
+    setIsModalOpen(false);
+  };
 
   if (responseText) {
     return (
@@ -347,7 +441,83 @@ const GenerateQuestionPaper = () => {
   } else {
     return (
       <div style={styles.pageContainer}>
+        {/* NEW: Load Blueprint Button */}
+        <div style={{ marginBottom: "20px", textAlign: "right" }}>
+          <button
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#f0ad4e",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+            onClick={handleOpenModal}
+          >
+            Load from existing blueprint
+          </button>
+        </div>
+
         <ChatHeader title={"Generate Question Paper"} />
+
+        {/* Modal for Blueprints */}
+        <Blueprintmodal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+          <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
+          {isLoadingBlueprints ? (
+            <p>Loading blueprints...</p>
+          ) : blueprintError ? (
+            <p style={{ color: "red" }}>{blueprintError}</p>
+          ) : blueprints.length === 0 ? (
+            <p>No blueprints found.</p>
+          ) : (
+            <div>
+              {blueprints.map((bp) => (
+                <div key={bp.id} style={modalStyles.blueprintItem}>
+                  <div style={modalStyles.blueprintHeader}>
+                    <div>
+                      <h3>{bp.name}</h3>
+                      <p>
+                        Grade: {bp.grade} | Subject: {bp.subject} | Total Marks:{" "}
+                        {bp.totalMarks}
+                      </p>
+                      <p>
+                        Created At:{" "}
+                        {new Date(bp.createdAt).toLocaleDateString("en-GB")}
+                      </p>
+                    </div>
+                    <button
+                      style={modalStyles.loadButton}
+                      onClick={() => handleLoadBlueprint(bp)}
+                    >
+                      Load
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {/* Pagination Controls */}
+              <div style={modalStyles.pagination}>
+                <button
+                  style={modalStyles.paginationButton}
+                  onClick={() => {
+                    // Implement cursor-based pagination if needed
+                    // For example, fetchBlueprints with previous cursor
+                    // This is a placeholder
+                  }}
+                >
+                  Previous
+                </button>
+                <button
+                  style={modalStyles.paginationButton}
+                  onClick={() => fetchBlueprints(cursor)}
+                  disabled={!hasNextPage}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </Blueprintmodal>
+
         <div style={styles.container}>
           <div style={styles.formContainer}>
             <div style={styles.columnLeft}>
@@ -442,6 +612,8 @@ const GenerateQuestionPaper = () => {
                               <label>Easy MCQs</label>
                               <input
                                 style={styles.inputSmall}
+                                type="number"
+                                min="0"
                                 value={config.easyMCQs}
                                 onChange={(e) =>
                                   handleTopicChange(
@@ -456,6 +628,8 @@ const GenerateQuestionPaper = () => {
                               <label>Medium MCQs</label>
                               <input
                                 style={styles.inputSmall}
+                                type="number"
+                                min="0"
                                 value={config.mediumMCQs}
                                 onChange={(e) =>
                                   handleTopicChange(
@@ -470,6 +644,8 @@ const GenerateQuestionPaper = () => {
                               <label>Hard MCQs</label>
                               <input
                                 style={styles.inputSmall}
+                                type="number"
+                                min="0"
                                 value={config.hardMCQs}
                                 onChange={(e) =>
                                   handleTopicChange(
@@ -499,6 +675,8 @@ const GenerateQuestionPaper = () => {
                                         <label>Marks</label>
                                         <input
                                           style={styles.inputSmall}
+                                          type="number"
+                                          min="0"
                                           value={descConfig.marks}
                                           onChange={(e) => {
                                             const val = e.target.value;
@@ -569,7 +747,9 @@ const GenerateQuestionPaper = () => {
                                           onChange={(e) => {
                                             const val = e.target.value;
                                             const newNoOfQuestions =
-                                              val !== "" ? parseInt(val) : 0;
+                                              val !== ""
+                                                ? parseInt(val)
+                                                : 0;
                                             if (descConfig?.marks) {
                                               let oldQuestionTotal =
                                                 descConfig?.noOfQuestions === ""
@@ -683,7 +863,15 @@ const GenerateQuestionPaper = () => {
                   setResponseText,
                 })
               }
-              disabled={!standard || !subject || isLoading || isMarksExceeded}
+              disabled={
+                !standard ||
+                !subject ||
+                isLoading ||
+                isMarksExceeded ||
+                !title ||
+                !marks ||
+                configuredMarks !== parseInt(marks)
+              }
             >
               {isMarksExceeded
                 ? "Total marks exceeded"
