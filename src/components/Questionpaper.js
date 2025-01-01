@@ -5,6 +5,9 @@ import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { generateQuestionPaper } from "../utils/generateQuestionPaper";
 import { Download } from "lucide-react";
+import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
+import { putRequest } from "../utils/ApiCall";
+import { Blueprintmodal, modalStyles } from "./BlueprintModal";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -20,6 +23,16 @@ const GenerateQuestionPaper = () => {
   const [configuredMarks, setConfiguredMarks] = useState(0);
   const [responseText, setResponseText] = useState(null);
 
+  // New States for Modal and Blueprints
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [blueprints, setBlueprints] = useState([]);
+  const [isLoadingBlueprints, setIsLoadingBlueprints] = useState(false);
+  const [blueprintError, setBlueprintError] = useState("");
+  const [cursor, setCursor] = useState(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasLoadedBlueprint, setHasLoadedBlueprint] = useState(false);
+  const [bluePrintId, setBluePrintId] = useState(null);
+
   // Initialize state from localStorage
   useEffect(() => {
     const savedStandard = localStorage.getItem("standard");
@@ -31,7 +44,6 @@ const GenerateQuestionPaper = () => {
     if (savedSubject) setSubject(savedSubject);
     if (savedTopicsConfig) setTopicsConfig(JSON.parse(savedTopicsConfig));
     if (savedMCQs) setMcqs(savedMCQs);
-    setConfiguredMarks(0);
   }, []);
 
   // Watchers to save state to localStorage
@@ -55,12 +67,18 @@ const GenerateQuestionPaper = () => {
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
-      setTopicsConfig({});
+
+      // Only reset if you haven't loaded a blueprint.
+      if (!hasLoadedBlueprint) {
+        setTopicsConfig({});
+      }
     } else {
       setTopics([]);
-      setTopicsConfig({});
+      if (!hasLoadedBlueprint) {
+        setTopicsConfig({});
+      }
     }
-  }, [subject, standard]);
+  }, [subject, standard, hasLoadedBlueprint]);
 
   const addTopic = (topic) => {
     setTopicsConfig((prev) => {
@@ -120,7 +138,6 @@ const GenerateQuestionPaper = () => {
 
   // NEW: Handler to remove a single descriptive config entry
   const handleRemoveDescriptiveQuestion = (topic, index) => {
-    console.log(topicsConfig[topic].descriptiveQuestionConfig, "topic");
     let config = topicsConfig[topic].descriptiveQuestionConfig;
     let marks = config[index].marks;
     let noOfQuestions = config[index].noOfQuestions;
@@ -163,6 +180,57 @@ const GenerateQuestionPaper = () => {
       printWindow.print();
       printWindow.close();
     }, 250);
+  };
+
+  function convertToBluePrintCompatibleFormat() {
+    let blueprint = {
+      name: title,
+      grade: parseInt(standard),
+      subject,
+      totalMarks: parseInt(marks),
+    };
+    let breakdown = [];
+    for (let key of Object.keys(topicsConfig)) {
+      let obj = {};
+      obj = { topic: key, ...topicsConfig[key] };
+      breakdown.push(obj);
+    }
+    blueprint.breakdown = breakdown;
+    return blueprint;
+  }
+
+  const saveBlueprint = async () => {
+    let blueprint = convertToBluePrintCompatibleFormat();
+    const res = await putRequest(
+      `${BASE_URL_API}/blueprint/create`,
+      {
+        Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+        "Content-Type": "application/json",
+      },
+      { blueprint }
+    );
+    if (!res.success) {
+      alert(res.message ?? "Some Error Occured");
+    } else {
+      alert("Blueprint saved successfully");
+    }
+  };
+
+  const updateBlueprint = async () => {
+    let blueprint = convertToBluePrintCompatibleFormat();
+    const res = await putRequest(
+      `${BASE_URL_API}/blueprint/update`,
+      {
+        Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+        "Content-Type": "application/json",
+      },
+      { id: bluePrintId, blueprint }
+    );
+    if (!res.success) {
+      alert(res.message ?? "Some Error Occured");
+    } else {
+      alert("Blueprint updated successfully");
+    }
   };
 
   const RenderTopicSelection = useCallback(() => {
@@ -238,6 +306,87 @@ const GenerateQuestionPaper = () => {
     );
   }, [topicsConfig, topics, customTopic, marks]); // Dependencies
 
+  // NEW: Function to fetch blueprints
+  const fetchBlueprints = async () => {
+    setIsLoadingBlueprints(true);
+    setBlueprintError("");
+    try {
+      const url = new URL(`${BASE_URL_API}/blueprint/getPaginatedBlueprints`);
+      url.searchParams.append("limit", 100);
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBlueprints(data.blueprints);
+        setHasNextPage(data.hasNextPage);
+        setCursor(data.nextCursor);
+      } else {
+        setBlueprintError(data.message || "Failed to fetch blueprints.");
+      }
+    } catch (error) {
+      console.error("Error fetching blueprints:", error);
+      setBlueprintError("An error occurred while fetching blueprints.");
+    } finally {
+      setIsLoadingBlueprints(false);
+    }
+  };
+
+  // NEW: Handler to open modal and fetch blueprints
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+    fetchBlueprints();
+  };
+
+  // NEW: Handler to load a blueprint into the form
+  const handleLoadBlueprint = (blueprint) => {
+    setBluePrintId(blueprint.id);
+    setHasLoadedBlueprint(true);
+    setTitle(blueprint.name);
+    setStandard(blueprint.grade.toString());
+    setSubject(blueprint.subject);
+    setMarks(blueprint.totalMarks.toString());
+
+    // Reset topicsConfig
+    const newTopicsConfig = {};
+    blueprint.breakdown.forEach((topic) => {
+      newTopicsConfig[topic.topic] = {
+        easyMCQs: topic.easyMCQs,
+        mediumMCQs: topic.mediumMCQs,
+        hardMCQs: topic.hardMCQs,
+        mcqMarks: topic.mcqMarks,
+        descriptiveQuestionConfig: topic.descriptiveQuestionConfig.map(
+          (desc) => ({
+            marks: desc.marks.toString(),
+            difficulty: desc.difficulty,
+            noOfQuestions: desc.noOfQuestions.toString(),
+          })
+        ),
+      };
+    });
+    setTopicsConfig(newTopicsConfig);
+    setConfiguredMarks(0);
+
+    // Calculate configuredMarks
+    let totalConfiguredMarks = 0;
+    blueprint.breakdown.forEach((topic) => {
+      totalConfiguredMarks +=
+        (topic.easyMCQs + topic.mediumMCQs + topic.hardMCQs) * topic.mcqMarks;
+      topic.descriptiveQuestionConfig.forEach((desc) => {
+        totalConfiguredMarks += desc.marks * desc.noOfQuestions;
+      });
+    });
+    setConfiguredMarks(totalConfiguredMarks);
+
+    // Close modal
+    setIsModalOpen(false);
+  };
+
   if (responseText) {
     return (
       <div className="w-full space-y-6 mt-8">
@@ -311,7 +460,86 @@ const GenerateQuestionPaper = () => {
   } else {
     return (
       <div style={styles.pageContainer}>
+        {/* NEW: Load Blueprint Button */}
+        <div style={{ marginBottom: "20px", textAlign: "right" }}>
+          <button
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#f0ad4e",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+            onClick={handleOpenModal}
+          >
+            Load from existing blueprint
+          </button>
+        </div>
+
         <ChatHeader title={"Generate Question Paper"} />
+
+        {/* Modal for Blueprints */}
+        <Blueprintmodal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        >
+          <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
+          {isLoadingBlueprints ? (
+            <p>Loading blueprints...</p>
+          ) : blueprintError ? (
+            <p style={{ color: "red" }}>{blueprintError}</p>
+          ) : blueprints.length === 0 ? (
+            <p>No blueprints found.</p>
+          ) : (
+            <div>
+              {blueprints.map((bp) => (
+                <div key={bp.id} style={modalStyles.blueprintItem}>
+                  <div style={modalStyles.blueprintHeader}>
+                    <div>
+                      <h3>{bp.name}</h3>
+                      <p>
+                        Grade: {bp.grade} | Subject: {bp.subject} | Total Marks:{" "}
+                        {bp.totalMarks}
+                      </p>
+                      <p>
+                        Created At:{" "}
+                        {new Date(bp.createdAt).toLocaleDateString("en-GB")}
+                      </p>
+                    </div>
+                    <button
+                      style={modalStyles.loadButton}
+                      onClick={() => handleLoadBlueprint(bp)}
+                    >
+                      Load
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {/* Pagination Controls */}
+              <div style={modalStyles.pagination}>
+                <button
+                  style={modalStyles.paginationButton}
+                  onClick={() => {
+                    // Implement cursor-based pagination if needed
+                    // For example, fetchBlueprints with previous cursor
+                    // This is a placeholder
+                  }}
+                >
+                  Previous
+                </button>
+                <button
+                  style={modalStyles.paginationButton}
+                  onClick={() => fetchBlueprints(cursor)}
+                  disabled={!hasNextPage}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </Blueprintmodal>
+
         <div style={styles.container}>
           <div style={styles.formContainer}>
             <div style={styles.columnLeft}>
@@ -332,7 +560,10 @@ const GenerateQuestionPaper = () => {
                   <select
                     style={styles.select}
                     value={standard}
-                    onChange={(e) => setStandard(e.target.value)}
+                    onChange={(e) => {
+                      setHasLoadedBlueprint(false);
+                      setStandard(e.target.value);
+                    }}
                   >
                     <option value="">Select Standard</option>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
@@ -349,11 +580,14 @@ const GenerateQuestionPaper = () => {
                   <select
                     style={styles.select}
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    onChange={(e) => {
+                      setHasLoadedBlueprint(false);
+                      setSubject(e.target.value);
+                    }}
                   >
                     <option value="">Select Subject</option>
-                    <option value="science">Science</option>
-                    <option value="maths">Maths</option>
+                    <option value="Science">Science</option>
+                    <option value="Maths">Maths</option>
                   </select>
                 </div>
 
@@ -463,6 +697,8 @@ const GenerateQuestionPaper = () => {
                                         <label>Marks</label>
                                         <input
                                           style={styles.inputSmall}
+                                          type="number"
+                                          min="0"
                                           value={descConfig.marks}
                                           onChange={(e) => {
                                             const val = e.target.value;
@@ -541,14 +777,12 @@ const GenerateQuestionPaper = () => {
                                                   : parseInt(
                                                       descConfig?.noOfQuestions
                                                     );
-                                              console.log(oldQuestionTotal);
                                               let oldMarks =
                                                 parseInt(oldQuestionTotal) *
                                                 parseInt(descConfig.marks);
                                               let newMarksForQuestion =
                                                 parseInt(descConfig.marks) *
                                                 newNoOfQuestions;
-                                              console.log();
                                               let newMarks =
                                                 configuredMarks -
                                                 oldMarks +
@@ -647,13 +881,36 @@ const GenerateQuestionPaper = () => {
                   setResponseText,
                 })
               }
-              disabled={!standard || !subject || isLoading || isMarksExceeded}
+              disabled={
+                !standard ||
+                !subject ||
+                isLoading ||
+                isMarksExceeded ||
+                !title ||
+                !marks ||
+                configuredMarks !== parseInt(marks)
+              }
             >
               {isMarksExceeded
                 ? "Total marks exceeded"
                 : isLoading
                 ? "Generating..."
                 : "Generate Question Paper"}
+            </button>
+            <button
+              style={styles.blueprintButton}
+              onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
+              disabled={
+                !standard ||
+                !subject ||
+                isLoading ||
+                isMarksExceeded ||
+                !title ||
+                !marks ||
+                configuredMarks !== parseInt(marks)
+              }
+            >
+              {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
             </button>
           </div>
         </div>

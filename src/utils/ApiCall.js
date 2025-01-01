@@ -74,7 +74,7 @@ export const postRequest = async (url, headers = {}, body = {}) => {
 // Function to make PUT requests
 export const putRequest = async (url, headers = {}, body = {}) => {
   const myHeaders = new Headers();
-
+  
   // Append Authorization if present
   if (headers.Authorization) {
     myHeaders.append("Authorization", headers.Authorization);

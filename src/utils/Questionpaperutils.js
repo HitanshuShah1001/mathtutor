@@ -317,6 +317,9 @@ export const USER_PROMPT_GENERATE_QUESTION_PAPER = (config) => {
        - The question number and text.
        - The **correct answer** (e.g., "Correct answer: B").
        - The **explanation** (if any) from the JSON ("Explanation: ...").
+  
+  - All the mcqs and descriptive questions given in the input below should be in the html document.
+  - **Return a json object with QuestionPaper and AnswerSheet as the key and the html documents as their values respectively.
 
 2. Make sure the HTML is neatly formatted and self-contained. Return these two HTML documents one after the other in your response, with **no additional explanation**, **no code fences**, and **no markup** beyond the HTML itself.
 3. Convert **all** LaTeX expressions (e.g., \\( ... \\), \\[ ... \\]) into suitable **MathML** (or HTML that clearly formats subscripts, superscripts, fractions, etc.) so we can generate a PDF directly from the HTML. Do **not** rely on external libraries like MathJax. 
