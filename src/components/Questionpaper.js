@@ -5,6 +5,8 @@ import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { generateQuestionPaper } from "../utils/generateQuestionPaper";
 import { Download } from "lucide-react";
+import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
+import { putRequest } from "../utils/ApiCall";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -165,6 +167,40 @@ const GenerateQuestionPaper = () => {
     }, 250);
   };
 
+  function convertToBluePrintCompatibleFormat() {
+    let blueprint = {
+      grade: standard,
+      subject,
+      totalMarks: marks,
+      name: title,
+    };
+    let breakdown = [];
+    for (let key of Object.keys(topicsConfig)) {
+      let obj = {};
+      obj = { topic: key, ...topicsConfig[key] };
+      breakdown.push(obj);
+    }
+    blueprint.breakdown = breakdown;
+    return blueprint;
+  }
+
+  const saveBlueprint = async () => {
+    let blueprint = convertToBluePrintCompatibleFormat();
+    console.log(blueprint, "blueprint");
+    const res = await putRequest(
+      `${BASE_URL_API}/blueprint/create`,
+      {
+        Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+        "Content-Type": "application/json",
+      },
+      { blueprint }
+    );
+    if (!res.success) {
+      alert(res.message ?? "Some Error Occured");
+    } else {
+      alert("Blueprint saved successfully");
+    }
+  };
   const RenderTopicSelection = useCallback(() => {
     let renderContent = marks
       ? `${configuredMarks} / ${marks}`
@@ -657,16 +693,18 @@ const GenerateQuestionPaper = () => {
             </button>
             <button
               style={styles.blueprintButton}
-              onClick={() =>
-                generateQuestionPaper({
-                  topicsConfig,
-                  setIsLoading,
-                  setResponseText,
-                })
+              onClick={saveBlueprint}
+              disabled={
+                !standard ||
+                !subject ||
+                isLoading ||
+                isMarksExceeded ||
+                !title ||
+                !marks ||
+                configuredMarks !== parseInt(marks)
               }
-              disabled={!standard || !subject || isLoading || isMarksExceeded}
             >
-            Save BluePrint
+              Save BluePrint
             </button>
           </div>
         </div>
