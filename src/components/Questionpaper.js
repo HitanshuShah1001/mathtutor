@@ -9,7 +9,6 @@ import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import { putRequest } from "../utils/ApiCall";
 import { Blueprintmodal, modalStyles } from "./BlueprintModal";
 
-
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
   const [subject, setSubject] = useState("");
@@ -32,7 +31,7 @@ const GenerateQuestionPaper = () => {
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasLoadedBlueprint, setHasLoadedBlueprint] = useState(false);
-
+  const [bluePrintId, setBluePrintId] = useState(null);
 
   // Initialize state from localStorage
   useEffect(() => {
@@ -45,7 +44,6 @@ const GenerateQuestionPaper = () => {
     if (savedSubject) setSubject(savedSubject);
     if (savedTopicsConfig) setTopicsConfig(JSON.parse(savedTopicsConfig));
     if (savedMCQs) setMcqs(savedMCQs);
-    setConfiguredMarks(0);
   }, []);
 
   // Watchers to save state to localStorage
@@ -69,7 +67,7 @@ const GenerateQuestionPaper = () => {
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
-  
+
       // Only reset if you haven't loaded a blueprint.
       if (!hasLoadedBlueprint) {
         setTopicsConfig({});
@@ -140,7 +138,6 @@ const GenerateQuestionPaper = () => {
 
   // NEW: Handler to remove a single descriptive config entry
   const handleRemoveDescriptiveQuestion = (topic, index) => {
-    console.log(topicsConfig[topic].descriptiveQuestionConfig, "topic");
     let config = topicsConfig[topic].descriptiveQuestionConfig;
     let marks = config[index].marks;
     let noOfQuestions = config[index].noOfQuestions;
@@ -204,7 +201,6 @@ const GenerateQuestionPaper = () => {
 
   const saveBlueprint = async () => {
     let blueprint = convertToBluePrintCompatibleFormat();
-    console.log(blueprint, "blueprint");
     const res = await putRequest(
       `${BASE_URL_API}/blueprint/create`,
       {
@@ -217,6 +213,23 @@ const GenerateQuestionPaper = () => {
       alert(res.message ?? "Some Error Occured");
     } else {
       alert("Blueprint saved successfully");
+    }
+  };
+
+  const updateBlueprint = async () => {
+    let blueprint = convertToBluePrintCompatibleFormat();
+    const res = await putRequest(
+      `${BASE_URL_API}/blueprint/update`,
+      {
+        Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+        "Content-Type": "application/json",
+      },
+      { id: bluePrintId, blueprint }
+    );
+    if (!res.success) {
+      alert(res.message ?? "Some Error Occured");
+    } else {
+      alert("Blueprint updated successfully");
     }
   };
 
@@ -298,9 +311,7 @@ const GenerateQuestionPaper = () => {
     setIsLoadingBlueprints(true);
     setBlueprintError("");
     try {
-      const url = new URL(
-        `${BASE_URL_API}/blueprint/getPaginatedBlueprints`
-      );
+      const url = new URL(`${BASE_URL_API}/blueprint/getPaginatedBlueprints`);
       url.searchParams.append("limit", 100);
 
       const response = await fetch(url.toString(), {
@@ -334,6 +345,7 @@ const GenerateQuestionPaper = () => {
 
   // NEW: Handler to load a blueprint into the form
   const handleLoadBlueprint = (blueprint) => {
+    setBluePrintId(blueprint.id);
     setHasLoadedBlueprint(true);
     setTitle(blueprint.name);
     setStandard(blueprint.grade.toString());
@@ -364,8 +376,7 @@ const GenerateQuestionPaper = () => {
     let totalConfiguredMarks = 0;
     blueprint.breakdown.forEach((topic) => {
       totalConfiguredMarks +=
-        (topic.easyMCQs + topic.mediumMCQs + topic.hardMCQs) *
-        topic.mcqMarks;
+        (topic.easyMCQs + topic.mediumMCQs + topic.hardMCQs) * topic.mcqMarks;
       topic.descriptiveQuestionConfig.forEach((desc) => {
         totalConfiguredMarks += desc.marks * desc.noOfQuestions;
       });
@@ -469,7 +480,10 @@ const GenerateQuestionPaper = () => {
         <ChatHeader title={"Generate Question Paper"} />
 
         {/* Modal for Blueprints */}
-        <Blueprintmodal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <Blueprintmodal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        >
           <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
           {isLoadingBlueprints ? (
             <p>Loading blueprints...</p>
@@ -547,8 +561,8 @@ const GenerateQuestionPaper = () => {
                     style={styles.select}
                     value={standard}
                     onChange={(e) => {
-                      setHasLoadedBlueprint(false)
-;                      setStandard(e.target.value)
+                      setHasLoadedBlueprint(false);
+                      setStandard(e.target.value);
                     }}
                   >
                     <option value="">Select Standard</option>
@@ -567,8 +581,9 @@ const GenerateQuestionPaper = () => {
                     style={styles.select}
                     value={subject}
                     onChange={(e) => {
-                      setHasLoadedBlueprint(false)
-                      setSubject(e.target.value)}}
+                      setHasLoadedBlueprint(false);
+                      setSubject(e.target.value);
+                    }}
                   >
                     <option value="">Select Subject</option>
                     <option value="Science">Science</option>
@@ -754,9 +769,7 @@ const GenerateQuestionPaper = () => {
                                           onChange={(e) => {
                                             const val = e.target.value;
                                             const newNoOfQuestions =
-                                              val !== ""
-                                                ? parseInt(val)
-                                                : 0;
+                                              val !== "" ? parseInt(val) : 0;
                                             if (descConfig?.marks) {
                                               let oldQuestionTotal =
                                                 descConfig?.noOfQuestions === ""
@@ -764,14 +777,12 @@ const GenerateQuestionPaper = () => {
                                                   : parseInt(
                                                       descConfig?.noOfQuestions
                                                     );
-                                              console.log(oldQuestionTotal);
                                               let oldMarks =
                                                 parseInt(oldQuestionTotal) *
                                                 parseInt(descConfig.marks);
                                               let newMarksForQuestion =
                                                 parseInt(descConfig.marks) *
                                                 newNoOfQuestions;
-                                              console.log();
                                               let newMarks =
                                                 configuredMarks -
                                                 oldMarks +
@@ -888,7 +899,7 @@ const GenerateQuestionPaper = () => {
             </button>
             <button
               style={styles.blueprintButton}
-              onClick={saveBlueprint}
+              onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
               disabled={
                 !standard ||
                 !subject ||
@@ -899,7 +910,7 @@ const GenerateQuestionPaper = () => {
                 configuredMarks !== parseInt(marks)
               }
             >
-              Save BluePrint
+              {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
             </button>
           </div>
         </div>
