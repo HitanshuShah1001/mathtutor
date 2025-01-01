@@ -504,8 +504,14 @@ const GenerateQuestionPaper = () => {
                       </p>
                       <p>
                         Created At:{" "}
-                        {new Date(bp.createdAt).toLocaleDateString("en-GB")}
+                        {new Date(bp?.createdAt).toLocaleDateString("en-GB")}
                       </p>
+                      {bp.createdAt !== bp.updatedAt && (
+                        <p>
+                          Last Updated At:{" "}
+                          {new Date(bp?.updatedAt).toLocaleDateString("en-GB")}
+                        </p>
+                      )}
                     </div>
                     <button
                       style={modalStyles.loadButton}
