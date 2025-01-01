@@ -31,6 +31,8 @@ const GenerateQuestionPaper = () => {
   const [blueprintError, setBlueprintError] = useState("");
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasLoadedBlueprint, setHasLoadedBlueprint] = useState(false);
+
 
   // Initialize state from localStorage
   useEffect(() => {
@@ -67,12 +69,18 @@ const GenerateQuestionPaper = () => {
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
-      setTopicsConfig({});
+  
+      // Only reset if you haven't loaded a blueprint.
+      if (!hasLoadedBlueprint) {
+        setTopicsConfig({});
+      }
     } else {
       setTopics([]);
-      setTopicsConfig({});
+      if (!hasLoadedBlueprint) {
+        setTopicsConfig({});
+      }
     }
-  }, [subject, standard]);
+  }, [subject, standard, hasLoadedBlueprint]);
 
   const addTopic = (topic) => {
     setTopicsConfig((prev) => {
@@ -326,6 +334,7 @@ const GenerateQuestionPaper = () => {
 
   // NEW: Handler to load a blueprint into the form
   const handleLoadBlueprint = (blueprint) => {
+    setHasLoadedBlueprint(true);
     setTitle(blueprint.name);
     setStandard(blueprint.grade.toString());
     setSubject(blueprint.subject);
@@ -537,7 +546,10 @@ const GenerateQuestionPaper = () => {
                   <select
                     style={styles.select}
                     value={standard}
-                    onChange={(e) => setStandard(e.target.value)}
+                    onChange={(e) => {
+                      setHasLoadedBlueprint(false)
+;                      setStandard(e.target.value)
+                    }}
                   >
                     <option value="">Select Standard</option>
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
@@ -554,7 +566,9 @@ const GenerateQuestionPaper = () => {
                   <select
                     style={styles.select}
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    onChange={(e) => {
+                      setHasLoadedBlueprint(false)
+                      setSubject(e.target.value)}}
                   >
                     <option value="">Select Subject</option>
                     <option value="Science">Science</option>
@@ -611,8 +625,6 @@ const GenerateQuestionPaper = () => {
                               <label>Easy MCQs</label>
                               <input
                                 style={styles.inputSmall}
-                                type="number"
-                                min="0"
                                 value={config.easyMCQs}
                                 onChange={(e) =>
                                   handleTopicChange(
@@ -627,8 +639,6 @@ const GenerateQuestionPaper = () => {
                               <label>Medium MCQs</label>
                               <input
                                 style={styles.inputSmall}
-                                type="number"
-                                min="0"
                                 value={config.mediumMCQs}
                                 onChange={(e) =>
                                   handleTopicChange(
@@ -643,8 +653,6 @@ const GenerateQuestionPaper = () => {
                               <label>Hard MCQs</label>
                               <input
                                 style={styles.inputSmall}
-                                type="number"
-                                min="0"
                                 value={config.hardMCQs}
                                 onChange={(e) =>
                                   handleTopicChange(
