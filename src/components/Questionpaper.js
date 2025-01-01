@@ -31,7 +31,6 @@ const GenerateQuestionPaper = () => {
   const [blueprintError, setBlueprintError] = useState("");
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-  const limit = 5; // Number of blueprints per page
 
   // Initialize state from localStorage
   useEffect(() => {
