@@ -169,10 +169,10 @@ const GenerateQuestionPaper = () => {
 
   function convertToBluePrintCompatibleFormat() {
     let blueprint = {
-      grade: standard,
-      subject,
-      totalMarks: marks,
       name: title,
+      grade: parseInt(standard),
+      subject,
+      totalMarks: parseInt(marks),
     };
     let breakdown = [];
     for (let key of Object.keys(topicsConfig)) {
@@ -388,8 +388,8 @@ const GenerateQuestionPaper = () => {
                     onChange={(e) => setSubject(e.target.value)}
                   >
                     <option value="">Select Subject</option>
-                    <option value="science">Science</option>
-                    <option value="maths">Maths</option>
+                    <option value="Science">Science</option>
+                    <option value="Maths">Maths</option>
                   </select>
                 </div>
 
