@@ -494,7 +494,7 @@ const GenerateQuestionPaper = () => {
           ) : (
             <div>
               {blueprints.map((bp) => (
-                <div key={bp.id} style={modalStyles.blueprintItem}>
+                <div key={`${bp.id}${bp?.createdAt}/${bp.updatedAt}`} style={modalStyles.blueprintItem}>
                   <div style={modalStyles.blueprintHeader}>
                     <div>
                       <h3>{bp.name}</h3>
@@ -523,7 +523,7 @@ const GenerateQuestionPaper = () => {
                 </div>
               ))}
               {/* Pagination Controls */}
-              <div style={modalStyles.pagination}>
+              {/* <div style={modalStyles.pagination}>
                 <button
                   style={modalStyles.paginationButton}
                   onClick={() => {
@@ -541,7 +541,7 @@ const GenerateQuestionPaper = () => {
                 >
                   Next
                 </button>
-              </div>
+              </div> */}
             </div>
           )}
         </Blueprintmodal>
