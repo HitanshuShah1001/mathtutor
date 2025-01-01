@@ -655,6 +655,19 @@ const GenerateQuestionPaper = () => {
                 ? "Generating..."
                 : "Generate Question Paper"}
             </button>
+            <button
+              style={styles.blueprintButton}
+              onClick={() =>
+                generateQuestionPaper({
+                  topicsConfig,
+                  setIsLoading,
+                  setResponseText,
+                })
+              }
+              disabled={!standard || !subject || isLoading || isMarksExceeded}
+            >
+            Save BluePrint
+            </button>
           </div>
         </div>
       </div>

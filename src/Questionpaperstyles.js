@@ -110,6 +110,16 @@ export const styles = {
     cursor: "pointer",
     transition: "background-color 0.3s ease",
   },
+  blueprintButton:{
+    backgroundColor: "black",
+    marginLeft:10,
+    color: "white",
+    padding: "12px 24px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    transition: "background-color 0.3s ease",
+  },
   actionContainer: {
     textAlign: "center",
     marginTop: "20px",
