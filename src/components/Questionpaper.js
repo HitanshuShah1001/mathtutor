@@ -112,6 +112,17 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleRemoveTopic = (topicToRemove) => {
+    console.log(topicToRemove, topicsConfig[topicToRemove]);
+    let prevMarks = configuredMarks;
+    prevMarks -=
+      (topicsConfig[topicToRemove].easyMCQs +
+        topicsConfig[topicToRemove].mediumMCQs +
+        topicsConfig[topicToRemove].hardMCQs) *
+      topicsConfig[topicToRemove].mcqMarks;
+    topicsConfig[topicToRemove].descriptiveQuestionConfig.forEach((desc) => {
+      prevMarks -= parseInt(desc.marks) * parseInt(desc.noOfQuestions);
+    });
+    setConfiguredMarks(prevMarks);
     setTopicsConfig((prev) => {
       const newConfig = { ...prev };
       delete newConfig[topicToRemove];
@@ -168,7 +179,7 @@ const GenerateQuestionPaper = () => {
 
     const style = document.createElement("style");
     style.textContent = `
-      body { font-family: Arial, sans-serif; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; }
       @page { margin: 1cm; }
     `;
 
@@ -238,11 +249,11 @@ const GenerateQuestionPaper = () => {
       ? `${configuredMarks} / ${marks}`
       : configuredMarks;
     return (
-      <div style={styles.formGroup}>
+      <div style={styles.formGroup} className="fade-in">
         <div style={styles.marksTracker}>
           <span
             style={{
-              color: configuredMarks > parseInt(marks) ? "red" : "green",
+              color: configuredMarks > parseInt(marks) ? "#999" : "#000",
               fontWeight: "bold",
             }}
           >
@@ -251,7 +262,7 @@ const GenerateQuestionPaper = () => {
 
           {configuredMarks > parseInt(marks) && (
             <span
-              style={{ color: "red", fontSize: "0.9em", marginLeft: "8px" }}
+              style={{ color: "#999", fontSize: "0.9em", marginLeft: "8px" }}
             >
               (Exceeds total marks!)
             </span>
@@ -304,7 +315,7 @@ const GenerateQuestionPaper = () => {
         )}
       </div>
     );
-  }, [topicsConfig, topics, customTopic, marks]); // Dependencies
+  }, [topicsConfig, topics, customTopic, marks, configuredMarks]);
 
   // NEW: Function to fetch blueprints
   const fetchBlueprints = async () => {
@@ -389,12 +400,13 @@ const GenerateQuestionPaper = () => {
 
   if (responseText) {
     return (
-      <div className="w-full space-y-6 mt-8">
+      <div className="w-full space-y-6 mt-8 fade-in">
         {/* Question Paper */}
         <div className="w-full">
           <div>
             <div
               className="prose max-w-none"
+              style={{ color: "#000" }}
               dangerouslySetInnerHTML={{
                 __html: responseText.QuestionPaper,
               }}
@@ -407,6 +419,7 @@ const GenerateQuestionPaper = () => {
           <div>
             <div
               className="prose max-w-none"
+              style={{ color: "#000" }}
               dangerouslySetInnerHTML={{ __html: responseText.AnswerSheet }}
             />
           </div>
@@ -421,7 +434,8 @@ const GenerateQuestionPaper = () => {
               printWindow.document.close();
               printWindow.print();
             }}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            style={styles.printButton}
+            className="btn-hover"
           >
             Print Question Paper
           </button>
@@ -432,7 +446,8 @@ const GenerateQuestionPaper = () => {
               printWindow.document.close();
               printWindow.print();
             }}
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+            style={styles.printButton}
+            className="btn-hover"
           >
             Print Answer Sheet
           </button>
@@ -440,7 +455,8 @@ const GenerateQuestionPaper = () => {
             onClick={() =>
               generatePDF(responseText.AnswerSheet, "answer_sheet.pdf")
             }
-            className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+            style={styles.downloadButton}
+            className="btn-hover"
             title="Save as PDF"
           >
             <Download size={16} /> PDF
@@ -449,7 +465,8 @@ const GenerateQuestionPaper = () => {
             onClick={() =>
               generatePDF(responseText.QuestionPaper, "question_paper.pdf")
             }
-            className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600"
+            style={styles.downloadButton}
+            className="btn-hover"
             title="Save as PDF"
           >
             <Download size={16} /> PDF
@@ -459,18 +476,12 @@ const GenerateQuestionPaper = () => {
     );
   } else {
     return (
-      <div style={styles.pageContainer}>
+      <div style={styles.pageContainer} className="fade-in">
         {/* NEW: Load Blueprint Button */}
         <div style={{ marginBottom: "20px", textAlign: "right" }}>
           <button
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#f0ad4e",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            style={styles.loadButton}
+            className="btn-hover"
             onClick={handleOpenModal}
           >
             Load from existing blueprint
@@ -486,35 +497,42 @@ const GenerateQuestionPaper = () => {
         >
           <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
           {isLoadingBlueprints ? (
-            <p>Loading blueprints...</p>
+            <p style={{ color: "#000" }}>Loading blueprints...</p>
           ) : blueprintError ? (
-            <p style={{ color: "red" }}>{blueprintError}</p>
+            <p style={{ color: "#666" }}>{blueprintError}</p>
           ) : blueprints.length === 0 ? (
-            <p>No blueprints found.</p>
+            <p style={{ color: "#666" }}>No blueprints found.</p>
           ) : (
             <div>
               {blueprints.map((bp) => (
-                <div key={`${bp.id}${bp?.createdAt}/${bp.updatedAt}`} style={modalStyles.blueprintItem}>
+                <div
+                  key={`${bp.id}${bp?.createdAt}/${bp.updatedAt}`}
+                  style={modalStyles.blueprintItem}
+                  className="fade-in"
+                >
                   <div style={modalStyles.blueprintHeader}>
                     <div>
-                      <h3>{bp.name}</h3>
-                      <p>
+                      <h3 style={{ color: "#000", marginBottom: "5px" }}>
+                        {bp.name}
+                      </h3>
+                      <p style={{ color: "#000", margin: "0" }}>
                         Grade: {bp.grade} | Subject: {bp.subject} | Total Marks:{" "}
                         {bp.totalMarks}
                       </p>
-                      <p>
+                      <p style={{ color: "#555", margin: "5px 0" }}>
                         Created At:{" "}
                         {new Date(bp?.createdAt).toLocaleDateString("en-GB")}
                       </p>
                       {bp.createdAt !== bp.updatedAt && (
-                        <p>
-                          Last Updated At:{" "}
+                        <p style={{ color: "#555", margin: "0" }}>
+                          Last Updated:{" "}
                           {new Date(bp?.updatedAt).toLocaleDateString("en-GB")}
                         </p>
                       )}
                     </div>
                     <button
                       style={modalStyles.loadButton}
+                      className="btn-hover"
                       onClick={() => handleLoadBlueprint(bp)}
                     >
                       Load
@@ -522,26 +540,6 @@ const GenerateQuestionPaper = () => {
                   </div>
                 </div>
               ))}
-              {/* Pagination Controls */}
-              {/* <div style={modalStyles.pagination}>
-                <button
-                  style={modalStyles.paginationButton}
-                  onClick={() => {
-                    // Implement cursor-based pagination if needed
-                    // For example, fetchBlueprints with previous cursor
-                    // This is a placeholder
-                  }}
-                >
-                  Previous
-                </button>
-                <button
-                  style={modalStyles.paginationButton}
-                  onClick={() => fetchBlueprints(cursor)}
-                  disabled={!hasNextPage}
-                >
-                  Next
-                </button>
-              </div> */}
             </div>
           )}
         </Blueprintmodal>
@@ -549,7 +547,7 @@ const GenerateQuestionPaper = () => {
         <div style={styles.container}>
           <div style={styles.formContainer}>
             <div style={styles.columnLeft}>
-              <div style={styles.card}>
+              <div style={styles.card} className="fade-in">
                 <h2 style={styles.cardTitle}>Exam Details</h2>
 
                 <div style={styles.formGroup}>
@@ -581,7 +579,6 @@ const GenerateQuestionPaper = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  {" "}
                   <label style={styles.label}>Subject</label>
                   <select
                     style={styles.select}
@@ -621,7 +618,7 @@ const GenerateQuestionPaper = () => {
             </div>
             {marks && (
               <div style={styles.columnRight}>
-                <div style={styles.card}>
+                <div style={styles.card} className="fade-in">
                   <h2 style={styles.cardTitle}>Topic Configuration</h2>
 
                   {topics.length > 0 && <RenderTopicSelection />}
@@ -629,11 +626,16 @@ const GenerateQuestionPaper = () => {
                   {Object.keys(topicsConfig).length > 0 && (
                     <div style={styles.topicConfigDetails}>
                       {Object.entries(topicsConfig).map(([topic, config]) => (
-                        <div key={topic} style={styles.topicConfigCard}>
+                        <div
+                          key={topic}
+                          style={styles.topicConfigCard}
+                          className="fade-in"
+                        >
                           <div style={styles.topicConfigHeader}>
                             <h3 style={styles.topicConfigTitle}>{topic}</h3>
                             <button
                               style={styles.removeTopicButton}
+                              className="btn-hover"
                               onClick={() => handleRemoveTopic(topic)}
                             >
                               Remove
@@ -643,7 +645,7 @@ const GenerateQuestionPaper = () => {
                           {/* MCQ Inputs */}
                           <div style={styles.topicConfigGrid}>
                             <div style={styles.formGroupInline}>
-                              <label>Easy MCQs</label>
+                              <label style={styles.labelSmall}>Easy MCQs</label>
                               <input
                                 style={styles.inputSmall}
                                 value={config.easyMCQs}
@@ -657,7 +659,9 @@ const GenerateQuestionPaper = () => {
                               />
                             </div>
                             <div style={styles.formGroupInline}>
-                              <label>Medium MCQs</label>
+                              <label style={styles.labelSmall}>
+                                Medium MCQs
+                              </label>
                               <input
                                 style={styles.inputSmall}
                                 value={config.mediumMCQs}
@@ -671,7 +675,7 @@ const GenerateQuestionPaper = () => {
                               />
                             </div>
                             <div style={styles.formGroupInline}>
-                              <label>Hard MCQs</label>
+                              <label style={styles.labelSmall}>Hard MCQs</label>
                               <input
                                 style={styles.inputSmall}
                                 value={config.hardMCQs}
@@ -700,7 +704,9 @@ const GenerateQuestionPaper = () => {
                                       style={styles.descriptiveConfigRow}
                                     >
                                       <div style={styles.descriptiveFieldGroup}>
-                                        <label>Marks</label>
+                                        <label style={styles.labelSmall}>
+                                          Marks
+                                        </label>
                                         <input
                                           style={styles.inputSmall}
                                           type="number"
@@ -732,7 +738,9 @@ const GenerateQuestionPaper = () => {
                                       </div>
 
                                       <div style={styles.descriptiveFieldGroup}>
-                                        <label>Difficulty</label>
+                                        <label style={styles.labelSmall}>
+                                          Difficulty
+                                        </label>
                                         <select
                                           style={styles.inputSmall}
                                           value={descConfig.difficulty}
@@ -768,7 +776,9 @@ const GenerateQuestionPaper = () => {
                                       </div>
 
                                       <div style={styles.descriptiveFieldGroup}>
-                                        <label>No. Of Questions</label>
+                                        <label style={styles.labelSmall}>
+                                          No. Of Questions
+                                        </label>
                                         <input
                                           style={styles.inputSmall}
                                           value={descConfig.noOfQuestions}
@@ -824,6 +834,7 @@ const GenerateQuestionPaper = () => {
                                       >
                                         <button
                                           style={styles.chipRemoveButton}
+                                          className="btn-hover"
                                           onClick={() =>
                                             handleRemoveDescriptiveQuestion(
                                               topic,
@@ -834,7 +845,6 @@ const GenerateQuestionPaper = () => {
                                           ×
                                         </button>
                                       </div>
-                                      {/* NEW: Remove button for each descriptive config */}
                                     </div>
                                   )
                                 )}
@@ -844,6 +854,7 @@ const GenerateQuestionPaper = () => {
                           <div style={styles.plusIconContainer}>
                             <button
                               style={styles.plusButton}
+                              className="btn-hover"
                               onClick={() => {
                                 setTopicsConfig((prev) => {
                                   const newDescConfig = [
@@ -880,6 +891,7 @@ const GenerateQuestionPaper = () => {
           <div style={styles.actionContainer}>
             <button
               style={styles.generateButton}
+              className="btn-hover"
               onClick={() =>
                 generateQuestionPaper({
                   topicsConfig,
@@ -905,6 +917,7 @@ const GenerateQuestionPaper = () => {
             </button>
             <button
               style={styles.blueprintButton}
+              className="btn-hover"
               onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
               disabled={
                 !standard ||
