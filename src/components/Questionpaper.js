@@ -3,11 +3,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
-import { generateQuestionPaper } from "../utils/generateQuestionPaper";
-import { Download } from "lucide-react";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import { putRequest } from "../utils/ApiCall";
 import { Blueprintmodal, modalStyles } from "./BlueprintModal";
+
+// NEW IMPORT
+import { createQuestionPaperJob } from "../utils/JobApi";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -21,7 +22,11 @@ const GenerateQuestionPaper = () => {
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
-  const [responseText, setResponseText] = useState(null);
+
+  // NEW: We'll no longer store "responseText" from the old generation,
+  // because we won't generate the final paper immediately.
+  // We'll store jobId in case we want to show it.
+  const [jobId, setJobId] = useState(null);
 
   // New States for Modal and Blueprints
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,7 +117,6 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleRemoveTopic = (topicToRemove) => {
-    console.log(topicToRemove, topicsConfig[topicToRemove]);
     let prevMarks = configuredMarks;
     prevMarks -=
       (topicsConfig[topicToRemove].easyMCQs +
@@ -150,11 +154,11 @@ const GenerateQuestionPaper = () => {
   // NEW: Handler to remove a single descriptive config entry
   const handleRemoveDescriptiveQuestion = (topic, index) => {
     let config = topicsConfig[topic].descriptiveQuestionConfig;
-    let marks = config[index].marks;
+    let marksVal = config[index].marks;
     let noOfQuestions = config[index].noOfQuestions;
-    if (marks !== "" && noOfQuestions !== "") {
+    if (marksVal !== "" && noOfQuestions !== "") {
       let newUpdatedMarks =
-        configuredMarks - parseInt(marks) * parseInt(noOfQuestions);
+        configuredMarks - parseInt(marksVal) * parseInt(noOfQuestions);
       setConfiguredMarks(newUpdatedMarks);
     }
     setTopicsConfig((prev) => {
@@ -170,29 +174,10 @@ const GenerateQuestionPaper = () => {
     });
   };
 
-  // Update the generate button to be disabled if marks exceed total
+  // Whether the user is exceeding total marks
   const isMarksExceeded = configuredMarks > parseInt(marks);
 
-  const generatePDF = (content, filename) => {
-    const element = document.createElement("div");
-    element.innerHTML = content;
-
-    const style = document.createElement("style");
-    style.textContent = `
-      body { font-family: 'Helvetica Neue', Arial, sans-serif; }
-      @page { margin: 1cm; }
-    `;
-
-    const printWindow = window.open("", "_blank");
-    printWindow.document.head.appendChild(style);
-    printWindow.document.body.appendChild(element);
-
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
-  };
-
+  // Convert blueprint shape
   function convertToBluePrintCompatibleFormat() {
     let blueprint = {
       name: title,
@@ -244,6 +229,7 @@ const GenerateQuestionPaper = () => {
     }
   };
 
+  // UseCallback for RenderTopicSelection
   const RenderTopicSelection = useCallback(() => {
     let renderContent = marks
       ? `${configuredMarks} / ${marks}`
@@ -398,544 +384,508 @@ const GenerateQuestionPaper = () => {
     setIsModalOpen(false);
   };
 
-  if (responseText) {
-    return (
-      <div className="w-full space-y-6 mt-8 fade-in">
-        {/* Question Paper */}
-        <div className="w-full">
-          <div>
-            <div
-              className="prose max-w-none"
-              style={{ color: "#000" }}
-              dangerouslySetInnerHTML={{
-                __html: responseText.QuestionPaper,
-              }}
-            />
-          </div>
-        </div>
+  // NEW: Generate button handler -> Instead of generating the final QP, we simulate an API job creation
+  const handleGenerateQuestionPaper = async () => {
+    setIsLoading(true);
 
-        {/* Answer Sheet */}
-        <div className="w-full">
-          <div>
-            <div
-              className="prose max-w-none"
-              style={{ color: "#000" }}
-              dangerouslySetInnerHTML={{ __html: responseText.AnswerSheet }}
-            />
-          </div>
-        </div>
+    // Build up payload you would send to the server (similar to blueprint format + other data)
+    const payload = {
+      examTitle: title,
+      standard: standard,
+      subject: subject,
+      topicsConfig: topicsConfig,
+      totalMarks: marks,
+      additionalInstructions: anyotherQuery,
+    };
 
-        {/* Print Buttons */}
-        <div className="flex gap-4 justify-end">
-          <button
-            onClick={() => {
-              const printWindow = window.open("", "_blank");
-              printWindow.document.write(responseText.QuestionPaper);
-              printWindow.document.close();
-              printWindow.print();
-            }}
-            style={styles.printButton}
-            className="btn-hover"
-          >
-            Print Question Paper
-          </button>
-          <button
-            onClick={() => {
-              const printWindow = window.open("", "_blank");
-              printWindow.document.write(responseText.AnswerSheet);
-              printWindow.document.close();
-              printWindow.print();
-            }}
-            style={styles.printButton}
-            className="btn-hover"
-          >
-            Print Answer Sheet
-          </button>
-          <button
-            onClick={() =>
-              generatePDF(responseText.AnswerSheet, "answer_sheet.pdf")
-            }
-            style={styles.downloadButton}
-            className="btn-hover"
-            title="Save as PDF"
-          >
-            <Download size={16} /> PDF
-          </button>
-          <button
-            onClick={() =>
-              generatePDF(responseText.QuestionPaper, "question_paper.pdf")
-            }
-            style={styles.downloadButton}
-            className="btn-hover"
-            title="Save as PDF"
-          >
-            <Download size={16} /> PDF
-          </button>
-        </div>
-      </div>
-    );
-  } else {
-    return (
-      <div style={styles.pageContainer} className="fade-in">
-        {/* NEW: Load Blueprint Button */}
-        <div style={{ marginBottom: "20px", textAlign: "right" }}>
-          <button
-            style={styles.loadButton}
-            className="btn-hover"
-            onClick={handleOpenModal}
-          >
-            Load from existing blueprint
-          </button>
-        </div>
+    try {
+      const result = await createQuestionPaperJob(payload);
+      // result is of shape { jobId: '...' }
+      setJobId(result.jobId);
 
-        <ChatHeader title={"Generate Question Paper"} />
+      // Show success message or toaster
+      alert(
+        `Job Created! \nYour question paper will be generated. Job ID: ${result.jobId}`
+      );
 
-        {/* Modal for Blueprints */}
-        <Blueprintmodal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+      // For future expansions:
+      // 1) You might store jobId in local storage or a global store
+      // 2) Or navigate the user to the job page directly
+      // e.g.,  navigate(`/jobs?selectedJobId=${result.jobId}`);
+    } catch (error) {
+      console.error(error);
+      alert("Error creating job. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div style={styles.pageContainer} className="fade-in">
+      {/* NEW: Load Blueprint Button */}
+      <div style={{ marginBottom: "20px", textAlign: "right" }}>
+        <button
+          style={styles.loadButton}
+          className="btn-hover"
+          onClick={handleOpenModal}
         >
-          <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
-          {isLoadingBlueprints ? (
-            <p style={{ color: "#000" }}>Loading blueprints...</p>
-          ) : blueprintError ? (
-            <p style={{ color: "#666" }}>{blueprintError}</p>
-          ) : blueprints.length === 0 ? (
-            <p style={{ color: "#666" }}>No blueprints found.</p>
-          ) : (
-            <div>
-              {blueprints.map((bp) => (
-                <div
-                  key={`${bp.id}${bp?.createdAt}/${bp.updatedAt}`}
-                  style={modalStyles.blueprintItem}
-                  className="fade-in"
-                >
-                  <div style={modalStyles.blueprintHeader}>
-                    <div>
-                      <h3 style={{ color: "#000", marginBottom: "5px" }}>
-                        {bp.name}
-                      </h3>
-                      <p style={{ color: "#000", margin: "0" }}>
-                        Grade: {bp.grade} | Subject: {bp.subject} | Total Marks:{" "}
-                        {bp.totalMarks}
+          Load from existing blueprint
+        </button>
+      </div>
+
+      <ChatHeader title={"Generate Question Paper"} />
+
+      {/* Modal for Blueprints */}
+      <Blueprintmodal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      >
+        <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
+        {isLoadingBlueprints ? (
+          <p style={{ color: "#000" }}>Loading blueprints...</p>
+        ) : blueprintError ? (
+          <p style={{ color: "#666" }}>{blueprintError}</p>
+        ) : blueprints.length === 0 ? (
+          <p style={{ color: "#666" }}>No blueprints found.</p>
+        ) : (
+          <div>
+            {blueprints.map((bp) => (
+              <div
+                key={`${bp.id}${bp?.createdAt}/${bp.updatedAt}`}
+                style={modalStyles.blueprintItem}
+                className="fade-in"
+              >
+                <div style={modalStyles.blueprintHeader}>
+                  <div>
+                    <h3 style={{ color: "#000", marginBottom: "5px" }}>
+                      {bp.name}
+                    </h3>
+                    <p style={{ color: "#000", margin: "0" }}>
+                      Grade: {bp.grade} | Subject: {bp.subject} | Total Marks:{" "}
+                      {bp.totalMarks}
+                    </p>
+                    <p style={{ color: "#555", margin: "5px 0" }}>
+                      Created At:{" "}
+                      {new Date(bp?.createdAt).toLocaleDateString("en-GB")}
+                    </p>
+                    {bp.createdAt !== bp.updatedAt && (
+                      <p style={{ color: "#555", margin: "0" }}>
+                        Last Updated:{" "}
+                        {new Date(bp?.updatedAt).toLocaleDateString("en-GB")}
                       </p>
-                      <p style={{ color: "#555", margin: "5px 0" }}>
-                        Created At:{" "}
-                        {new Date(bp?.createdAt).toLocaleDateString("en-GB")}
-                      </p>
-                      {bp.createdAt !== bp.updatedAt && (
-                        <p style={{ color: "#555", margin: "0" }}>
-                          Last Updated:{" "}
-                          {new Date(bp?.updatedAt).toLocaleDateString("en-GB")}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      style={modalStyles.loadButton}
-                      className="btn-hover"
-                      onClick={() => handleLoadBlueprint(bp)}
-                    >
-                      Load
-                    </button>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Blueprintmodal>
-
-        <div style={styles.container}>
-          <div style={styles.formContainer}>
-            <div style={styles.columnLeft}>
-              <div style={styles.card} className="fade-in">
-                <h2 style={styles.cardTitle}>Exam Details</h2>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Title</label>
-                  <input
-                    style={styles.input}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="12 Std. Question Paper"
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Standard</label>
-                  <select
-                    style={styles.select}
-                    value={standard}
-                    onChange={(e) => {
-                      setHasLoadedBlueprint(false);
-                      setStandard(e.target.value);
-                    }}
+                  <button
+                    style={modalStyles.loadButton}
+                    className="btn-hover"
+                    onClick={() => handleLoadBlueprint(bp)}
                   >
-                    <option value="">Select Standard</option>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-                      <option key={num} value={num}>
-                        {num}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Subject</label>
-                  <select
-                    style={styles.select}
-                    value={subject}
-                    onChange={(e) => {
-                      setHasLoadedBlueprint(false);
-                      setSubject(e.target.value);
-                    }}
-                  >
-                    <option value="">Select Subject</option>
-                    <option value="Science">Science</option>
-                    <option value="Maths">Maths</option>
-                  </select>
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Total Marks</label>
-                  <input
-                    type="number"
-                    style={styles.input}
-                    value={marks}
-                    onChange={(e) => setMarks(e.target.value)}
-                    placeholder="e.g. 100"
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Additional Instructions</label>
-                  <input
-                    type="text"
-                    style={styles.input}
-                    value={anyotherQuery}
-                    onChange={(e) => setAnyOtherQuery(e.target.value)}
-                    placeholder="e.g. Mark problems as section A"
-                  />
+                    Load
+                  </button>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </Blueprintmodal>
+
+      <div style={styles.container}>
+        <div style={styles.formContainer}>
+          <div style={styles.columnLeft}>
+            <div style={styles.card} className="fade-in">
+              <h2 style={styles.cardTitle}>Exam Details</h2>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Title</label>
+                <input
+                  style={styles.input}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="12 Std. Question Paper"
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Standard</label>
+                <select
+                  style={styles.select}
+                  value={standard}
+                  onChange={(e) => {
+                    setHasLoadedBlueprint(false);
+                    setStandard(e.target.value);
+                  }}
+                >
+                  <option value="">Select Standard</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Subject</label>
+                <select
+                  style={styles.select}
+                  value={subject}
+                  onChange={(e) => {
+                    setHasLoadedBlueprint(false);
+                    setSubject(e.target.value);
+                  }}
+                >
+                  <option value="">Select Subject</option>
+                  <option value="Science">Science</option>
+                  <option value="Maths">Maths</option>
+                  {/* Add more subjects as needed */}
+                </select>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Total Marks</label>
+                <input
+                  type="number"
+                  style={styles.input}
+                  value={marks}
+                  onChange={(e) => setMarks(e.target.value)}
+                  placeholder="e.g. 100"
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Additional Instructions</label>
+                <input
+                  type="text"
+                  style={styles.input}
+                  value={anyotherQuery}
+                  onChange={(e) => setAnyOtherQuery(e.target.value)}
+                  placeholder="e.g. Mark problems as section A"
+                />
+              </div>
             </div>
-            {marks && (
-              <div style={styles.columnRight}>
-                <div style={styles.card} className="fade-in">
-                  <h2 style={styles.cardTitle}>Topic Configuration</h2>
+          </div>
 
-                  {topics.length > 0 && <RenderTopicSelection />}
+          {marks && (
+            <div style={styles.columnRight}>
+              <div style={styles.card} className="fade-in">
+                <h2 style={styles.cardTitle}>Topic Configuration</h2>
 
-                  {Object.keys(topicsConfig).length > 0 && (
-                    <div style={styles.topicConfigDetails}>
-                      {Object.entries(topicsConfig).map(([topic, config]) => (
-                        <div
-                          key={topic}
-                          style={styles.topicConfigCard}
-                          className="fade-in"
-                        >
-                          <div style={styles.topicConfigHeader}>
-                            <h3 style={styles.topicConfigTitle}>{topic}</h3>
-                            <button
-                              style={styles.removeTopicButton}
-                              className="btn-hover"
-                              onClick={() => handleRemoveTopic(topic)}
-                            >
-                              Remove
-                            </button>
+                {topics.length > 0 && <RenderTopicSelection />}
+
+                {Object.keys(topicsConfig).length > 0 && (
+                  <div style={styles.topicConfigDetails}>
+                    {Object.entries(topicsConfig).map(([topic, config]) => (
+                      <div
+                        key={topic}
+                        style={styles.topicConfigCard}
+                        className="fade-in"
+                      >
+                        <div style={styles.topicConfigHeader}>
+                          <h3 style={styles.topicConfigTitle}>{topic}</h3>
+                          <button
+                            style={styles.removeTopicButton}
+                            className="btn-hover"
+                            onClick={() => handleRemoveTopic(topic)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        {/* MCQ Inputs */}
+                        <div style={styles.topicConfigGrid}>
+                          <div style={styles.formGroupInline}>
+                            <label style={styles.labelSmall}>Easy MCQs</label>
+                            <input
+                              style={styles.inputSmall}
+                              value={config.easyMCQs}
+                              onChange={(e) =>
+                                handleTopicChange(
+                                  topic,
+                                  "easyMCQs",
+                                  parseInt(e.target.value, 10) || 0
+                                )
+                              }
+                            />
                           </div>
-
-                          {/* MCQ Inputs */}
-                          <div style={styles.topicConfigGrid}>
-                            <div style={styles.formGroupInline}>
-                              <label style={styles.labelSmall}>Easy MCQs</label>
-                              <input
-                                style={styles.inputSmall}
-                                value={config.easyMCQs}
-                                onChange={(e) =>
-                                  handleTopicChange(
-                                    topic,
-                                    "easyMCQs",
-                                    parseInt(e.target.value, 10) || 0
-                                  )
-                                }
-                              />
-                            </div>
-                            <div style={styles.formGroupInline}>
-                              <label style={styles.labelSmall}>
-                                Medium MCQs
-                              </label>
-                              <input
-                                style={styles.inputSmall}
-                                value={config.mediumMCQs}
-                                onChange={(e) =>
-                                  handleTopicChange(
-                                    topic,
-                                    "mediumMCQs",
-                                    parseInt(e.target.value, 10) || 0
-                                  )
-                                }
-                              />
-                            </div>
-                            <div style={styles.formGroupInline}>
-                              <label style={styles.labelSmall}>Hard MCQs</label>
-                              <input
-                                style={styles.inputSmall}
-                                value={config.hardMCQs}
-                                onChange={(e) =>
-                                  handleTopicChange(
-                                    topic,
-                                    "hardMCQs",
-                                    parseInt(e.target.value, 10) || 0
-                                  )
-                                }
-                              />
-                            </div>
+                          <div style={styles.formGroupInline}>
+                            <label style={styles.labelSmall}>Medium MCQs</label>
+                            <input
+                              style={styles.inputSmall}
+                              value={config.mediumMCQs}
+                              onChange={(e) =>
+                                handleTopicChange(
+                                  topic,
+                                  "mediumMCQs",
+                                  parseInt(e.target.value, 10) || 0
+                                )
+                              }
+                            />
                           </div>
-
-                          {/* Descriptive Question Configs */}
-                          {config.descriptiveQuestionConfig &&
-                            config.descriptiveQuestionConfig.length > 0 && (
-                              <div style={styles.descriptiveConfigContainer}>
-                                <h4 style={styles.descriptiveConfigTitle}>
-                                  Descriptive Questions
-                                </h4>
-                                {config.descriptiveQuestionConfig.map(
-                                  (descConfig, index) => (
-                                    <div
-                                      key={index}
-                                      style={styles.descriptiveConfigRow}
-                                    >
-                                      <div style={styles.descriptiveFieldGroup}>
-                                        <label style={styles.labelSmall}>
-                                          Marks
-                                        </label>
-                                        <input
-                                          style={styles.inputSmall}
-                                          type="number"
-                                          min="0"
-                                          value={descConfig.marks}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            setTopicsConfig((prev) => {
-                                              const updatedArray = [
-                                                ...prev[topic]
-                                                  .descriptiveQuestionConfig,
-                                              ];
-
-                                              updatedArray[index] = {
-                                                ...updatedArray[index],
-                                                marks: val,
-                                              };
-                                              return {
-                                                ...prev,
-                                                [topic]: {
-                                                  ...prev[topic],
-                                                  descriptiveQuestionConfig:
-                                                    updatedArray,
-                                                },
-                                              };
-                                            });
-                                          }}
-                                        />
-                                      </div>
-
-                                      <div style={styles.descriptiveFieldGroup}>
-                                        <label style={styles.labelSmall}>
-                                          Difficulty
-                                        </label>
-                                        <select
-                                          style={styles.inputSmall}
-                                          value={descConfig.difficulty}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            setTopicsConfig((prev) => {
-                                              const updatedArray = [
-                                                ...prev[topic]
-                                                  .descriptiveQuestionConfig,
-                                              ];
-                                              updatedArray[index] = {
-                                                ...updatedArray[index],
-                                                difficulty: val,
-                                              };
-                                              return {
-                                                ...prev,
-                                                [topic]: {
-                                                  ...prev[topic],
-                                                  descriptiveQuestionConfig:
-                                                    updatedArray,
-                                                },
-                                              };
-                                            });
-                                          }}
-                                        >
-                                          <option value="">
-                                            Select Difficulty
-                                          </option>
-                                          <option value="easy">Easy</option>
-                                          <option value="medium">Medium</option>
-                                          <option value="hard">Hard</option>
-                                        </select>
-                                      </div>
-
-                                      <div style={styles.descriptiveFieldGroup}>
-                                        <label style={styles.labelSmall}>
-                                          No. Of Questions
-                                        </label>
-                                        <input
-                                          style={styles.inputSmall}
-                                          value={descConfig.noOfQuestions}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            const newNoOfQuestions =
-                                              val !== "" ? parseInt(val) : 0;
-                                            if (descConfig?.marks) {
-                                              let oldQuestionTotal =
-                                                descConfig?.noOfQuestions === ""
-                                                  ? 0
-                                                  : parseInt(
-                                                      descConfig?.noOfQuestions
-                                                    );
-                                              let oldMarks =
-                                                parseInt(oldQuestionTotal) *
-                                                parseInt(descConfig.marks);
-                                              let newMarksForQuestion =
-                                                parseInt(descConfig.marks) *
-                                                newNoOfQuestions;
-                                              let newMarks =
-                                                configuredMarks -
-                                                oldMarks +
-                                                newMarksForQuestion;
-                                              setConfiguredMarks(newMarks);
-                                            }
-                                            setTopicsConfig((prev) => {
-                                              const updatedArray = [
-                                                ...prev[topic]
-                                                  .descriptiveQuestionConfig,
-                                              ];
-                                              updatedArray[index] = {
-                                                ...updatedArray[index],
-                                                noOfQuestions: val,
-                                              };
-                                              return {
-                                                ...prev,
-                                                [topic]: {
-                                                  ...prev[topic],
-                                                  descriptiveQuestionConfig:
-                                                    updatedArray,
-                                                },
-                                              };
-                                            });
-                                          }}
-                                        />
-                                      </div>
-                                      <div
-                                        style={{
-                                          alignItems: "center",
-                                          flexDirection: "column",
-                                        }}
-                                      >
-                                        <button
-                                          style={styles.chipRemoveButton}
-                                          className="btn-hover"
-                                          onClick={() =>
-                                            handleRemoveDescriptiveQuestion(
-                                              topic,
-                                              index
-                                            )
-                                          }
-                                        >
-                                          ×
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                            )}
-
-                          <div style={styles.plusIconContainer}>
-                            <button
-                              style={styles.plusButton}
-                              className="btn-hover"
-                              onClick={() => {
-                                setTopicsConfig((prev) => {
-                                  const newDescConfig = [
-                                    ...(prev[topic].descriptiveQuestionConfig ||
-                                      []),
-                                    {
-                                      marks: "",
-                                      difficulty: "",
-                                      noOfQuestions: "",
-                                    },
-                                  ];
-                                  return {
-                                    ...prev,
-                                    [topic]: {
-                                      ...prev[topic],
-                                      descriptiveQuestionConfig: newDescConfig,
-                                    },
-                                  };
-                                });
-                              }}
-                            >
-                              +
-                            </button>
+                          <div style={styles.formGroupInline}>
+                            <label style={styles.labelSmall}>Hard MCQs</label>
+                            <input
+                              style={styles.inputSmall}
+                              value={config.hardMCQs}
+                              onChange={(e) =>
+                                handleTopicChange(
+                                  topic,
+                                  "hardMCQs",
+                                  parseInt(e.target.value, 10) || 0
+                                )
+                              }
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
-          <div style={styles.actionContainer}>
-            <button
-              style={styles.generateButton}
-              className="btn-hover"
-              onClick={() =>
-                generateQuestionPaper({
-                  topicsConfig,
-                  setIsLoading,
-                  setResponseText,
-                })
-              }
-              disabled={
-                !standard ||
-                !subject ||
-                isLoading ||
-                isMarksExceeded ||
-                !title ||
-                !marks ||
-                configuredMarks !== parseInt(marks)
-              }
-            >
-              {isMarksExceeded
-                ? "Total marks exceeded"
-                : isLoading
-                ? "Generating..."
-                : "Generate Question Paper"}
-            </button>
-            <button
-              style={styles.blueprintButton}
-              className="btn-hover"
-              onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
-              disabled={
-                !standard ||
-                !subject ||
-                isLoading ||
-                isMarksExceeded ||
-                !title ||
-                !marks ||
-                configuredMarks !== parseInt(marks)
-              }
-            >
-              {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
-            </button>
-          </div>
+                        {/* Descriptive Question Configs */}
+                        {config.descriptiveQuestionConfig &&
+                          config.descriptiveQuestionConfig.length > 0 && (
+                            <div style={styles.descriptiveConfigContainer}>
+                              <h4 style={styles.descriptiveConfigTitle}>
+                                Descriptive Questions
+                              </h4>
+                              {config.descriptiveQuestionConfig.map(
+                                (descConfig, index) => (
+                                  <div
+                                    key={index}
+                                    style={styles.descriptiveConfigRow}
+                                  >
+                                    <div style={styles.descriptiveFieldGroup}>
+                                      <label style={styles.labelSmall}>
+                                        Marks
+                                      </label>
+                                      <input
+                                        style={styles.inputSmall}
+                                        type="number"
+                                        min="0"
+                                        value={descConfig.marks}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setTopicsConfig((prev) => {
+                                            const updatedArray = [
+                                              ...prev[topic]
+                                                .descriptiveQuestionConfig,
+                                            ];
+
+                                            updatedArray[index] = {
+                                              ...updatedArray[index],
+                                              marks: val,
+                                            };
+                                            return {
+                                              ...prev,
+                                              [topic]: {
+                                                ...prev[topic],
+                                                descriptiveQuestionConfig:
+                                                  updatedArray,
+                                              },
+                                            };
+                                          });
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div style={styles.descriptiveFieldGroup}>
+                                      <label style={styles.labelSmall}>
+                                        Difficulty
+                                      </label>
+                                      <select
+                                        style={styles.inputSmall}
+                                        value={descConfig.difficulty}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setTopicsConfig((prev) => {
+                                            const updatedArray = [
+                                              ...prev[topic]
+                                                .descriptiveQuestionConfig,
+                                            ];
+                                            updatedArray[index] = {
+                                              ...updatedArray[index],
+                                              difficulty: val,
+                                            };
+                                            return {
+                                              ...prev,
+                                              [topic]: {
+                                                ...prev[topic],
+                                                descriptiveQuestionConfig:
+                                                  updatedArray,
+                                              },
+                                            };
+                                          });
+                                        }}
+                                      >
+                                        <option value="">
+                                          Select Difficulty
+                                        </option>
+                                        <option value="easy">Easy</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="hard">Hard</option>
+                                      </select>
+                                    </div>
+
+                                    <div style={styles.descriptiveFieldGroup}>
+                                      <label style={styles.labelSmall}>
+                                        No. Of Questions
+                                      </label>
+                                      <input
+                                        style={styles.inputSmall}
+                                        value={descConfig.noOfQuestions}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          const newNoOfQuestions =
+                                            val !== "" ? parseInt(val) : 0;
+                                          if (descConfig?.marks) {
+                                            let oldQuestionTotal =
+                                              descConfig?.noOfQuestions === ""
+                                                ? 0
+                                                : parseInt(
+                                                    descConfig?.noOfQuestions
+                                                  );
+                                            let oldMarks =
+                                              parseInt(oldQuestionTotal) *
+                                              parseInt(descConfig.marks);
+                                            let newMarksForQuestion =
+                                              parseInt(descConfig.marks) *
+                                              newNoOfQuestions;
+                                            let newMarks =
+                                              configuredMarks -
+                                              oldMarks +
+                                              newMarksForQuestion;
+                                            setConfiguredMarks(newMarks);
+                                          }
+                                          setTopicsConfig((prev) => {
+                                            const updatedArray = [
+                                              ...prev[topic]
+                                                .descriptiveQuestionConfig,
+                                            ];
+                                            updatedArray[index] = {
+                                              ...updatedArray[index],
+                                              noOfQuestions: val,
+                                            };
+                                            return {
+                                              ...prev,
+                                              [topic]: {
+                                                ...prev[topic],
+                                                descriptiveQuestionConfig:
+                                                  updatedArray,
+                                              },
+                                            };
+                                          });
+                                        }}
+                                      />
+                                    </div>
+                                    <div
+                                      style={{
+                                        alignItems: "center",
+                                        flexDirection: "column",
+                                      }}
+                                    >
+                                      <button
+                                        style={styles.chipRemoveButton}
+                                        className="btn-hover"
+                                        onClick={() =>
+                                          handleRemoveDescriptiveQuestion(
+                                            topic,
+                                            index
+                                          )
+                                        }
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+
+                        <div style={styles.plusIconContainer}>
+                          <button
+                            style={styles.plusButton}
+                            className="btn-hover"
+                            onClick={() => {
+                              setTopicsConfig((prev) => {
+                                const newDescConfig = [
+                                  ...(prev[topic].descriptiveQuestionConfig ||
+                                    []),
+                                  {
+                                    marks: "",
+                                    difficulty: "",
+                                    noOfQuestions: "",
+                                  },
+                                ];
+                                return {
+                                  ...prev,
+                                  [topic]: {
+                                    ...prev[topic],
+                                    descriptiveQuestionConfig: newDescConfig,
+                                  },
+                                };
+                              });
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+
+        <div style={styles.actionContainer}>
+          {/* Generate Question Paper => Now calls handleGenerateQuestionPaper */}
+          <button
+            style={styles.generateButton}
+            className="btn-hover"
+            onClick={handleGenerateQuestionPaper}
+            disabled={
+              !standard ||
+              !subject ||
+              isLoading ||
+              isMarksExceeded ||
+              !title ||
+              !marks ||
+              configuredMarks !== parseInt(marks)
+            }
+          >
+            {isMarksExceeded
+              ? "Total marks exceeded"
+              : isLoading
+              ? "Generating..."
+              : "Generate Question Paper"}
+          </button>
+
+          <button
+            style={styles.blueprintButton}
+            className="btn-hover"
+            onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
+            disabled={
+              !standard ||
+              !subject ||
+              isLoading ||
+              isMarksExceeded ||
+              !title ||
+              !marks ||
+              configuredMarks !== parseInt(marks)
+            }
+          >
+            {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
+          </button>
+        </div>
+
+        {/* If a jobId was created, show it to the user (optional). */}
+        {jobId && (
+          <div style={{ marginTop: "20px" }}>
+            <p style={{ color: "green" }}>
+              Job Created Successfully! Your Job ID: <b>{jobId}</b>
+            </p>
+            <p>(You will be notified once it's completed.)</p>
+          </div>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
 };
 
 export default GenerateQuestionPaper;
