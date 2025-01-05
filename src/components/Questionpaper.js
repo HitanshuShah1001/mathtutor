@@ -9,6 +9,7 @@ import { Blueprintmodal, modalStyles } from "./BlueprintModal";
 
 // NEW IMPORT
 import { createQuestionPaperJob } from "../utils/JobApi";
+import CustomAlert from "../subcomponents/CustomAlert";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -37,6 +38,7 @@ const GenerateQuestionPaper = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasLoadedBlueprint, setHasLoadedBlueprint] = useState(false);
   const [bluePrintId, setBluePrintId] = useState(null);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
   // Initialize state from localStorage
   useEffect(() => {
@@ -384,45 +386,20 @@ const GenerateQuestionPaper = () => {
     setIsModalOpen(false);
   };
 
-  // NEW: Generate button handler -> Instead of generating the final QP, we simulate an API job creation
-  const handleGenerateQuestionPaper = async () => {
-    setIsLoading(true);
-
-    // Build up payload you would send to the server (similar to blueprint format + other data)
-    const payload = {
-      examTitle: title,
-      standard: standard,
-      subject: subject,
-      topicsConfig: topicsConfig,
-      totalMarks: marks,
-      additionalInstructions: anyotherQuery,
-    };
-
-    try {
-      const result = await createQuestionPaperJob(payload);
-      // result is of shape { jobId: '...' }
-      setJobId(result.jobId);
-
-      // Show success message or toaster
-      alert(
-        `Job Created! \nYour question paper will be generated. Job ID: ${result.jobId}`
-      );
-
-      // For future expansions:
-      // 1) You might store jobId in local storage or a global store
-      // 2) Or navigate the user to the job page directly
-      // e.g.,  navigate(`/jobs?selectedJobId=${result.jobId}`);
-    } catch (error) {
-      console.error(error);
-      alert("Error creating job. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleGenerateQuestionPaper = () => {
+    console.log("in here");
+    setIsAlertModalOpen(true);
   };
-
   return (
     <div style={styles.pageContainer} className="fade-in">
       {/* NEW: Load Blueprint Button */}
+      <CustomAlert
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+        message={
+          "Thank you for initiating the question paper generation. You will be notified as soon as the process is complete."
+        }
+      />
       <div style={{ marginBottom: "20px", textAlign: "right" }}>
         <button
           style={styles.loadButton}
@@ -875,14 +852,6 @@ const GenerateQuestionPaper = () => {
         </div>
 
         {/* If a jobId was created, show it to the user (optional). */}
-        {jobId && (
-          <div style={{ marginTop: "20px" }}>
-            <p style={{ color: "green" }}>
-              Job Created Successfully! Your Job ID: <b>{jobId}</b>
-            </p>
-            <p>(You will be notified once it's completed.)</p>
-          </div>
-        )}
       </div>
     </div>
   );
