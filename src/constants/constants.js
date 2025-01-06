@@ -312,3 +312,34 @@ export const STORAGE_MESSAGES = {
 
 
 export const JSON_SCHEMA = "json_schema";
+
+export const DUMMY_DOCUMENTS = [
+  {
+    id: 1,
+    title: "Mathematics Final Exam 2024",
+    createdAt: "2024-01-15",
+    subject: "Mathematics",
+    grade: "12th",
+  },
+  {
+    id: 2,
+    title: "Physics Mid-Term Test",
+    createdAt: "2024-01-20",
+    subject: "Physics",
+    grade: "11th",
+  },
+  {
+    id: 3,
+    title: "Chemistry Lab Assessment",
+    createdAt: "2024-01-25",
+    subject: "Chemistry",
+    grade: "12th",
+  },
+  {
+    id: 4,
+    title: "Biology Unit Test - Chapter 5",
+    createdAt: "2024-01-28",
+    subject: "Biology",
+    grade: "10th",
+  },
+];

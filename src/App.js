@@ -16,6 +16,7 @@ import { UpdateUserDetails } from "./components/UpdateUserDetails";
 import GenerateQuestionPaper from "./components/Questionpaper";
 import { ResultAnalyser } from "./components/ResultVisualiser";
 import { SelectStandard } from "./components/SelectStandardAndGrade";
+import { DocumentSidebar } from "./components/DocumentList";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ResultAnalyser />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/question-paper-list"
+              element={
+                <ProtectedRoute>
+                  <DocumentSidebar />
                 </ProtectedRoute>
               }
             />
