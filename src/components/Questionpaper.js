@@ -309,6 +309,7 @@ const GenerateQuestionPaper = () => {
   const fetchBlueprints = async () => {
     setIsLoadingBlueprints(true);
     setBlueprintError("");
+    
     try {
       const url = new URL(`${BASE_URL_API}/blueprint/getPaginatedBlueprints`);
       url.searchParams.append("limit", 100);
@@ -321,6 +322,7 @@ const GenerateQuestionPaper = () => {
         },
       });
       const data = await response.json();
+      console.log(data,"data")
       if (data.success) {
         setBlueprints(data.blueprints);
         setHasNextPage(data.hasNextPage);
