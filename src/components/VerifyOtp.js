@@ -28,7 +28,7 @@ const VerifyOtp = () => {
 
     const mobileNumber = location.state?.phoneNumber || "";
     const isValidAndData = await verifyOTP(mobileNumber, otp);
-
+    console.log(isValidAndData);
     if (isValidAndData?.status) {
       const { accessToken, user } = isValidAndData.data?.data || {};
       removeDataFromLocalStorage();
@@ -45,7 +45,8 @@ const VerifyOtp = () => {
         });
       }
     } else {
-      setError("Invalid OTP. Please try again.");
+      console.log(isValidAndData.data.config)
+      setError(isValidAndData?.data?.response?.data?.message);
     }
   };
 
@@ -59,8 +60,12 @@ const VerifyOtp = () => {
           onMouseLeave={() => setIsHovered(false)}
         >
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">Verify OTP</h2>
-            <p className="text-gray-500">Enter the 6-digit code sent to your phone</p>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              Verify OTP
+            </h2>
+            <p className="text-gray-500">
+              Enter the 6-digit code sent to your phone
+            </p>
           </div>
           {error && (
             <div
@@ -86,7 +91,11 @@ const VerifyOtp = () => {
           <button
             type="submit"
             className={`w-full py-3 rounded-lg text-white font-semibold transition-all duration-300 
-              ${isHovered ? "bg-blue-600 hover:bg-blue-700 transform hover:scale-105" : "bg-blue-500 hover:bg-blue-600"}`}
+              ${
+                isHovered
+                  ? "bg-blue-600 hover:bg-blue-700 transform hover:scale-105"
+                  : "bg-blue-500 hover:bg-blue-600"
+              }`}
           >
             Verify OTP
           </button>

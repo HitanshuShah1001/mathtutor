@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
       });
       return { status: true, data: response };
     } catch (error) {
-      return false;
+      return { status: false, data: error };
     }
   };
 
