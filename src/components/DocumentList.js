@@ -1,31 +1,107 @@
 import React, { useState, useEffect } from "react";
-import { FolderOpen, FileText, ChevronRight } from "lucide-react";
+import { FolderOpen, FileText, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { DUMMY_DOCUMENTS } from "../constants/constants";
 
-const fetchDocuments = () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(DUMMY_DOCUMENTS);
-    }, 1000);
-  });
-};
+const GRADES = [7, 8, 9, 10];
+const SUBJECTS = ["Maths", "Science", "English", "History"];
 
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    grade: null,
+    subject: null
+  });
+  
   const navigate = useNavigate();
 
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      const requestBody = {};
+      if (filters.grade) requestBody.grade = filters.grade;
+      if (filters.subject) requestBody.subject = filters.subject;
+
+      const response = await fetch('https://api.gotutorless.com/questionPaper/getPaginatedQuestionPapers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'YOUR_AUTH_TOKEN_HERE'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+      setDocuments(data);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setDocuments(DUMMY_DOCUMENTS)
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchDocuments().then((data) => setDocuments(data));
-  }, []);
+    fetchDocuments();
+  }, [filters]);
 
   const handleCreatePaper = () => {
     navigate("/question-paper-generation");
   };
 
-  if (documents.length === 0) {
+  const FilterDropdowns = () => (
+    <div className="mb-6 flex gap-4">
+      <div className="relative">
+        <select
+          value={filters.grade || ''}
+          onChange={(e) => setFilters(prev => ({
+            ...prev,
+            grade: e.target.value ? Number(e.target.value) : null
+          }))}
+          className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">All Grades</option>
+          {GRADES.map((grade) => (
+            <option key={grade} value={grade}>Grade {grade}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+      </div>
+
+      <div className="relative">
+        <select
+          value={filters.subject || ''}
+          onChange={(e) => setFilters(prev => ({
+            ...prev,
+            subject: e.target.value || null
+          }))}
+          className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="">All Subjects</option>
+          {SUBJECTS.map((subject) => (
+            <option key={subject} value={subject}>{subject}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+      </div>
+    </div>
+  );
+
+  if (loading && documents.length === 0) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading documents...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && documents.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
         <div className="text-center p-8 rounded-lg bg-white shadow-lg max-w-md mx-auto border border-gray-100">
@@ -35,11 +111,12 @@ export const DocumentSidebar = () => {
             </div>
           </div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">
-            No Question Papers Yet
+            No Question Papers Found
           </h3>
           <p className="text-gray-500 mb-6">
-            Get started by creating your first question paper. Click the button
-            below to begin.
+            {filters.grade || filters.subject 
+              ? "Try adjusting your filters or create a new question paper."
+              : "Get started by creating your first question paper."}
           </p>
           <button
             onClick={handleCreatePaper}
@@ -102,7 +179,7 @@ export const DocumentSidebar = () => {
                       {doc.title}
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {doc.subject} • {doc.grade}
+                      {doc.subject} • Grade {doc.grade}
                     </p>
                   </div>
                 </div>
@@ -112,7 +189,9 @@ export const DocumentSidebar = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4">
+          <FilterDropdowns />
+          
           {selectedDocument ? (
             <div className="h-full">
               <div className="mb-6">
@@ -120,7 +199,7 @@ export const DocumentSidebar = () => {
                   {selectedDocument.title}
                 </h2>
                 <p className="text-gray-500 mt-1">
-                  {selectedDocument.subject} • {selectedDocument.grade} •
+                  {selectedDocument.subject} • Grade {selectedDocument.grade} •
                   Created on{" "}
                   {new Date(selectedDocument.createdAt).toLocaleDateString()}
                 </p>
