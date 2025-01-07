@@ -10,6 +10,10 @@ import { Blueprintmodal, modalStyles } from "./BlueprintModal";
 // NEW IMPORT
 import { createQuestionPaperJob } from "../utils/JobApi";
 import CustomAlert from "../subcomponents/CustomAlert";
+import {
+  generateQuestionsArray,
+  reorderQuestionsByType,
+} from "../utils/generateJsonToPassToReceiveJson";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -309,7 +313,7 @@ const GenerateQuestionPaper = () => {
   const fetchBlueprints = async () => {
     setIsLoadingBlueprints(true);
     setBlueprintError("");
-    
+
     try {
       const url = new URL(`${BASE_URL_API}/blueprint/getPaginatedBlueprints`);
       url.searchParams.append("limit", 100);
@@ -322,7 +326,7 @@ const GenerateQuestionPaper = () => {
         },
       });
       const data = await response.json();
-      console.log(data,"data")
+      console.log(data, "data");
       if (data.success) {
         setBlueprints(data.blueprints);
         setHasNextPage(data.hasNextPage);
@@ -388,9 +392,25 @@ const GenerateQuestionPaper = () => {
     setIsModalOpen(false);
   };
 
-  const handleGenerateQuestionPaper = () => {
-    console.log("in here");
-    setIsAlertModalOpen(true);
+  const handleGenerateQuestionPaper = async () => {
+    const blueprint = reorderQuestionsByType(
+      generateQuestionsArray(topicsConfig)
+    );
+    try {
+      const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: {
+          Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      console.log(data, "Data that was received");
+    } catch (e) {
+    } finally {
+      setIsAlertModalOpen(true);
+    }
   };
   return (
     <div style={styles.pageContainer} className="fade-in">
