@@ -1,10 +1,8 @@
 import { openai } from "./InitOpenAI";
-import { JSON_SCHEMA, models, USER } from "../constants/constants";
+import { models, USER } from "../constants/constants";
 import {
   GENERATE_USER_PROMPT,
   generateContent,
-  QUESTION_PAPER_AND_ANSWER_SHEET_SCHEMA,
-  QUESTION_PAPER_SCHEMA,
   USER_PROMPT_GENERATE_QUESTION_PAPER,
 } from "./Questionpaperutils";
 import {
