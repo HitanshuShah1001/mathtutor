@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FolderOpen, FileText, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
-import { BASE_URL_API, DUMMY_DOCUMENTS } from "../constants/constants";
+import { ACCESS_KEY, BASE_URL_API, DUMMY_DOCUMENTS } from "../constants/constants";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -24,14 +24,14 @@ export const DocumentSidebar = () => {
       const requestBody = {};
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
-
+      const accesskey = localStorage.getItem(ACCESS_KEY)
       const response = await fetch(
-        `/questionPaper/getPaginatedQuestionPapers`,
+        `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: "YOUR_AUTH_TOKEN_HERE",
+            Authorization: accesskey,
           },
           body: JSON.stringify(requestBody),
         }
