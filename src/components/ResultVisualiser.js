@@ -5,7 +5,7 @@ import { ChatHeader } from "../subcomponents/ChatHeader";
 import { ChatMessage } from "../subcomponents/Chatmessage";
 import { ShowLoading } from "../subcomponents/ShowLoading";
 import { ChatInput } from "../subcomponents/ChatInput";
-import { ASSISTANT, MESSAGE_STATUS, USER } from "../constants/constants";
+import {  MESSAGE_STATUS, USER } from "../constants/constants";
 import { useLocation } from "react-router-dom";
 import './styles.css'
 

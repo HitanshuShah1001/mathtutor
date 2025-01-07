@@ -33,7 +33,6 @@ export const SelectStandard = ({ onNext }) => {
           standard: selectedStandard,
         });
         const newThread = await createThread();
-        console.log(fileData, assistant, newThread);
         localStorage.setItem(
           selectedStandard,
           JSON.stringify({
