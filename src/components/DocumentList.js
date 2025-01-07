@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FolderOpen, FileText, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
-import { DUMMY_DOCUMENTS } from "../constants/constants";
+import { BASE_URL_API, DUMMY_DOCUMENTS } from "../constants/constants";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -13,9 +13,9 @@ export const DocumentSidebar = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     grade: null,
-    subject: null
+    subject: null,
   });
-  
+
   const navigate = useNavigate();
 
   const fetchDocuments = async () => {
@@ -25,21 +25,24 @@ export const DocumentSidebar = () => {
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
 
-      const response = await fetch('https://api.gotutorless.com/questionPaper/getPaginatedQuestionPapers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'YOUR_AUTH_TOKEN_HERE'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      const response = await fetch(
+        `/questionPaper/getPaginatedQuestionPapers`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "YOUR_AUTH_TOKEN_HERE",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
       const data = await response.json();
       setDocuments(data);
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      console.error("Error fetching documents:", error);
     } finally {
-      setDocuments(DUMMY_DOCUMENTS)
+      setDocuments(DUMMY_DOCUMENTS);
       setLoading(false);
     }
   };
@@ -56,16 +59,20 @@ export const DocumentSidebar = () => {
     <div className="mb-6 flex gap-4">
       <div className="relative">
         <select
-          value={filters.grade || ''}
-          onChange={(e) => setFilters(prev => ({
-            ...prev,
-            grade: e.target.value ? Number(e.target.value) : null
-          }))}
+          value={filters.grade || ""}
+          onChange={(e) =>
+            setFilters((prev) => ({
+              ...prev,
+              grade: e.target.value ? Number(e.target.value) : null,
+            }))
+          }
           className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Grades</option>
           {GRADES.map((grade) => (
-            <option key={grade} value={grade}>Grade {grade}</option>
+            <option key={grade} value={grade}>
+              Grade {grade}
+            </option>
           ))}
         </select>
         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
@@ -73,16 +80,20 @@ export const DocumentSidebar = () => {
 
       <div className="relative">
         <select
-          value={filters.subject || ''}
-          onChange={(e) => setFilters(prev => ({
-            ...prev,
-            subject: e.target.value || null
-          }))}
+          value={filters.subject || ""}
+          onChange={(e) =>
+            setFilters((prev) => ({
+              ...prev,
+              subject: e.target.value || null,
+            }))
+          }
           className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Subjects</option>
           {SUBJECTS.map((subject) => (
-            <option key={subject} value={subject}>{subject}</option>
+            <option key={subject} value={subject}>
+              {subject}
+            </option>
           ))}
         </select>
         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
@@ -114,7 +125,7 @@ export const DocumentSidebar = () => {
             No Question Papers Found
           </h3>
           <p className="text-gray-500 mb-6">
-            {filters.grade || filters.subject 
+            {filters.grade || filters.subject
               ? "Try adjusting your filters or create a new question paper."
               : "Get started by creating your first question paper."}
           </p>
@@ -191,7 +202,7 @@ export const DocumentSidebar = () => {
         {/* Main Content */}
         <div className="flex-1 p-4">
           <FilterDropdowns />
-          
+
           {selectedDocument ? (
             <div className="h-full">
               <div className="mb-6">
