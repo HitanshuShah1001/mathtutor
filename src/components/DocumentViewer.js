@@ -16,7 +16,6 @@ const DocumentViewer = ({ documentUrl, title }) => {
       const response = await fetch(documentUrl);
       const blob = await response.blob();
       const htmlContent = await blob.text();
-        console.log(htmlContent)
       const element = document.createElement("div");
       element.innerHTML = htmlContent;
 

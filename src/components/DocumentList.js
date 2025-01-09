@@ -40,7 +40,7 @@ export const DocumentSidebar = () => {
       );
 
       const data = await response.json();
-      console.log(data, "data");
+      console.log(data,"data")
       setDocuments(data.data);
     } catch (error) {
       console.error("Error fetching documents:", error);
@@ -166,7 +166,10 @@ export const DocumentSidebar = () => {
             {documents.map((doc) => (
               <div
                 key={doc.id}
-                onClick={() => setSelectedDocument(doc)}
+                onClick={() => {
+                  setActiveDocument(null)
+                  setSelectedDocument(doc)
+                }}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors duration-200 ${
                   selectedDocument?.id === doc.id
                     ? "bg-blue-50 border-l-4 border-l-blue-500"
