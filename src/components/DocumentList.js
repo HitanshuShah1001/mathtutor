@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { FolderOpen, FileText, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
-import { ACCESS_KEY, BASE_URL_API, DUMMY_DOCUMENTS } from "../constants/constants";
+import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
+import DocumentViewer from "./DocumentViewer";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -10,6 +11,7 @@ const SUBJECTS = ["Maths", "Science", "English", "History"];
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [activeDocument, setActiveDocument] = useState(null); // Add this state
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     grade: null,
@@ -24,7 +26,7 @@ export const DocumentSidebar = () => {
       const requestBody = {};
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
-      const accesskey = localStorage.getItem(ACCESS_KEY)
+      const accesskey = localStorage.getItem(ACCESS_KEY);
       const response = await fetch(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers`,
         {
@@ -38,11 +40,11 @@ export const DocumentSidebar = () => {
       );
 
       const data = await response.json();
-      setDocuments(data);
+      console.log(data, "data");
+      setDocuments(data.data);
     } catch (error) {
       console.error("Error fetching documents:", error);
     } finally {
-      setDocuments(DUMMY_DOCUMENTS);
       setLoading(false);
     }
   };
@@ -207,19 +209,26 @@ export const DocumentSidebar = () => {
             <div className="h-full">
               <div className="mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800">
-                  {selectedDocument.title}
+                  {selectedDocument.name}
                 </h2>
                 <p className="text-gray-500 mt-1">
                   {selectedDocument.subject} • Grade {selectedDocument.grade} •
                   Created on{" "}
                   {new Date(selectedDocument.createdAt).toLocaleDateString()}
                 </p>
+                <p className="text-gray-500 mt-1">
+                  Topics :- {JSON.stringify(selectedDocument.topics)}
+                </p>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex gap-4 mb-6">
                 <button
-                  className="px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group"
-                  onClick={() => {}}
+                  className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
+                    activeDocument === "question"
+                      ? "bg-blue-50 border-blue-500"
+                      : ""
+                  }`}
+                  onClick={() => setActiveDocument("question")}
                 >
                   <div className="flex items-center justify-center space-x-2">
                     <FileText className="w-5 h-5 text-blue-500" />
@@ -230,8 +239,12 @@ export const DocumentSidebar = () => {
                 </button>
 
                 <button
-                  className="px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group"
-                  onClick={() => {}}
+                  className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
+                    activeDocument === "solution"
+                      ? "bg-blue-50 border-blue-500"
+                      : ""
+                  }`}
+                  onClick={() => setActiveDocument("solution")}
                 >
                   <div className="flex items-center justify-center space-x-2">
                     <FileText className="w-5 h-5 text-blue-500" />
@@ -241,6 +254,31 @@ export const DocumentSidebar = () => {
                   </div>
                 </button>
               </div>
+              {selectedDocument && activeDocument && (
+                <div className="mt-6 flex-1">
+                  {activeDocument === "question" &&
+                  selectedDocument.questionPaperLink ? (
+                    <DocumentViewer
+                      documentUrl={selectedDocument.questionPaperLink}
+                      title={`${selectedDocument.name} - Question Paper`}
+                    />
+                  ) : activeDocument === "solution" &&
+                    selectedDocument.solutionLink ? (
+                    <DocumentViewer
+                      documentUrl={selectedDocument.solutionLink}
+                      title={`${selectedDocument.name} - Answer Sheet`}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500">
+                        {selectedDocument.status === "inProgress"
+                          ? "Document is still being generated..."
+                          : "Document not available"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
