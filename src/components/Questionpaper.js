@@ -396,17 +396,25 @@ const GenerateQuestionPaper = () => {
     const blueprint = reorderQuestionsByType(
       generateQuestionsArray(topicsConfig)
     );
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("Authorization", localStorage.getItem(ACCESS_KEY));
+    const body = JSON.stringify({
+      subject,
+      grade: parseInt(standard),
+      blueprint,
+      name: title,
+    });
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
-      const response = await fetch(url.toString(), {
+      const requestOptions = {
         method: "POST",
-        headers: {
-          Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
-          "Content-Type": "application/json",
-        },
-      });
+        headers: myHeaders,
+        body,
+      };
+      const response = await fetch(url.toString(), requestOptions);
       const data = await response.json();
-      console.log(data, "Data that was received");
+      
     } catch (e) {
     } finally {
       setIsAlertModalOpen(true);
