@@ -404,6 +404,7 @@ const GenerateQuestionPaper = () => {
       grade: parseInt(standard),
       blueprint,
       name: title,
+      totalMarks:marks,
     });
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);

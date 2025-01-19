@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
+import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -40,7 +41,9 @@ export const DocumentSidebar = () => {
       );
 
       const data = await response.json();
-      console.log(data,"data")
+      if (data.message === "Invalid or expired access token") {
+        removeDataFromLocalStorage();
+      }
       setDocuments(data.data);
     } catch (error) {
       console.error("Error fetching documents:", error);
@@ -167,8 +170,8 @@ export const DocumentSidebar = () => {
               <div
                 key={doc.id}
                 onClick={() => {
-                  setActiveDocument(null)
-                  setSelectedDocument(doc)
+                  setActiveDocument(null);
+                  setSelectedDocument(doc);
                 }}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors duration-200 ${
                   selectedDocument?.id === doc.id
