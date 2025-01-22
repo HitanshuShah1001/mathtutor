@@ -117,7 +117,7 @@ export const DocumentSidebar = () => {
     );
   }
 
-  if (!loading && documents.length === 0) {
+  if (!loading && documents?.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
         <div className="text-center p-8 rounded-lg bg-white shadow-lg max-w-md mx-auto border border-gray-100">

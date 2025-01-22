@@ -393,6 +393,7 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleGenerateQuestionPaper = async () => {
+
     const blueprint = reorderQuestionsByType(
       generateQuestionsArray(topicsConfig)
     );
@@ -405,6 +406,7 @@ const GenerateQuestionPaper = () => {
       blueprint,
       name: title,
       totalMarks:marks,
+      lengthOfBlueprint:blueprint.length
     });
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
