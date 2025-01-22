@@ -7,7 +7,7 @@ import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 const GRADES = [7, 8, 9, 10];
-const SUBJECTS = ["Maths", "Science", "English", "History"];
+const SUBJECTS = ["maths", "science", "english", "history"];
 
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);

@@ -10,7 +10,6 @@ const DocumentViewer = ({ documentUrl, title }) => {
       printWindow.print();
     };
   };
-
   const handleDownloadPDF = async () => {
     try {
       const response = await fetch(documentUrl);

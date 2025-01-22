@@ -44,19 +44,6 @@ const GenerateQuestionPaper = () => {
   const [bluePrintId, setBluePrintId] = useState(null);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
-  // Initialize state from localStorage
-  useEffect(() => {
-    const savedStandard = localStorage.getItem("standard");
-    const savedSubject = localStorage.getItem("subject");
-    const savedTopicsConfig = localStorage.getItem("topicsConfig");
-    const savedMCQs = localStorage.getItem("mcqs");
-
-    if (savedStandard) setStandard(savedStandard);
-    if (savedSubject) setSubject(savedSubject);
-    if (savedTopicsConfig) setTopicsConfig(JSON.parse(savedTopicsConfig));
-    if (savedMCQs) setMcqs(savedMCQs);
-  }, []);
-
   // Watchers to save state to localStorage
   useEffect(() => {
     localStorage.setItem("standard", standard);
@@ -75,6 +62,7 @@ const GenerateQuestionPaper = () => {
   }, [mcqs]);
 
   useEffect(() => {
+    console.log(subject,standard)
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
@@ -544,8 +532,8 @@ const GenerateQuestionPaper = () => {
                   }}
                 >
                   <option value="">Select Subject</option>
-                  <option value="Science">Science</option>
-                  <option value="Maths">Maths</option>
+                  <option value="science">science</option>
+                  <option value="maths">Maths</option>
                   {/* Add more subjects as needed */}
                 </select>
               </div>
