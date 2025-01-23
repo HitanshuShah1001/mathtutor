@@ -62,7 +62,7 @@ const GenerateQuestionPaper = () => {
   }, [mcqs]);
 
   useEffect(() => {
-    console.log(subject,standard)
+    console.log(subject, standard);
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
@@ -381,7 +381,6 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleGenerateQuestionPaper = async () => {
-
     const blueprint = reorderQuestionsByType(
       generateQuestionsArray(topicsConfig)
     );
@@ -393,8 +392,8 @@ const GenerateQuestionPaper = () => {
       grade: parseInt(standard),
       blueprint,
       name: title,
-      totalMarks:marks,
-      lengthOfBlueprint:blueprint.length
+      totalMarks: marks,
+      lengthOfBlueprint: blueprint.length,
     });
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
@@ -405,7 +404,6 @@ const GenerateQuestionPaper = () => {
       };
       const response = await fetch(url.toString(), requestOptions);
       const data = await response.json();
-      
     } catch (e) {
     } finally {
       setIsAlertModalOpen(true);

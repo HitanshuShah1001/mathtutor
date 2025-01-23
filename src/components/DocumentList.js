@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { FolderOpen, FileText, ChevronDown } from "lucide-react";
+import {
+  FolderOpen,
+  FileText,
+  ChevronDown,
+  Printer,
+  Download,
+  Edit,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
+import DocumentEditor from "./DocumentEditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 const GRADES = [7, 8, 9, 10];
@@ -11,8 +19,12 @@ const SUBJECTS = ["maths", "science", "english", "history"];
 
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
+  // Separate edit modes for question and solution
+  const [editModeQuestion, setEditModeQuestion] = useState(false);
+  const [editModeSolution, setEditModeSolution] = useState(false);
+
   const [selectedDocument, setSelectedDocument] = useState(null);
-  const [activeDocument, setActiveDocument] = useState(null); // Add this state
+  const [activeDocument, setActiveDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     grade: null,
@@ -28,6 +40,7 @@ export const DocumentSidebar = () => {
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
       const accesskey = localStorage.getItem(ACCESS_KEY);
+
       const response = await fetch(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers`,
         {
@@ -39,8 +52,8 @@ export const DocumentSidebar = () => {
           body: JSON.stringify(requestBody),
         }
       );
-
       const data = await response.json();
+
       if (data.message === "Invalid or expired access token") {
         removeDataFromLocalStorage();
       }
@@ -172,6 +185,10 @@ export const DocumentSidebar = () => {
                 onClick={() => {
                   setActiveDocument(null);
                   setSelectedDocument(doc);
+
+                  // Whenever a new doc is selected, reset edit modes
+                  setEditModeQuestion(false);
+                  setEditModeSolution(false);
                 }}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors duration-200 ${
                   selectedDocument?.id === doc.id
@@ -213,6 +230,7 @@ export const DocumentSidebar = () => {
 
           {selectedDocument ? (
             <div className="h-full">
+              {/* Document Info */}
               <div className="mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800">
                   {selectedDocument.name}
@@ -227,6 +245,7 @@ export const DocumentSidebar = () => {
                 </p>
               </div>
 
+              {/* Tab buttons */}
               <div className="flex gap-4 mb-6">
                 <button
                   className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
@@ -234,7 +253,11 @@ export const DocumentSidebar = () => {
                       ? "bg-blue-50 border-blue-500"
                       : ""
                   }`}
-                  onClick={() => setActiveDocument("question")}
+                  onClick={() => {
+                    setActiveDocument("question");
+                    // reset solution edit mode if switching tabs
+                    setEditModeSolution(false);
+                  }}
                 >
                   <div className="flex items-center justify-center space-x-2">
                     <FileText className="w-5 h-5 text-blue-500" />
@@ -250,7 +273,11 @@ export const DocumentSidebar = () => {
                       ? "bg-blue-50 border-blue-500"
                       : ""
                   }`}
-                  onClick={() => setActiveDocument("solution")}
+                  onClick={() => {
+                    setActiveDocument("solution");
+                    // reset question edit mode if switching tabs
+                    setEditModeQuestion(false);
+                  }}
                 >
                   <div className="flex items-center justify-center space-x-2">
                     <FileText className="w-5 h-5 text-blue-500" />
@@ -260,31 +287,87 @@ export const DocumentSidebar = () => {
                   </div>
                 </button>
               </div>
-              {selectedDocument && activeDocument && (
-                <div className="mt-6 flex-1">
-                  {activeDocument === "question" &&
-                  selectedDocument.questionPaperLink ? (
-                    <DocumentViewer
-                      documentUrl={selectedDocument.questionPaperLink}
-                      title={`${selectedDocument.name} - Question Paper`}
-                    />
-                  ) : activeDocument === "solution" &&
-                    selectedDocument.solutionLink ? (
-                    <DocumentViewer
-                      documentUrl={selectedDocument.solutionLink}
-                      title={`${selectedDocument.name} - Answer Sheet`}
-                    />
+
+              {/* Document content area */}
+              {activeDocument === "question" && (
+                <div>
+                  {selectedDocument.questionPaperLink ? (
+                    <>
+                      {/* Toolbar: Download, Print, Edit */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <button
+                          onClick={() => setEditModeQuestion(!editModeQuestion)}
+                          className="flex items-center px-3 py-2 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          {editModeQuestion ? "View" : "Edit"}
+                        </button>
+                      </div>
+
+                      {editModeQuestion ? (
+                        <DocumentEditor
+                          documentUrl={selectedDocument.questionPaperLink}
+                          onSave={(updatedHTML) => {
+                            console.log(
+                              "Updated Question Paper HTML:",
+                              updatedHTML
+                            );
+                            // TODO: call API to persist updatedHTML
+                            // e.g.: fetch("/api/saveQuestionPaper", { ... })
+                          }}
+                        />
+                      ) : (
+                        <DocumentViewer
+                          documentUrl={selectedDocument.questionPaperLink}
+                          title={`${selectedDocument.name} - Question Paper`}
+                        />
+                      )}
+                    </>
                   ) : (
                     <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                       <p className="text-gray-500">
                         {selectedDocument.status === "inProgress"
                           ? "Document is still being generated..."
-                          : "Document not available"}
+                          : "Question paper not available"}
                       </p>
                     </div>
                   )}
                 </div>
               )}
+
+              {activeDocument === "solution" && (
+                <div>
+                  {selectedDocument.solutionLink ? (
+                    <>
+                      {editModeSolution ? (
+                        <DocumentEditor
+                          documentUrl={selectedDocument.solutionLink}
+                          onSave={(updatedHTML) => {
+                            console.log("Updated Solution HTML:", updatedHTML);
+                            // TODO: call API to persist updatedHTML
+                            // e.g.: fetch("/api/saveSolutionPaper", { ... })
+                          }}
+                        />
+                      ) : (
+                        <DocumentViewer
+                          documentUrl={selectedDocument.solutionLink}
+                          title={`${selectedDocument.name} - Answer Sheet`}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500">
+                        {selectedDocument.status === "inProgress"
+                          ? "Document is still being generated..."
+                          : "Solution not available"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* If user hasn't selected either "question" or "solution" yet, no doc shown */}
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
