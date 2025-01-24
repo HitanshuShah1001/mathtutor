@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import React, { useEffect, useState } from "react";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import { uploadToS3 } from "../utils/s3utils";
 
-export const DocumentEditor = ({ documentUrl, onSave }) => {
-  const [htmlContent, setHtmlContent] = useState('');
+export const DocumentEditor = ({ documentUrl,onSave }) => {
+  const [htmlContent, setHtmlContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -15,10 +16,10 @@ export const DocumentEditor = ({ documentUrl, onSave }) => {
       try {
         const response = await fetch(documentUrl);
         const text = await response.text();
-        console.log(text,"trext html content")
+        console.log(text, "trext html content");
         setHtmlContent(text);
       } catch (err) {
-        setError('Failed to load document');
+        setError("Failed to load document");
       } finally {
         setLoading(false);
       }

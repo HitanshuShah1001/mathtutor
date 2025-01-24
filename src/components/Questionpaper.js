@@ -8,7 +8,6 @@ import { putRequest } from "../utils/ApiCall";
 import { Blueprintmodal, modalStyles } from "./BlueprintModal";
 
 // NEW IMPORT
-import { createQuestionPaperJob } from "../utils/JobApi";
 import CustomAlert from "../subcomponents/CustomAlert";
 import {
   generateQuestionsArray,
@@ -22,16 +21,10 @@ const GenerateQuestionPaper = () => {
   const [customTopic, setCustomTopic] = useState("");
   const [marks, setMarks] = useState("");
   const [title, setTitle] = useState("");
-  const [mcqs, setMcqs] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
-
-  // NEW: We'll no longer store "responseText" from the old generation,
-  // because we won't generate the final paper immediately.
-  // We'll store jobId in case we want to show it.
-  const [jobId, setJobId] = useState(null);
 
   // New States for Modal and Blueprints
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,9 +50,6 @@ const GenerateQuestionPaper = () => {
     localStorage.setItem("topicsConfig", JSON.stringify(topicsConfig));
   }, [topicsConfig]);
 
-  useEffect(() => {
-    localStorage.setItem("mcqs", mcqs);
-  }, [mcqs]);
 
   useEffect(() => {
     console.log(subject, standard);

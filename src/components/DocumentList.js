@@ -13,6 +13,7 @@ import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import DocumentEditor from "./DocumentEditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
+import { uploadToS3 } from "../utils/s3utils";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["maths", "science", "english", "history"];
@@ -32,8 +33,6 @@ export const DocumentSidebar = () => {
   });
 
   const navigate = useNavigate();
-
-
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -310,12 +309,10 @@ export const DocumentSidebar = () => {
                         <DocumentEditor
                           documentUrl={selectedDocument.questionPaperLink}
                           onSave={(updatedHTML) => {
-                            console.log(
-                              "Updated Question Paper HTML:",
-                              updatedHTML
+                            uploadToS3(
+                              updatedHTML,
+                              selectedDocument.questionPaperLink
                             );
-                            // TODO: call API to persist updatedHTML
-                            // e.g.: fetch("/api/saveQuestionPaper", { ... })
                           }}
                         />
                       ) : (
@@ -345,9 +342,10 @@ export const DocumentSidebar = () => {
                         <DocumentEditor
                           documentUrl={selectedDocument.solutionLink}
                           onSave={(updatedHTML) => {
-                            console.log("Updated Solution HTML:", updatedHTML);
-                            // TODO: call API to persist updatedHTML
-                            // e.g.: fetch("/api/saveSolutionPaper", { ... })
+                            uploadToS3(
+                              updatedHTML,
+                              selectedDocument.solutionLink
+                            );
                           }}
                         />
                       ) : (
