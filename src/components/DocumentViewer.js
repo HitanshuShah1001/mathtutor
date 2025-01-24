@@ -3,7 +3,7 @@ import { Download, Printer } from "lucide-react";
 
 const DocumentViewer = ({ documentUrl, title }) => {
   const [loading, setLoading] = useState(true);
-
+  const uniqueDocumentUrl = `${documentUrl}?t=${Date.now()}`;
   const handlePrint = () => {
     const printWindow = window.open(documentUrl, "_blank");
     printWindow.onload = () => {
@@ -62,7 +62,7 @@ const DocumentViewer = ({ documentUrl, title }) => {
 
       <div className="flex-1 p-4 h-full">
         <iframe
-          src={documentUrl}
+          src={uniqueDocumentUrl}
           className="w-full h-full border-0"
           onLoad={() => setLoading(false)}
           title={title}
