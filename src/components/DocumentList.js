@@ -3,8 +3,6 @@ import {
   FolderOpen,
   FileText,
   ChevronDown,
-  Printer,
-  Download,
   Edit,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -312,7 +310,13 @@ export const DocumentSidebar = () => {
                             uploadToS3(
                               updatedHTML,
                               selectedDocument.questionPaperLink
-                            );
+                            )
+                              .then(() => {
+                                window.location.reload();
+                              })
+                              .catch((err) => {
+                                alert("Error updating document");
+                              });
                           }}
                         />
                       ) : (
@@ -344,8 +348,14 @@ export const DocumentSidebar = () => {
                           onSave={(updatedHTML) => {
                             uploadToS3(
                               updatedHTML,
-                              selectedDocument.solutionLink
-                            );
+                              selectedDocument.questionPaperLink
+                            )
+                              .then(() => {
+                                window.location.reload();
+                              })
+                              .catch((err) => {
+                                alert("Error updating document");
+                              });
                           }}
                         />
                       ) : (
