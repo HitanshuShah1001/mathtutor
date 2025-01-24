@@ -33,6 +33,8 @@ export const DocumentSidebar = () => {
 
   const navigate = useNavigate();
 
+
+
   const fetchDocuments = async () => {
     setLoading(true);
     try {
@@ -87,7 +89,7 @@ export const DocumentSidebar = () => {
           className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Grades</option>
-          {GRADES.map((grade) => (
+          {GRADES?.map((grade) => (
             <option key={grade} value={grade}>
               Grade {grade}
             </option>
@@ -108,7 +110,7 @@ export const DocumentSidebar = () => {
           className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         >
           <option value="">All Subjects</option>
-          {SUBJECTS.map((subject) => (
+          {SUBJECTS?.map((subject) => (
             <option key={subject} value={subject}>
               {subject}
             </option>
@@ -179,7 +181,7 @@ export const DocumentSidebar = () => {
           </div>
 
           <div className="overflow-y-auto">
-            {documents.map((doc) => (
+            {documents?.map((doc) => (
               <div
                 key={doc.id}
                 onClick={() => {
