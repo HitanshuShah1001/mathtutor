@@ -15,7 +15,7 @@ export function generateQuestionsArray(inputData) {
               ? difficulty.MEDIUM
               : difficulty.HARD,
             marks: config.mcqMarks || 1,
-            type: "Multiple Choice Question",
+            type: "MCQ",
           });
         }
       }
@@ -28,7 +28,7 @@ export function generateQuestionsArray(inputData) {
               topic,
               difficulty: val.difficulty.toUpperCase(),
               marks: val.marks,
-              type: "Descriptive Question",
+              type: "Descriptive",
             });
           }
         }
@@ -53,9 +53,9 @@ export function reorderQuestionsByType(questions) {
   const descriptive = [];
 
   questions.forEach((question) => {
-    if (question.type === "Multiple Choice Question") {
+    if (question.type === "MCQ") {
       mcqs.push(question);
-    } else if (question.type === "Descriptive Question") {
+    } else if (question.type === "Descriptive") {
       descriptive.push(question);
     }
   });

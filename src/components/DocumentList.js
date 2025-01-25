@@ -14,7 +14,7 @@ import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { uploadToS3 } from "../utils/s3utils";
 
 const GRADES = [7, 8, 9, 10];
-const SUBJECTS = ["maths", "science", "english", "history"];
+const SUBJECTS = ["Maths", "Science", "English", "History"];
 
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);

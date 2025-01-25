@@ -1,6 +1,6 @@
 export const 
 allTopics = {
-  science: {
+  Science: {
     1: [
       "Living and Non-Living Things",
       "Plants Around Us",
@@ -220,7 +220,7 @@ allTopics = {
       "Moving Charges and Magnet",
     ],
   },
-  maths: {
+  Maths: {
     1: [
       "Shapes and Space",
       "Numbers from One to Nine",

@@ -307,7 +307,7 @@ export const USER_PROMPT_GENERATE_QUESTION_PAPER = (config) => {
      - The MCQ and descripttive question should be seperated via sections
      - For each question, show:
        - The question number and text (e.g., "Question 1. Evaluate the limit ...").
-       - In case of a Multiple Choice Question, All the multiple-choice options (A, B, C, D).
+       - In case of a MCQ, All the multiple-choice options (A, B, C, D).
      - **Do not** show the correct answer or explanation in this first document.
 
    - **Document 2 (Answer Key)**:

@@ -21,6 +21,8 @@ const GenerateQuestionPaper = () => {
   const [customTopic, setCustomTopic] = useState("");
   const [marks, setMarks] = useState("");
   const [title, setTitle] = useState("");
+  const [academyName,setAcademyName] = useState("Knowledge High School");
+  const [timeDuration,setTimeDuration] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
@@ -380,10 +382,12 @@ const GenerateQuestionPaper = () => {
     const body = JSON.stringify({
       subject,
       grade: parseInt(standard),
-      blueprint,
       name: title,
+      blueprint,
       totalMarks: marks,
       lengthOfBlueprint: blueprint.length,
+      academyName,
+      timeDuration
     });
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
@@ -491,6 +495,15 @@ const GenerateQuestionPaper = () => {
                 />
               </div>
               <div style={styles.formGroup}>
+                <label style={styles.label}>Academy Name</label>
+                <input
+                  style={styles.input}
+                  value={academyName}
+                  onChange={(e) => setAcademyName(e.target.value)}
+                  placeholder="12 Std. Question Paper"
+                />
+              </div>
+              <div style={styles.formGroup}>
                 <label style={styles.label}>Standard</label>
                 <select
                   style={styles.select}
@@ -520,8 +533,8 @@ const GenerateQuestionPaper = () => {
                   }}
                 >
                   <option value="">Select Subject</option>
-                  <option value="science">science</option>
-                  <option value="maths">Maths</option>
+                  <option value="Science">Science</option>
+                  <option value="Maths">Maths</option>
                   {/* Add more subjects as needed */}
                 </select>
               </div>
@@ -534,6 +547,15 @@ const GenerateQuestionPaper = () => {
                   value={marks}
                   onChange={(e) => setMarks(e.target.value)}
                   placeholder="e.g. 100"
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Time Duration</label>
+                <input
+                  style={styles.input}
+                  value={timeDuration}
+                  onChange={(e) => setTimeDuration(e.target.value)}
+                  placeholder="2 Hours"
                 />
               </div>
               <div style={styles.formGroup}>
