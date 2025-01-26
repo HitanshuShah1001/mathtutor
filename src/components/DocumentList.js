@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  FolderOpen,
-  FileText,
-  ChevronDown,
-  Edit,
-} from "lucide-react";
+import { FolderOpen, FileText, ChevronDown, Edit,DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
@@ -18,10 +13,8 @@ const SUBJECTS = ["Maths", "Science", "English", "History"];
 
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
-  // Separate edit modes for question and solution
   const [editModeQuestion, setEditModeQuestion] = useState(false);
   const [editModeSolution, setEditModeSolution] = useState(false);
-
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [activeDocument, setActiveDocument] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -118,6 +111,15 @@ export const DocumentSidebar = () => {
     </div>
   );
 
+  const downloadAllSetPDFs = (questionPapersLinks) => {
+    questionPapersLinks.forEach((link, index) => {
+      const anchor = document.createElement("a");
+      anchor.href = link;
+      anchor.download = `Set_${index + 1}.pdf`;
+      anchor.click();
+    });
+  };
+
   if (loading && documents.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
@@ -162,7 +164,6 @@ export const DocumentSidebar = () => {
     <>
       <ChatHeader />
       <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar */}
         <div className="w-1/4 min-h-screen bg-white border-r border-gray-200 shadow-sm">
           <div className="p-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
@@ -184,8 +185,6 @@ export const DocumentSidebar = () => {
                 onClick={() => {
                   setActiveDocument(null);
                   setSelectedDocument(doc);
-
-                  // Whenever a new doc is selected, reset edit modes
                   setEditModeQuestion(false);
                   setEditModeSolution(false);
                 }}
@@ -223,13 +222,11 @@ export const DocumentSidebar = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="flex-1 p-4">
           <FilterDropdowns />
 
           {selectedDocument ? (
             <div className="h-full">
-              {/* Document Info */}
               <div className="mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800">
                   {selectedDocument.name}
@@ -240,11 +237,10 @@ export const DocumentSidebar = () => {
                   {new Date(selectedDocument.createdAt).toLocaleDateString()}
                 </p>
                 <p className="text-gray-500 mt-1">
-                  Topics :- {JSON.stringify(selectedDocument.topics)}
+                  Topics: {JSON.stringify(selectedDocument.topics)}
                 </p>
               </div>
 
-              {/* Tab buttons */}
               <div className="flex gap-4 mb-6">
                 <button
                   className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
@@ -282,6 +278,24 @@ export const DocumentSidebar = () => {
                     <FileText className="w-5 h-5 text-blue-500" />
                     <span className="font-medium text-gray-700 group-hover:text-blue-600">
                       Answer Sheet
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
+                    activeDocument === "solution"
+                      ? "bg-blue-50 border-blue-500"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    downloadAllSetPDFs(selectedDocument.questionPapersLinks)
+                  }
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <DownloadIcon className="w-5 h-5 text-blue-500" />
+                    <span className="font-medium text-gray-700 group-hover:text-blue-600">
+                      Download All Sets
                     </span>
                   </div>
                 </button>
@@ -376,8 +390,6 @@ export const DocumentSidebar = () => {
                   )}
                 </div>
               )}
-
-              {/* If user hasn't selected either "question" or "solution" yet, no doc shown */}
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
