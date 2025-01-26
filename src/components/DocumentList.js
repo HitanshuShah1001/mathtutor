@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { FolderOpen, FileText, ChevronDown, Edit,DownloadIcon } from "lucide-react";
+import {
+  FolderOpen,
+  FileText,
+  ChevronDown,
+  Edit,
+  DownloadIcon,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
@@ -222,7 +228,7 @@ export const DocumentSidebar = () => {
           </div>
         </div>
 
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-4 h-full">
           <FilterDropdowns />
 
           {selectedDocument ? (
@@ -392,7 +398,7 @@ export const DocumentSidebar = () => {
               )}
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="h-full flex items-center justify-center text-gray-500" style={{height:'80vh'}}>
               Select a document to view details
             </div>
           )}
