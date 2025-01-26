@@ -245,6 +245,9 @@ export const DocumentSidebar = () => {
                 <p className="text-gray-500 mt-1">
                   Topics: {JSON.stringify(selectedDocument.topics)}
                 </p>
+                <p className="text-gray-500 mt-1">
+                  Total Sets: {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
+                </p>
               </div>
 
               <div className="flex gap-4 mb-6">
