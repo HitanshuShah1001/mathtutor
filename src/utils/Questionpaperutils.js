@@ -1,3 +1,5 @@
+import { DESCRIPTIVE, MCQ } from "../constants/constants";
+
 export const GENERATE_USER_PROMPT = (
   blueprint
 ) => `Generate a set of questions based on the following array of objects. Each object specifies the topic, difficulty, marks, and type of the question. Iterate through the array and create one question for each objectin the array. Adhere to the following guidelines:
@@ -412,7 +414,7 @@ export const QUESTION_PAPER_SCHEMA = {
         },
       },
     },
-    required: ["MCQ", "Descriptive"],
+    required: [MCQ, DESCRIPTIVE],
     additionalProperties: false,
   },
 };

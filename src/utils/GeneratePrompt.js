@@ -1,3 +1,5 @@
+import { DESCRIPTIVE, MCQ } from "../constants/constants";
+
 export const generatePrompt = ({
   title,
   topicsConfig,
@@ -23,9 +25,9 @@ export const generatePrompt = ({
   const topicLines = Object.entries(topicsConfig).map(([topic, config]) => {
     return `
     Topic: ${topic}
-      MCQs:
+      ${MCQ}:
         Easy: ${config.easyMCQs}, Medium: ${config.mediumMCQs}, Hard: ${config.hardMCQs}
-      Descriptive:
+      ${DESCRIPTIVE}:
         Easy: ${config.descEasy}, Medium: ${config.descMedium}, Hard: ${config.descHard}`;
   });
 

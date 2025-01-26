@@ -20,9 +20,10 @@ const GenerateQuestionPaper = () => {
   const [topics, setTopics] = useState([]);
   const [customTopic, setCustomTopic] = useState("");
   const [marks, setMarks] = useState("");
+  const [numberOfSets, setNumberOfSets] = useState(1); // New state for number of sets
   const [title, setTitle] = useState("");
-  const [academyName,setAcademyName] = useState("Knowledge High School");
-  const [timeDuration,setTimeDuration] = useState("");
+  const [academyName, setAcademyName] = useState("Knowledge High School");
+  const [timeDuration, setTimeDuration] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false); // State to track loading
   const [topicsConfig, setTopicsConfig] = useState({});
@@ -39,22 +40,7 @@ const GenerateQuestionPaper = () => {
   const [bluePrintId, setBluePrintId] = useState(null);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
-  // Watchers to save state to localStorage
   useEffect(() => {
-    localStorage.setItem("standard", standard);
-  }, [standard]);
-
-  useEffect(() => {
-    localStorage.setItem("subject", subject);
-  }, [subject]);
-
-  useEffect(() => {
-    localStorage.setItem("topicsConfig", JSON.stringify(topicsConfig));
-  }, [topicsConfig]);
-
-
-  useEffect(() => {
-    console.log(subject, standard);
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
@@ -387,8 +373,11 @@ const GenerateQuestionPaper = () => {
       totalMarks: marks,
       lengthOfBlueprint: blueprint.length,
       academyName,
-      timeDuration
+      timeDuration,
+      numberOfSets: numberOfSets ? parseInt(numberOfSets) : 1,
     });
+    console.log(body,"body");
+
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
       const requestOptions = {
@@ -556,6 +545,16 @@ const GenerateQuestionPaper = () => {
                   value={timeDuration}
                   onChange={(e) => setTimeDuration(e.target.value)}
                   placeholder="2 Hours"
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Number of Sets</label>
+                <input
+                  type="number"
+                  style={styles.input}
+                  value={numberOfSets}
+                  onChange={(e) => setNumberOfSets(e.target.value)}
+                  placeholder="e.g. 3"
                 />
               </div>
               <div style={styles.formGroup}>
@@ -854,6 +853,7 @@ const GenerateQuestionPaper = () => {
               isMarksExceeded ||
               !title ||
               !marks ||
+              !timeDuration ||
               configuredMarks !== parseInt(marks)
             }
           >

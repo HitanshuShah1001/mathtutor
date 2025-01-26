@@ -10,6 +10,8 @@ export const difficulty = {
   MEDIUM: "MEDIUM",
   HARD: "HARD",
 };
+export const MCQ = "MCQ";
+export const DESCRIPTIVE = "Descriptive";
 export const models = {
   O1_PREVIEW: "o1-preview",
   O1_PREVIEW_2024_09_12: "o1-preview-2024-09-12",
@@ -62,7 +64,7 @@ export const RESPONSE_FORMAT = {
           properties: {
             type: {
               type: "string",
-              enum: ["MCQ", "Descriptive"],
+              enum: [MCQ, DESCRIPTIVE],
               description: "The type of the question.",
             },
             question: {
@@ -307,15 +309,13 @@ You are an intelligent assistant designed to analyze student performance data (p
 ---
 `;
 
-
-
 // constants.js
 export const STORAGE_MESSAGES = {
   SELECT_STANDARD: "Please select a standard before proceeding.",
-  OVERRIDE_CONFIRM: "A record for this standard already exists. Do you want to override it?",
-  CONTINUE_EXISTING: "Continuing with the already stored item."
+  OVERRIDE_CONFIRM:
+    "A record for this standard already exists. Do you want to override it?",
+  CONTINUE_EXISTING: "Continuing with the already stored item.",
 };
-
 
 export const JSON_SCHEMA = "json_schema";
 
