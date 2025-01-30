@@ -49,27 +49,42 @@ export const DocumentEditor = ({ documentUrl, onSave }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1">
-        <Editor
-          height="600px"
-          defaultLanguage="html"
-          value={htmlContent}
-          onChange={handleEditorChange}
-          onMount={handleEditorDidMount}
-          options={{
-            minimap: { enabled: false },
-            // If you want users to see auto-format on typing/pasting:
-            // formatOnPaste: true,
-            // formatOnType: true,
-          }}
-        />
+      {/* Save button at top */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 bg-blue-500 text-white rounded"
+        >
+          Save
+        </button>
       </div>
-      <button
-        onClick={handleSave}
-        className="mt-4 self-end px-4 py-2 bg-blue-500 text-white rounded"
-      >
-        Save
-      </button>
+
+      {/* Container for editor & preview side-by-side */}
+      <div className="flex-1 flex space-x-4" style={{ minHeight: "600px" }}>
+        {/* Editor Section */}
+        <div className="w-1/2 border rounded">
+          <Editor
+            height="100%"
+            defaultLanguage="html"
+            value={htmlContent}
+            onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
+            options={{
+              minimap: { enabled: false },
+            }}
+          />
+        </div>
+
+        {/* Preview Section */}
+        <div className="w-1/2 border rounded bg-white">
+          {/* Render the HTML in an iframe for a clean, sandboxed preview */}
+          <iframe
+            title="Document Preview"
+            className="w-full h-full"
+            srcDoc={htmlContent}
+          />
+        </div>
+      </div>
     </div>
   );
 };

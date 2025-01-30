@@ -65,6 +65,7 @@ export const DocumentSidebar = () => {
 
   useEffect(() => {
     fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const handleCreatePaper = () => {
@@ -170,6 +171,7 @@ export const DocumentSidebar = () => {
     <>
       <ChatHeader />
       <div className="flex min-h-screen bg-gray-50">
+        {/* Sidebar */}
         <div className="w-1/4 min-h-screen bg-white border-r border-gray-200 shadow-sm">
           <div className="p-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
@@ -228,28 +230,38 @@ export const DocumentSidebar = () => {
           </div>
         </div>
 
+        {/* Main Content */}
         <div className="flex-1 p-4 h-full">
+          {/* Filters */}
           <FilterDropdowns />
 
           {selectedDocument ? (
             <div className="h-full">
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800">
-                  {selectedDocument.name}
-                </h2>
-                <p className="text-gray-500 mt-1">
-                  {selectedDocument.subject} • Grade {selectedDocument.grade} •
-                  Created on{" "}
-                  {new Date(selectedDocument.createdAt).toLocaleDateString()}
-                </p>
-                <p className="text-gray-500 mt-1">
-                  Topics: {JSON.stringify(selectedDocument.topics)}
-                </p>
-                <p className="text-gray-500 mt-1">
-                  Total Sets: {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
-                </p>
-              </div>
+              {/* 
+                Hide this metadata block if viewing question or solution.
+                i.e., only show if activeDocument is not 'question' or 'solution'.
+              */}
+              {!activeDocument && (
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold text-gray-800">
+                    {selectedDocument.name}
+                  </h2>
+                  <p className="text-gray-500 mt-1">
+                    {selectedDocument.subject} • Grade {selectedDocument.grade} •
+                    Created on{" "}
+                    {new Date(selectedDocument.createdAt).toLocaleDateString()}
+                  </p>
+                  <p className="text-gray-500 mt-1">
+                    Topics: {JSON.stringify(selectedDocument.topics)}
+                  </p>
+                  <p className="text-gray-500 mt-1">
+                    Total Sets:{" "}
+                    {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
+                  </p>
+                </div>
+              )}
 
+              {/* Tab Buttons */}
               <div className="flex gap-4 mb-6">
                 <button
                   className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
@@ -292,11 +304,7 @@ export const DocumentSidebar = () => {
                 </button>
 
                 <button
-                  className={`px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group ${
-                    activeDocument === "solution"
-                      ? "bg-blue-50 border-blue-500"
-                      : ""
-                  }`}
+                  className="px-6 py-3 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all duration-200 shadow-sm group"
                   onClick={() =>
                     downloadAllSetPDFs(selectedDocument.questionPapersLinks)
                   }
@@ -315,7 +323,7 @@ export const DocumentSidebar = () => {
                 <div>
                   {selectedDocument.questionPaperLink ? (
                     <>
-                      {/* Toolbar: Download, Print, Edit */}
+                      {/* Toolbar: Edit toggle */}
                       <div className="flex items-center gap-4 mb-4">
                         <button
                           onClick={() => setEditModeQuestion(!editModeQuestion)}
@@ -365,13 +373,24 @@ export const DocumentSidebar = () => {
                 <div>
                   {selectedDocument.solutionLink ? (
                     <>
+                      {/* Toolbar: Edit toggle */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <button
+                          onClick={() => setEditModeSolution(!editModeSolution)}
+                          className="flex items-center px-3 py-2 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          {editModeSolution ? "View" : "Edit"}
+                        </button>
+                      </div>
+
                       {editModeSolution ? (
                         <DocumentEditor
                           documentUrl={selectedDocument.solutionLink}
                           onSave={(updatedHTML) => {
                             uploadToS3(
                               updatedHTML,
-                              selectedDocument.questionPaperLink
+                              selectedDocument.solutionLink
                             )
                               .then(() => {
                                 window.location.reload();
@@ -401,7 +420,10 @@ export const DocumentSidebar = () => {
               )}
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500" style={{height:'80vh'}}>
+            <div
+              className="h-full flex items-center justify-center text-gray-500"
+              style={{ height: "80vh" }}
+            >
               Select a document to view details
             </div>
           )}
