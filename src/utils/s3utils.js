@@ -1,4 +1,3 @@
-import AWS from "aws-sdk";
 import s3 from "./s3Configure";
 
 
