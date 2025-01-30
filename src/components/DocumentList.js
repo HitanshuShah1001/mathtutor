@@ -172,7 +172,7 @@ export const DocumentSidebar = () => {
       <ChatHeader />
       <div className="flex min-h-screen bg-gray-50">
         {/* Sidebar */}
-        <div className="w-1/4 min-h-screen bg-white border-r border-gray-200 shadow-sm">
+        <div className="w-1/6 min-h-screen bg-white border-r border-gray-200 shadow-sm">
           <div className="p-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-800">Documents</h2>
