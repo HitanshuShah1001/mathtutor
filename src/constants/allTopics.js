@@ -1,4 +1,5 @@
-export const allTopics = {
+export const 
+allTopics = {
   Science: {
     1: [
       "Living and Non-Living Things",

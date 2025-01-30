@@ -1,4 +1,34 @@
-import { difficulty } from "../constants/constants";
+import { DESCRIPTIVE, difficulty, MCQ } from "../constants/constants";
+
+function generateUniqueUUIDArray(length) {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const uniqueUUIDs = new Set();
+
+  function generateUUID() {
+    let uuid = "";
+    for (let i = 0; i < 8; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      uuid += characters[randomIndex];
+    }
+    return uuid;
+  }
+
+  while (uniqueUUIDs.size < length) {
+    uniqueUUIDs.add(generateUUID());
+  }
+
+  return Array.from(uniqueUUIDs);
+}
+
+function addUUIDToBluePrintObjects(blueprint) {
+  const LENGTH_OF_BLUEPRINT = blueprint.length;
+  const uuidArray = generateUniqueUUIDArray(LENGTH_OF_BLUEPRINT);
+  for (let i = 0; i < LENGTH_OF_BLUEPRINT; i++) {
+    blueprint[i].questionId = uuidArray[i];
+  }
+  return blueprint;
+}
 
 export function generateQuestionsArray(inputData) {
   let outputArray = [];
@@ -15,7 +45,7 @@ export function generateQuestionsArray(inputData) {
               ? difficulty.MEDIUM
               : difficulty.HARD,
             marks: config.mcqMarks || 1,
-            type: "Multiple Choice Question",
+            type: MCQ,
           });
         }
       }
@@ -28,14 +58,14 @@ export function generateQuestionsArray(inputData) {
               topic,
               difficulty: val.difficulty.toUpperCase(),
               marks: val.marks,
-              type: "Descriptive Question",
+              type: DESCRIPTIVE,
             });
           }
         }
       }
     }
   }
-  return outputArray;
+  return addUUIDToBluePrintObjects(outputArray);
 }
 
 /**
@@ -53,9 +83,9 @@ export function reorderQuestionsByType(questions) {
   const descriptive = [];
 
   questions.forEach((question) => {
-    if (question.type === "Multiple Choice Question") {
+    if (question.type === MCQ) {
       mcqs.push(question);
-    } else if (question.type === "Descriptive Question") {
+    } else if (question.type === DESCRIPTIVE) {
       descriptive.push(question);
     }
   });
