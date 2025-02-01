@@ -247,8 +247,8 @@ export const DocumentSidebar = () => {
                     {selectedDocument.name}
                   </h2>
                   <p className="text-gray-500 mt-1">
-                    {selectedDocument.subject} • Grade {selectedDocument.grade} •
-                    Created on{" "}
+                    {selectedDocument.subject} • Grade {selectedDocument.grade}{" "}
+                    • Created on{" "}
                     {new Date(selectedDocument.createdAt).toLocaleDateString()}
                   </p>
                   <p className="text-gray-500 mt-1">
