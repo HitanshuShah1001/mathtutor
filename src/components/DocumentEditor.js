@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Editor from "@monaco-editor/react";
 
 export const DocumentEditor = ({ documentUrl, onSave }) => {
+  console.log(documentUrl);
   const [htmlContent, setHtmlContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,8 +13,9 @@ export const DocumentEditor = ({ documentUrl, onSave }) => {
       if (!documentUrl) return;
       setLoading(true);
       try {
-        const response = await fetch(documentUrl);
+        const response = await fetch(documentUrl + "?t=" + Date.now());
         const text = await response.text();
+        console.log(text, "text");
         setHtmlContent(text);
       } catch (err) {
         setError("Failed to load document");
