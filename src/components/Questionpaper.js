@@ -178,7 +178,7 @@ const GenerateQuestionPaper = () => {
       { blueprint }
     );
     if (!res.success) {
-      alert(res.message ?? "Some Error Occured");
+      alert(res.message ?? "Some Error Occurred");
     } else {
       alert("Blueprint saved successfully");
     }
@@ -195,7 +195,7 @@ const GenerateQuestionPaper = () => {
       { id: bluePrintId, blueprint }
     );
     if (!res.success) {
-      alert(res.message ?? "Some Error Occured");
+      alert(res.message ?? "Some Error Occurred");
     } else {
       alert("Blueprint updated successfully");
     }
@@ -203,9 +203,7 @@ const GenerateQuestionPaper = () => {
 
   // UseCallback for RenderTopicSelection
   const RenderTopicSelection = useCallback(() => {
-    let renderContent = marks
-      ? `${configuredMarks} / ${marks}`
-      : configuredMarks;
+    let renderContent = marks ? `${configuredMarks} / ${marks}` : configuredMarks;
     return (
       <div style={styles.formGroup} className="fade-in">
         <div style={styles.marksTracker}>
@@ -376,7 +374,6 @@ const GenerateQuestionPaper = () => {
       timeDuration,
       numberOfSets: numberOfSets ? parseInt(numberOfSets) : 1,
     });
-    console.log(body,"body");
 
     try {
       const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
@@ -387,14 +384,18 @@ const GenerateQuestionPaper = () => {
       };
       const response = await fetch(url.toString(), requestOptions);
       const data = await response.json();
+      // Handle the response if needed
     } catch (e) {
+      console.error(e);
     } finally {
       setIsAlertModalOpen(true);
     }
   };
+
   return (
     <div style={styles.pageContainer} className="fade-in">
-      {/* NEW: Load Blueprint Button */}
+      {/* NEW: Add a small note about required fields (optional) */}
+      
       <CustomAlert
         isOpen={isAlertModalOpen}
         onClose={() => setIsAlertModalOpen(false)}
@@ -410,6 +411,7 @@ const GenerateQuestionPaper = () => {
         >
           Load from existing blueprint
         </button>
+        
       </div>
 
       <ChatHeader title={"Generate Question Paper"} />
@@ -474,8 +476,11 @@ const GenerateQuestionPaper = () => {
             <div style={styles.card} className="fade-in">
               <h2 style={styles.cardTitle}>Exam Details</h2>
 
+              {/* Title (Required) */}
               <div style={styles.formGroup}>
-                <label style={styles.label}>Title</label>
+                <label style={styles.label}>
+                  Title <span style={{ color: "red" }}>*</span>
+                </label>
                 <input
                   style={styles.input}
                   value={title}
@@ -483,17 +488,23 @@ const GenerateQuestionPaper = () => {
                   placeholder="12 Std. Question Paper"
                 />
               </div>
+
+              {/* Academy Name (Optional) */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>Academy Name</label>
                 <input
                   style={styles.input}
                   value={academyName}
                   onChange={(e) => setAcademyName(e.target.value)}
-                  placeholder="12 Std. Question Paper"
+                  placeholder="E.g., Springfield High"
                 />
               </div>
+
+              {/* Standard (Required) */}
               <div style={styles.formGroup}>
-                <label style={styles.label}>Standard</label>
+                <label style={styles.label}>
+                  Standard <span style={{ color: "red" }}>*</span>
+                </label>
                 <select
                   style={styles.select}
                   value={standard}
@@ -511,8 +522,11 @@ const GenerateQuestionPaper = () => {
                 </select>
               </div>
 
+              {/* Subject (Required) */}
               <div style={styles.formGroup}>
-                <label style={styles.label}>Subject</label>
+                <label style={styles.label}>
+                  Subject <span style={{ color: "red" }}>*</span>
+                </label>
                 <select
                   style={styles.select}
                   value={subject}
@@ -524,12 +538,14 @@ const GenerateQuestionPaper = () => {
                   <option value="">Select Subject</option>
                   <option value="Science">Science</option>
                   <option value="Maths">Maths</option>
-                  {/* Add more subjects as needed */}
                 </select>
               </div>
 
+              {/* Total Marks (Required) */}
               <div style={styles.formGroup}>
-                <label style={styles.label}>Total Marks</label>
+                <label style={styles.label}>
+                  Total Marks <span style={{ color: "red" }}>*</span>
+                </label>
                 <input
                   type="number"
                   style={styles.input}
@@ -538,15 +554,21 @@ const GenerateQuestionPaper = () => {
                   placeholder="e.g. 100"
                 />
               </div>
+
+              {/* Time Duration (Required) */}
               <div style={styles.formGroup}>
-                <label style={styles.label}>Time Duration</label>
+                <label style={styles.label}>
+                  Time Duration <span style={{ color: "red" }}>*</span>
+                </label>
                 <input
                   style={styles.input}
                   value={timeDuration}
                   onChange={(e) => setTimeDuration(e.target.value)}
-                  placeholder="2 Hours"
+                  placeholder="e.g. 2 Hours"
                 />
               </div>
+
+              {/* Number of Sets (Optional) */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>Number of Sets</label>
                 <input
@@ -557,6 +579,8 @@ const GenerateQuestionPaper = () => {
                   placeholder="e.g. 3"
                 />
               </div>
+
+              {/* Additional Instructions (Optional) */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>Additional Instructions</label>
                 <input
@@ -671,7 +695,6 @@ const GenerateQuestionPaper = () => {
                                               ...prev[topic]
                                                 .descriptiveQuestionConfig,
                                             ];
-
                                             updatedArray[index] = {
                                               ...updatedArray[index],
                                               marks: val,
@@ -841,7 +864,6 @@ const GenerateQuestionPaper = () => {
         </div>
 
         <div style={styles.actionContainer}>
-          {/* Generate Question Paper => Now calls handleGenerateQuestionPaper */}
           <button
             style={styles.generateButton}
             className="btn-hover"
@@ -881,8 +903,6 @@ const GenerateQuestionPaper = () => {
             {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
           </button>
         </div>
-
-        {/* If a jobId was created, show it to the user (optional). */}
       </div>
     </div>
   );
