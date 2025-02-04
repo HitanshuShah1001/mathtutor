@@ -13,7 +13,6 @@ import DocumentViewer from "./DocumentViewer";
 import DocumentEditor from "./DocumentEditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { uploadToS3 } from "../utils/s3utils";
-// Import your QuestionBank component – implement it separately to display the question bank with checkboxes.
 import QuestionBank from "./QuestionBank";
 
 const GRADES = [7, 8, 9, 10];
@@ -23,10 +22,8 @@ export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
   const [editModeQuestion, setEditModeQuestion] = useState(false);
   const [editModeSolution, setEditModeSolution] = useState(false);
-  // selectedDocument will hold the document currently selected from the sidebar.
-  // For the question bank, we use an object with an id of "questionBank"
+
   const [selectedDocument, setSelectedDocument] = useState(null);
-  // activeDocument indicates what to render on the right ("question", "solution", or "questionBank")
   const [activeDocument, setActiveDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -236,7 +233,10 @@ export const DocumentSidebar = () => {
             <div
               onClick={() => {
                 setActiveDocument("questionBank");
-                setSelectedDocument({ id: "questionBank", title: "Question Bank" });
+                setSelectedDocument({
+                  id: "questionBank",
+                  title: "Question Bank",
+                });
                 setEditModeQuestion(false);
                 setEditModeSolution(false);
               }}
@@ -255,15 +255,7 @@ export const DocumentSidebar = () => {
                   }`}
                 />
                 <div className="flex-1">
-                  <h3
-                    className={`font-medium ${
-                      selectedDocument?.id === "questionBank"
-                        ? "text-blue-600"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    Question Bank
-                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Question Bank</p>
                 </div>
               </div>
             </div>
@@ -276,7 +268,6 @@ export const DocumentSidebar = () => {
           <FilterDropdowns />
 
           {activeDocument === "questionBank" ? (
-            // Render the Question Bank component on the right side when activeDocument is "questionBank"
             <div className="h-full">
               <QuestionBank />
             </div>
@@ -285,19 +276,20 @@ export const DocumentSidebar = () => {
               {/* Only show metadata if not in edit mode for questions or solutions */}
               {!activeDocument && (
                 <div className="mb-6">
-                  
                   <h2 className="text-2xl font-semibold text-gray-800">
                     {selectedDocument.title}
                   </h2>
                   <p className="text-gray-500 mt-1">
-                    {selectedDocument.subject} • Grade {selectedDocument.grade} • Created on{" "}
+                    {selectedDocument.subject} • Grade {selectedDocument.grade}{" "}
+                    • Created on{" "}
                     {new Date(selectedDocument.createdAt).toLocaleDateString()}
                   </p>
                   <p className="text-gray-500 mt-1">
                     Topics: {JSON.stringify(selectedDocument.topics)}
                   </p>
                   <p className="text-gray-500 mt-1">
-                    Total Sets: {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
+                    Total Sets:{" "}
+                    {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
                   </p>
                 </div>
               )}
@@ -375,7 +367,10 @@ export const DocumentSidebar = () => {
                         <DocumentEditor
                           documentUrl={selectedDocument.questionPaperLink}
                           onSave={(updatedHTML) => {
-                            uploadToS3(updatedHTML, selectedDocument.questionPaperLink)
+                            uploadToS3(
+                              updatedHTML,
+                              selectedDocument.questionPaperLink
+                            )
                               .then(() => {
                                 window.location.reload();
                               })
@@ -420,7 +415,10 @@ export const DocumentSidebar = () => {
                         <DocumentEditor
                           documentUrl={selectedDocument.solutionLink}
                           onSave={(updatedHTML) => {
-                            uploadToS3(updatedHTML, selectedDocument.solutionLink)
+                            uploadToS3(
+                              updatedHTML,
+                              selectedDocument.solutionLink
+                            )
                               .then(() => {
                                 window.location.reload();
                               })
