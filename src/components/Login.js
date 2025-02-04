@@ -4,6 +4,7 @@ import { PhoneIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { getDataFromLocalStorage } from "../utils/LocalStorageOps";
+import { PAPER_GENERATION, VERIFY_OTP } from "../constants/pages";
 
 const LoginPage = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -16,7 +17,7 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (USER && ACCESS_KEY) {
-      navigate("/question-paper-generation", { replace: true });
+      navigate(PAPER_GENERATION, { replace: true });
     }
   }, [USER, ACCESS_KEY, navigate]);
 
@@ -28,9 +29,8 @@ const LoginPage = () => {
     } else {
       setError("");
       const isOTPSent = await requestOtp(phoneNumber);
-      // const isOTPSent = awa;
       if (isOTPSent) {
-        navigate("/verify-otp", { state: { phoneNumber } });
+        navigate(VERIFY_OTP, { state: { phoneNumber } });
       } else {
         setError(
           "Unable to send OTP. Please check the phone number and try again."

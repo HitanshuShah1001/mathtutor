@@ -7,6 +7,7 @@ import {
   addDataToLocalStorage,
   removeDataFromLocalStorage,
 } from "../utils/LocalStorageOps";
+import { PAPER_GENERATION } from "../constants/pages";
 
 const VerifyOtp = () => {
   const { setIsAuthenticated, setUser } = useContext(AuthContext);
@@ -28,7 +29,6 @@ const VerifyOtp = () => {
 
     const mobileNumber = location.state?.phoneNumber || "";
     const isValidAndData = await verifyOTP(mobileNumber, otp);
-    console.log(isValidAndData);
     if (isValidAndData?.status) {
       const { accessToken, user } = isValidAndData.data?.data || {};
       removeDataFromLocalStorage();
@@ -37,7 +37,7 @@ const VerifyOtp = () => {
         addDataToLocalStorage({ accessToken, user });
         setUser(user);
         setIsAuthenticated(true);
-        navigate("/question-paper-generation", { replace: true });
+        navigate(PAPER_GENERATION, { replace: true });
       } else {
         addDataToLocalStorage({ accessToken });
         navigate("/update-user-details", {

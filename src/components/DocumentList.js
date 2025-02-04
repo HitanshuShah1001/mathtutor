@@ -13,6 +13,8 @@ import DocumentViewer from "./DocumentViewer";
 import DocumentEditor from "./DocumentEditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { uploadToS3 } from "../utils/s3utils";
+// Import your QuestionBank component – implement it separately to display the question bank with checkboxes.
+import QuestionBank from "./QuestionBank";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -21,7 +23,10 @@ export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
   const [editModeQuestion, setEditModeQuestion] = useState(false);
   const [editModeSolution, setEditModeSolution] = useState(false);
+  // selectedDocument will hold the document currently selected from the sidebar.
+  // For the question bank, we use an object with an id of "questionBank"
   const [selectedDocument, setSelectedDocument] = useState(null);
+  // activeDocument indicates what to render on the right ("question", "solution", or "questionBank")
   const [activeDocument, setActiveDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -227,6 +232,41 @@ export const DocumentSidebar = () => {
                 </div>
               </div>
             ))}
+            {/* Add a final row for the Question Bank */}
+            <div
+              onClick={() => {
+                setActiveDocument("questionBank");
+                setSelectedDocument({ id: "questionBank", title: "Question Bank" });
+                setEditModeQuestion(false);
+                setEditModeSolution(false);
+              }}
+              className={`p-4 border-t border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors duration-200 ${
+                selectedDocument?.id === "questionBank"
+                  ? "bg-blue-50 border-l-4 border-l-blue-500"
+                  : ""
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <FileText
+                  className={`w-5 h-5 ${
+                    selectedDocument?.id === "questionBank"
+                      ? "text-blue-500"
+                      : "text-gray-400"
+                  }`}
+                />
+                <div className="flex-1">
+                  <h3
+                    className={`font-medium ${
+                      selectedDocument?.id === "questionBank"
+                        ? "text-blue-600"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    Question Bank
+                  </h3>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -235,28 +275,29 @@ export const DocumentSidebar = () => {
           {/* Filters */}
           <FilterDropdowns />
 
-          {selectedDocument ? (
+          {activeDocument === "questionBank" ? (
+            // Render the Question Bank component on the right side when activeDocument is "questionBank"
             <div className="h-full">
-              {/* 
-                Hide this metadata block if viewing question or solution.
-                i.e., only show if activeDocument is not 'question' or 'solution'.
-              */}
+              <QuestionBank />
+            </div>
+          ) : selectedDocument ? (
+            <div className="h-full">
+              {/* Only show metadata if not in edit mode for questions or solutions */}
               {!activeDocument && (
                 <div className="mb-6">
+                  
                   <h2 className="text-2xl font-semibold text-gray-800">
-                    {selectedDocument.name}
+                    {selectedDocument.title}
                   </h2>
                   <p className="text-gray-500 mt-1">
-                    {selectedDocument.subject} • Grade {selectedDocument.grade}{" "}
-                    • Created on{" "}
+                    {selectedDocument.subject} • Grade {selectedDocument.grade} • Created on{" "}
                     {new Date(selectedDocument.createdAt).toLocaleDateString()}
                   </p>
                   <p className="text-gray-500 mt-1">
                     Topics: {JSON.stringify(selectedDocument.topics)}
                   </p>
                   <p className="text-gray-500 mt-1">
-                    Total Sets:{" "}
-                    {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
+                    Total Sets: {JSON.stringify(selectedDocument.numberOfSets) ?? 1}
                   </p>
                 </div>
               )}
@@ -271,7 +312,6 @@ export const DocumentSidebar = () => {
                   }`}
                   onClick={() => {
                     setActiveDocument("question");
-                    // reset solution edit mode if switching tabs
                     setEditModeSolution(false);
                   }}
                 >
@@ -291,7 +331,6 @@ export const DocumentSidebar = () => {
                   }`}
                   onClick={() => {
                     setActiveDocument("solution");
-                    // reset question edit mode if switching tabs
                     setEditModeQuestion(false);
                   }}
                 >
@@ -318,12 +357,11 @@ export const DocumentSidebar = () => {
                 </button>
               </div>
 
-              {/* Document content area */}
+              {/* Document content area for question paper or solution */}
               {activeDocument === "question" && (
                 <div>
                   {selectedDocument.questionPaperLink ? (
                     <>
-                      {/* Toolbar: Edit toggle */}
                       <div className="flex items-center gap-4 mb-4">
                         <button
                           onClick={() => setEditModeQuestion(!editModeQuestion)}
@@ -333,15 +371,11 @@ export const DocumentSidebar = () => {
                           {editModeQuestion ? "View" : "Edit"}
                         </button>
                       </div>
-
                       {editModeQuestion ? (
                         <DocumentEditor
                           documentUrl={selectedDocument.questionPaperLink}
                           onSave={(updatedHTML) => {
-                            uploadToS3(
-                              updatedHTML,
-                              selectedDocument.questionPaperLink
-                            )
+                            uploadToS3(updatedHTML, selectedDocument.questionPaperLink)
                               .then(() => {
                                 window.location.reload();
                               })
@@ -353,7 +387,7 @@ export const DocumentSidebar = () => {
                       ) : (
                         <DocumentViewer
                           documentUrl={selectedDocument.questionPaperLink}
-                          title={`${selectedDocument.name} - Question Paper`}
+                          title={`${selectedDocument.title} - Question Paper`}
                         />
                       )}
                     </>
@@ -373,7 +407,6 @@ export const DocumentSidebar = () => {
                 <div>
                   {selectedDocument.solutionLink ? (
                     <>
-                      {/* Toolbar: Edit toggle */}
                       <div className="flex items-center gap-4 mb-4">
                         <button
                           onClick={() => setEditModeSolution(!editModeSolution)}
@@ -383,15 +416,11 @@ export const DocumentSidebar = () => {
                           {editModeSolution ? "View" : "Edit"}
                         </button>
                       </div>
-
                       {editModeSolution ? (
                         <DocumentEditor
                           documentUrl={selectedDocument.solutionLink}
                           onSave={(updatedHTML) => {
-                            uploadToS3(
-                              updatedHTML,
-                              selectedDocument.solutionLink
-                            )
+                            uploadToS3(updatedHTML, selectedDocument.solutionLink)
                               .then(() => {
                                 window.location.reload();
                               })
@@ -403,7 +432,7 @@ export const DocumentSidebar = () => {
                       ) : (
                         <DocumentViewer
                           documentUrl={selectedDocument.solutionLink}
-                          title={`${selectedDocument.name} - Answer Sheet`}
+                          title={`${selectedDocument.title} - Answer Sheet`}
                         />
                       )}
                     </>
