@@ -32,7 +32,10 @@ const QuestionBank = () => {
             options: [
               { key: "A", option: "$ax^2 + bx + c = 0$" },
               { key: "B", option: "$ax + b = 0$" },
-              { key: "C", option: "$ax^3 + bx^2 + cx + d = 0$ and  $ax^2 + bx + c = 0$ " },
+              {
+                key: "C",
+                option: "$ax^3 + bx^2 + cx + d = 0$ and  $ax^2 + bx + c = 0$ ",
+              },
               { key: "D", option: "$ax^2 + bx = c$" },
             ],
             correctAnswer: "A",
@@ -69,14 +72,50 @@ const QuestionBank = () => {
   );
 
   const [selected, setSelected] = useState({});
+  const [showModal, setShowModal] = useState(false);
+  const [equationInput, setEquationInput] = useState("");
 
+  // Toggle question selection (checkbox)
   const toggleSelection = (sectionName, questionNumber) => {
     const key = `${sectionName}-${questionNumber}`;
     setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Extract the LaTeX portion inside the first pair of $...$
+  const getEquationToRender = () => {
+    console.log(equationInput.split("$"), "equation input");
+    console.log(equationInput.length);
+    return equationInput.length > 1;
+    const matches = equationInput.match(/\$(.*?)\$/);
+    return matches && matches[1] ? matches[1] : "";
+  };
+
+  // const RenderEquation = () => {
+  //   let arr = equationInput.split("$");
+  //   for (let i = 0; i < arr.length; i++) {
+  //     if (i % 2 == 0) {
+  //       <span>{arr[i]}</span>;
+  //     } else {
+  //       <InlineMath math={arr[i]} />;
+  //     }
+  //   }
+  // };
   return (
-    <div>
+    <div style={{ position: "relative", padding: "1rem" }}>
+      {/* Button in the top-right corner */}
+      <button
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          padding: "0.5rem 1rem",
+          cursor: "pointer",
+        }}
+        onClick={() => setShowModal(true)}
+      >
+        Add equation
+      </button>
+
       {sections.map((section) => (
         <div key={section.name} style={{ marginBottom: "2em" }}>
           <h2>Section {section.name}</h2>
@@ -122,6 +161,79 @@ const QuestionBank = () => {
           </ol>
         </div>
       ))}
+
+      {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: "2rem",
+              borderRadius: "8px",
+              minWidth: "400px",
+              position: "relative",
+              display: "flex",
+              gap: "1rem",
+            }}
+          >
+            <div style={{ flex: "1" }}>
+              <h3>Enter Equation</h3>
+              <p style={{ fontSize: "0.9rem" }}>
+                Type your equation inside <code>$ ... $</code> to preview.
+              </p>
+              <input
+                type="text"
+                value={equationInput}
+                onChange={(e) => setEquationInput(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.5rem",
+                  marginTop: "0.5rem",
+                  fontSize: "1rem",
+                }}
+                placeholder="Example: $x^2 + y^2 = z^2$"
+              />
+              <button
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.5rem 1rem",
+                  cursor: "pointer",
+                }}
+                onClick={() => setShowModal(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div
+              style={{
+                flex: "1",
+                borderLeft: "1px solid #ddd",
+                paddingLeft: "1rem",
+              }}
+            >
+              <h3>Preview</h3>
+              {getEquationToRender() ? (
+                 renderTextWithMath(equationInput)
+              ) : (
+                <p style={{ fontStyle: "italic", color: "#666" }}>
+                  No equation to preview
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
