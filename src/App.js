@@ -13,10 +13,10 @@ import { MathJaxContext } from "better-react-mathjax";
 import VerifyOtp from "./components/VerifyOtp";
 import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
 import { UpdateUserDetails } from "./components/UpdateUserDetails";
-import GenerateQuestionPaper from "./components/Questionpaper";
 import { ResultAnalyser } from "./components/ResultVisualiser";
 import { SelectStandard } from "./components/SelectStandardAndGrade";
 import { DocumentSidebar } from "./components/DocumentList";
+import { GenerateQuestionPaper } from "./components/QuestionPaper/GenerateQuestionPaper";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
