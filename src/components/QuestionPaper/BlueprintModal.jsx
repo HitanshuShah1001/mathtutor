@@ -1,7 +1,7 @@
 /* BlueprintModal.jsx */
 
 import React from "react";
-import { modalStyles } from "./BlueprintModal"; // or another shared style
+import { modalStyles } from "../BlueprintModal"; // or another shared style
 
 /**
  * BlueprintModal

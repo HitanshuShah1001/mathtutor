@@ -16,7 +16,7 @@ import { UpdateUserDetails } from "./components/UpdateUserDetails";
 import { ResultAnalyser } from "./components/ResultVisualiser";
 import { SelectStandard } from "./components/SelectStandardAndGrade";
 import { DocumentSidebar } from "./components/DocumentList";
-import { GenerateQuestionPaper } from "./components/QuestionPaper/GenerateQuestionPaper";
+import GenerateQuestionPaper from "./components/Questionpaper";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};

@@ -1,235 +1,421 @@
-import React, { useState, useMemo } from "react";
-import { InlineMath } from "react-katex"; // Import KaTeX components
-import "katex/dist/katex.min.css"; // Import KaTeX CSS
+import React, { useState, useEffect } from "react";
+import { InlineMath } from "react-katex";
+import "katex/dist/katex.min.css";
+import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 
-// Helper function to render text with inline math expressions
+// Helper to split text by $ signs and render inline math using react-katex.
 const renderTextWithMath = (text) => {
-  // Split the text by the $ delimiter
   const parts = text.split("$");
-  return parts.map((part, index) => {
-    // Odd indices are math expressions (wrapped in $)
-    if (index % 2 === 1) {
-      return <InlineMath key={index} math={part} />;
-    }
-    // Even indices are plain text
-    return <span key={index}>{part}</span>;
-  });
+  return parts.map((part, index) =>
+    index % 2 === 1 ? (
+      <InlineMath key={index} math={part} />
+    ) : (
+      <span key={index}>{part}</span>
+    )
+  );
 };
 
 const QuestionBank = () => {
-  const sections = useMemo(
-    () => [
-      {
-        name: "A",
-        sectionNumberOfQuestions: 4,
-        sectionMarks: 1,
-        sectionTotalMarks: 4,
-        questions: [
-          {
-            questionNumber: 1,
-            question: "What is the standard form of a quadratic equation?",
-            isMCQ: true,
-            options: [
-              { key: "A", option: "$ax^2 + bx + c = 0$" },
-              { key: "B", option: "$ax + b = 0$" },
-              {
-                key: "C",
-                option: "$ax^3 + bx^2 + cx + d = 0$ and  $ax^2 + bx + c = 0$ ",
-              },
-              { key: "D", option: "$ax^2 + bx = c$" },
-            ],
-            correctAnswer: "A",
-            correctAnswerLabel: "A",
-            correctAnswerOption: "$ax^2 + bx + c = 0$",
-            calculationSteps: [
-              "The standard form of a quadratic equation is $ax^2 + bx + c = 0$ and  $ax^2 + bx + c = 0$  .",
-            ],
-          },
-        ],
-      },
-      {
-        name: "B",
-        sectionNumberOfQuestions: 2,
-        sectionMarks: 2,
-        sectionTotalMarks: 4,
-        questions: [
-          {
-            questionNumber: 1,
-            question: "Solve the equation $x^2 - 5x + 6 = 0$.",
-            isMCQ: false,
-            solution: "The solutions are $x = 2$ and $x = 3$.",
-          },
-          {
-            questionNumber: 2,
-            question: "Find the derivative of $f(x) = 3x^2 + 2x + 1$.",
-            isMCQ: false,
-            solution: "The derivative is $f'(x) = 6x + 2$.",
-          },
-        ],
-      },
-    ],
-    []
-  );
-
+  // Existing state variables for listing/filtering questions.
+  const [questions, setQuestions] = useState([]);
   const [selected, setSelected] = useState({});
-  const [showModal, setShowModal] = useState(false);
-  const [equationInput, setEquationInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    marks: "",
+    type: "",
+    difficulty: "",
+  });
+  const marks = Array.from({ length: 10 }, (_, i) => i + 1);
+  const types = ["MCQ", "Descriptive"];
+  const difficulties = ["EASY", "MEDIUM", "HARD"];
 
-  // Toggle question selection (checkbox)
-  const toggleSelection = (sectionName, questionNumber) => {
-    const key = `${sectionName}-${questionNumber}`;
-    setSelected((prev) => ({ ...prev, [key]: !prev[key] }));
+  // New state for showing the “Add Question” modal.
+  const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    type: "MCQ",
+    questionText: "",
+    marks: "",
+    difficulty: "",
+    options: [
+      { key: "A", optionText: "" },
+      { key: "B", optionText: "" },
+      { key: "C", optionText: "" },
+      { key: "D", optionText: "" },
+    ],
+  });
+
+  useEffect(() => {
+    fetchQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  // Fetch questions (using your paginated questions API)
+  const fetchQuestions = async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        limit: "10000",
+        ...(filters.marks && { marks: filters.marks }),
+        ...(filters.type && { type: filters.type }),
+        ...(filters.difficulty && {
+          difficulty: filters.difficulty.toLowerCase(),
+        }),
+      });
+      const accesskey = localStorage.getItem(ACCESS_KEY);
+      const response = await fetch(
+        `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: accesskey,
+          },
+        }
+      );
+      const data = await response.json();
+      setQuestions(data.questions);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+    }
+    setLoading(false);
   };
 
-  // Extract the LaTeX portion inside the first pair of $...$
-  const getEquationToRender = () => {
-    console.log(equationInput.split("$"), "equation input");
-    console.log(equationInput.length);
-    return equationInput.length > 1;
-    const matches = equationInput.match(/\$(.*?)\$/);
-    return matches && matches[1] ? matches[1] : "";
+  // Toggle the selection state for a given question.
+  const toggleSelection = (questionId) => {
+    setSelected((prev) => ({
+      ...prev,
+      [questionId]: !prev[questionId],
+    }));
   };
 
-  // const RenderEquation = () => {
-  //   let arr = equationInput.split("$");
-  //   for (let i = 0; i < arr.length; i++) {
-  //     if (i % 2 == 0) {
-  //       <span>{arr[i]}</span>;
-  //     } else {
-  //       <InlineMath math={arr[i]} />;
-  //     }
-  //   }
-  // };
+  // Handle change for filters.
+  const handleFilterChange = (filterType, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterType]: value,
+    }));
+  };
+
+  // When “Generate Question Paper” is clicked.
+  const handleGenerateQuestionPaper = () => {
+    const selectedQuestions = questions.filter((q) => selected[q.id]);
+    console.log("Selected questions:", selectedQuestions);
+    // Add your logic for generating a question paper.
+  };
+
+  // -------------------------------------------------------------------
+  // HANDLING THE NEW QUESTION FORM (Add / Upsert)
+  // -------------------------------------------------------------------
+
+  // For any text input, when the user presses Command + "$",
+  // we insert a "$" at the current cursor position.
+  const handleMathKeyDown = (e, field, index = null) => {
+    if (e.metaKey && e.key === "$") {
+      e.preventDefault();
+      const input = e.target;
+      const { selectionStart, selectionEnd, value } = input;
+      const newValue =
+        value.slice(0, selectionStart) + "$" + value.slice(selectionEnd);
+      if (field === "questionText") {
+        setNewQuestion((prev) => ({ ...prev, questionText: newValue }));
+      } else if (field === "option" && index !== null) {
+        setNewQuestion((prev) => {
+          const options = [...prev.options];
+          options[index] = { ...options[index], optionText: newValue };
+          return { ...prev, options };
+        });
+      }
+      // Place the caret immediately after the inserted "$".
+      setTimeout(() => {
+        input.selectionStart = input.selectionEnd = selectionStart + 1;
+      }, 0);
+    }
+  };
+
+  // Generic change handler for our new question form.
+  // For the question text, marks, difficulty, type, and for option text.
+  const handleNewQuestionChange = (e, field, index = null) => {
+    if (field === "questionText") {
+      setNewQuestion((prev) => ({ ...prev, questionText: e.target.value }));
+    } else if (field === "marks" || field === "difficulty" || field === "type") {
+      setNewQuestion((prev) => ({ ...prev, [field]: e.target.value }));
+    } else if (field === "option" && index !== null) {
+      setNewQuestion((prev) => {
+        const options = [...prev.options];
+        options[index] = { ...options[index], optionText: e.target.value };
+        return { ...prev, options };
+      });
+    }
+  };
+
+  // Submit the new question by calling the upsert API.
+  const handleNewQuestionSubmit = async () => {
+    try {
+      const accesskey = localStorage.getItem(ACCESS_KEY);
+      // Prepare the payload; note that the API expects difficulty to be lowercase.
+      const payload = {
+        ...newQuestion,
+        difficulty: newQuestion.difficulty.toLowerCase(),
+      };
+      // If the question type is Descriptive, remove the options field.
+      if (newQuestion.type !== "MCQ") {
+        delete payload.options;
+      }
+      const response = await fetch(`${BASE_URL_API}/question/upsert`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: accesskey,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      console.log("Question upserted:", data);
+      // Reset the form and close the modal.
+      setShowAddQuestionModal(false);
+      setNewQuestion({
+        type: "MCQ",
+        questionText: "",
+        marks: "",
+        difficulty: "",
+        options: [
+          { key: "A", optionText: "" },
+          { key: "B", optionText: "" },
+          { key: "C", optionText: "" },
+          { key: "D", optionText: "" },
+        ],
+      });
+      // Refresh the question list.
+      fetchQuestions();
+    } catch (error) {
+      console.error("Error upserting question:", error);
+    }
+  };
+
   return (
-    <div style={{ position: "relative", padding: "1rem" }}>
-      {/* Button in the top-right corner */}
-      <button
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          padding: "0.5rem 1rem",
-          cursor: "pointer",
-        }}
-        onClick={() => setShowModal(true)}
-      >
-        Add equation
-      </button>
+    <div className="p-6 relative">
+      {/* ---------------- Filter Section ---------------- */}
+      <div className="flex gap-4 mb-6">
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium">Marks</label>
+          <select
+            value={filters.marks}
+            onChange={(e) => handleFilterChange("marks", e.target.value)}
+            className="border rounded p-2"
+          >
+            <option value="">All</option>
+            {marks.map((mark) => (
+              <option key={mark} value={mark}>
+                {mark}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      {sections.map((section) => (
-        <div key={section.name} style={{ marginBottom: "2em" }}>
-          <h2>Section {section.name}</h2>
-          <p>
-            (Questions: {section.sectionNumberOfQuestions} x Marks per Q:{" "}
-            {section.sectionMarks} = Total Marks: {section.sectionTotalMarks})
-          </p>
-          <ol>
-            {section.questions.map((question) => {
-              const uniqueId = `${section.name}-${question.questionNumber}`;
-              return (
-                <li key={uniqueId} style={{ marginBottom: "1em" }}>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={selected[uniqueId] || false}
-                      onChange={() =>
-                        toggleSelection(section.name, question.questionNumber)
-                      }
-                      style={{ marginRight: "8px" }}
-                    />
-                    <span>{renderTextWithMath(question.question)}</span>
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium">Type</label>
+          <select
+            value={filters.type}
+            onChange={(e) => handleFilterChange("type", e.target.value)}
+            className="border rounded p-2"
+          >
+            <option value="">All</option>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="mb-1 text-sm font-medium">Difficulty</label>
+          <select
+            value={filters.difficulty}
+            onChange={(e) => handleFilterChange("difficulty", e.target.value)}
+            className="border rounded p-2"
+          >
+            <option value="">All</option>
+            {difficulties.map((diff) => (
+              <option key={diff} value={diff}>
+                {diff}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ---------------- Action Buttons ---------------- */}
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={handleGenerateQuestionPaper}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Generate Question Paper
+        </button>
+        <button
+          onClick={() => setShowAddQuestionModal(true)}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
+          Add Question
+        </button>
+      </div>
+
+      {/* ---------------- Questions List ---------------- */}
+      {loading ? (
+        <div className="text-center py-4">Loading questions...</div>
+      ) : (
+        <div className="space-y-4">
+          {questions.map((question) => (
+            <div key={question.id} className="border rounded p-4">
+              <div className="flex items-start gap-4">
+                <input
+                  type="checkbox"
+                  checked={selected[question.id] || false}
+                  onChange={() => toggleSelection(question.id)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="mb-2">
+                    {renderTextWithMath(question.questionText)}
                   </div>
-                  {question.isMCQ && question.options && (
-                    <ul style={{ marginLeft: "2em", marginTop: "0.5em" }}>
-                      {question.options.map((opt) => (
-                        <li key={opt.key}>
-                          <strong>{opt.key}:</strong>{" "}
-                          {renderTextWithMath(opt.option)}
-                        </li>
+                  {question.type === "MCQ" && (
+                    <div className="ml-4 space-y-2">
+                      {question.options.map((option) => (
+                        <div
+                          key={option.key}
+                          className="flex items-center gap-2"
+                        >
+                          <span className="font-bold">{option.key}:</span>
+                          {renderTextWithMath(option.optionText)}
+                        </div>
                       ))}
-                    </ul>
-                  )}
-                  {!question.isMCQ && question.solution && (
-                    <div style={{ marginLeft: "2em", marginTop: "0.5em" }}>
-                      <strong>Solution:</strong>{" "}
-                      {renderTextWithMath(question.solution)}
                     </div>
                   )}
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ))}
-
-      {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: "2rem",
-              borderRadius: "8px",
-              minWidth: "400px",
-              position: "relative",
-              display: "flex",
-              gap: "1rem",
-            }}
-          >
-            <div style={{ flex: "1" }}>
-              <h3>Enter Equation</h3>
-              <p style={{ fontSize: "0.9rem" }}>
-                Type your equation inside <code>$ ... $</code> to preview.
-              </p>
-              <input
-                type="text"
-                value={equationInput}
-                onChange={(e) => setEquationInput(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "0.5rem",
-                  marginTop: "0.5rem",
-                  fontSize: "1rem",
-                }}
-                placeholder="Example: $x^2 + y^2 = z^2$"
-              />
-              <button
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.5rem 1rem",
-                  cursor: "pointer",
-                }}
-                onClick={() => setShowModal(false)}
-              >
-                Close
-              </button>
+                  <div className="mt-2 text-sm text-gray-600">
+                    Marks: {question.marks} | Type: {question.type} | Difficulty:{" "}
+                    {question.difficulty}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div
-              style={{
-                flex: "1",
-                borderLeft: "1px solid #ddd",
-                paddingLeft: "1rem",
-              }}
-            >
-              <h3>Preview</h3>
-              {getEquationToRender() ? (
-                 renderTextWithMath(equationInput)
-              ) : (
-                <p style={{ fontStyle: "italic", color: "#666" }}>
-                  No equation to preview
-                </p>
-              )}
+          ))}
+        </div>
+      )}
+
+      {/* ---------------- Add Question Modal ---------------- */}
+      {showAddQuestionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Add New Question</h3>
+
+            {/* Question Type */}
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Question Type</label>
+              <select
+                value={newQuestion.type}
+                onChange={(e) => handleNewQuestionChange(e, "type")}
+                className="w-full border rounded p-2"
+              >
+                {types.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Question Text */}
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Question Text</label>
+              <textarea
+                value={newQuestion.questionText}
+                onChange={(e) => handleNewQuestionChange(e, "questionText")}
+                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
+                className="w-full border rounded p-2"
+                placeholder="Enter question text. Use Command + $ to add math equations."
+                rows="4"
+              />
+              <div className="mt-2 text-sm text-gray-500">
+                Preview: {renderTextWithMath(newQuestion.questionText)}
+              </div>
+            </div>
+
+            {/* Options (only for MCQ) */}
+            {newQuestion.type === "MCQ" && (
+              <div className="mb-4">
+                <label className="block mb-1 font-medium">Options</label>
+                {newQuestion.options.map((option, index) => (
+                  <div key={option.key} className="mb-2">
+                    <label className="block text-sm font-medium">
+                      Option {option.key}
+                    </label>
+                    <input
+                      type="text"
+                      value={option.optionText}
+                      onChange={(e) =>
+                        handleNewQuestionChange(e, "option", index)
+                      }
+                      onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
+                      className="w-full border rounded p-2"
+                      placeholder={`Enter option ${option.key} text. Use Command + $ for math.`}
+                    />
+                    <div className="mt-1 text-sm text-gray-500">
+                      Preview: {renderTextWithMath(option.optionText)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Marks and Difficulty */}
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block mb-1 font-medium">Marks</label>
+                <select
+                  value={newQuestion.marks}
+                  onChange={(e) => handleNewQuestionChange(e, "marks")}
+                  className="w-full border rounded p-2"
+                >
+                  <option value="">Select Marks</option>
+                  {marks.map((mark) => (
+                    <option key={mark} value={mark}>
+                      {mark}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block mb-1 font-medium">Difficulty</label>
+                <select
+                  value={newQuestion.difficulty}
+                  onChange={(e) => handleNewQuestionChange(e, "difficulty")}
+                  className="w-full border rounded p-2"
+                >
+                  <option value="">Select Difficulty</option>
+                  {difficulties.map((diff) => (
+                    <option key={diff} value={diff}>
+                      {diff}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowAddQuestionModal(false)}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleNewQuestionSubmit}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+              >
+                Save Question
+              </button>
             </div>
           </div>
         </div>
