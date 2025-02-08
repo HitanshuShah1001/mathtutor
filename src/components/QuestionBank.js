@@ -3,9 +3,11 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 
-// Helper to split text by $ signs and render inline math using react-katex.
 const renderTextWithMath = (text) => {
-  const parts = text.split("$");
+  const MATH_MARKER = "\u200B";
+  // Replace the invisible marker with "$" for parsing
+  const processedText = text.replace(new RegExp(MATH_MARKER, "g"), "$");
+  const parts = processedText.split("$");
   return parts.map((part, index) =>
     index % 2 === 1 ? (
       <InlineMath key={index} math={part} />
@@ -107,15 +109,22 @@ const QuestionBank = () => {
   // HANDLING THE NEW QUESTION FORM (Add / Upsert)
   // -------------------------------------------------------------------
 
-  // For any text input, when the user presses Command + "$",
+  // For any text input, when the user presses shift + "$",
   // we insert a "$" at the current cursor position.
+  // Define the marker at the top of your file or inside your component.
+  const MATH_MARKER = "\u200B";
+
   const handleMathKeyDown = (e, field, index = null) => {
-    if (e.metaKey && e.key === "$") {
+    // Check for command (metaKey) or shift along with '$'
+    if ((e.metaKey || e.shiftKey) && e.key === "$") {
       e.preventDefault();
       const input = e.target;
       const { selectionStart, selectionEnd, value } = input;
+      // Instead of inserting "$", insert the invisible marker
       const newValue =
-        value.slice(0, selectionStart) + "$" + value.slice(selectionEnd);
+        value.slice(0, selectionStart) +
+        MATH_MARKER +
+        value.slice(selectionEnd);
       if (field === "questionText") {
         setNewQuestion((prev) => ({ ...prev, questionText: newValue }));
       } else if (field === "option" && index !== null) {
@@ -125,10 +134,7 @@ const QuestionBank = () => {
           return { ...prev, options };
         });
       }
-      // Place the caret immediately after the inserted "$".
-      setTimeout(() => {
-        input.selectionStart = input.selectionEnd = selectionStart + 1;
-      }, 0);
+      // (You can still adjust the caret position if needed.)
     }
   };
 
@@ -137,7 +143,11 @@ const QuestionBank = () => {
   const handleNewQuestionChange = (e, field, index = null) => {
     if (field === "questionText") {
       setNewQuestion((prev) => ({ ...prev, questionText: e.target.value }));
-    } else if (field === "marks" || field === "difficulty" || field === "type") {
+    } else if (
+      field === "marks" ||
+      field === "difficulty" ||
+      field === "type"
+    ) {
       setNewQuestion((prev) => ({ ...prev, [field]: e.target.value }));
     } else if (field === "option" && index !== null) {
       setNewQuestion((prev) => {
@@ -293,8 +303,8 @@ const QuestionBank = () => {
                     </div>
                   )}
                   <div className="mt-2 text-sm text-gray-600">
-                    Marks: {question.marks} | Type: {question.type} | Difficulty:{" "}
-                    {question.difficulty}
+                    Marks: {question.marks} | Type: {question.type} |
+                    Difficulty: {question.difficulty}
                   </div>
                 </div>
               </div>
@@ -333,7 +343,7 @@ const QuestionBank = () => {
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
                 onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
                 className="w-full border rounded p-2"
-                placeholder="Enter question text. Use Command + $ to add math equations."
+                placeholder="Enter question text. Use Shift + $ to add math equations."
                 rows="4"
               />
               <div className="mt-2 text-sm text-gray-500">
@@ -358,7 +368,7 @@ const QuestionBank = () => {
                       }
                       onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
                       className="w-full border rounded p-2"
-                      placeholder={`Enter option ${option.key} text. Use Command + $ for math.`}
+                      placeholder={`Enter option ${option.key} text. Use Shift + $ for math.`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
                       Preview: {renderTextWithMath(option.optionText)}
