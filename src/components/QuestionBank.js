@@ -111,7 +111,6 @@ const QuestionBank = () => {
 
   // For any text input, when the user presses shift + "$",
   // we insert a "$" at the current cursor position.
-  // Define the marker at the top of your file or inside your component.
   const MATH_MARKER = "\u200B";
 
   const handleMathKeyDown = (e, field, index = null) => {
@@ -259,13 +258,13 @@ const QuestionBank = () => {
       <div className="flex gap-4 mb-6">
         <button
           onClick={handleGenerateQuestionPaper}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="inline-flex items-center px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors duration-200"
         >
           Generate Question Paper
         </button>
         <button
           onClick={() => setShowAddQuestionModal(true)}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
         >
           Add Question
         </button>
@@ -303,8 +302,7 @@ const QuestionBank = () => {
                     </div>
                   )}
                   <div className="mt-2 text-sm text-gray-600">
-                    Marks: {question.marks} | Type: {question.type} |
-                    Difficulty: {question.difficulty}
+                    Marks: {question.marks} | Type: {question.type} | Difficulty: {question.difficulty}
                   </div>
                 </div>
               </div>
@@ -416,13 +414,13 @@ const QuestionBank = () => {
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setShowAddQuestionModal(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                className="inline-flex items-center px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleNewQuestionSubmit}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
               >
                 Save Question
               </button>
