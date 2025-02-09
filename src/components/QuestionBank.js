@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
+import axios from "axios";
 
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
@@ -54,32 +55,41 @@ const QuestionBank = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  // Fetch questions (using your paginated questions API)
   const fetchQuestions = async () => {
     setLoading(true);
     try {
+      const accesskey = localStorage.getItem(ACCESS_KEY);
+
+      // Prepare query parameters – the limit (and optionally a cursor) go in the URL.
       const queryParams = new URLSearchParams({
-        limit: "10000",
+        limit: "10000", // or any limit value you require
+        // If you ever want to pass a cursor from your filters or state, for example:
+        // ...(filters.cursor && { cursor: filters.cursor }),
+      });
+
+      // Prepare the body payload with filtering options.
+      const payload = {
         ...(filters.marks && { marks: filters.marks }),
         ...(filters.type && { type: filters.type }),
         ...(filters.difficulty && {
           difficulty: filters.difficulty.toLowerCase(),
         }),
-      });
-      const accesskey = localStorage.getItem(ACCESS_KEY);
-      const response = await fetch(
-        `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams}`,
+      };
+
+      // Make the POST request using Axios.
+      const response = await axios.post(
+        `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
+        payload,
         {
-          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: accesskey,
           },
         }
       );
-      const data = await response.json();
-      console.log(data.questions);
-      setQuestions(data.questions);
+
+      // Assuming the API returns the questions in response.data.questions
+      setQuestions(response.data.questions);
     } catch (error) {
       console.error("Error fetching questions:", error);
     }
@@ -228,7 +238,7 @@ const QuestionBank = () => {
       const accesskey = localStorage.getItem(ACCESS_KEY);
       // Send delete requests for each selected question
       await Promise.all(
-        selectedIds.map((id) =>
+        selectedIds?.map((id) =>
           fetch(`${BASE_URL_API}/question/delete`, {
             method: "DELETE",
             headers: {
@@ -297,7 +307,7 @@ const QuestionBank = () => {
             className="border rounded p-2"
           >
             <option value="">All</option>
-            {marks.map((mark) => (
+            {marks?.map((mark) => (
               <option key={mark} value={mark}>
                 {mark}
               </option>
@@ -313,7 +323,7 @@ const QuestionBank = () => {
             className="border rounded p-2"
           >
             <option value="">All</option>
-            {types.map((type) => (
+            {types?.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
@@ -329,7 +339,7 @@ const QuestionBank = () => {
             className="border rounded p-2"
           >
             <option value="">All</option>
-            {difficulties.map((diff) => (
+            {difficulties?.map((diff) => (
               <option key={diff} value={diff}>
                 {diff}
               </option>
@@ -392,7 +402,7 @@ const QuestionBank = () => {
         <div className="text-center py-4">Loading questions...</div>
       ) : (
         <div className="space-y-4">
-          {questions.map((question) => (
+          {questions?.map((question) => (
             <div key={question.id} className="border rounded p-4">
               <div className="flex items-start gap-4">
                 <input
@@ -407,7 +417,7 @@ const QuestionBank = () => {
                   </div>
                   {question.type === "MCQ" && (
                     <div className="ml-4 space-y-2">
-                      {question.options.map((option) => (
+                      {question?.options?.map((option) => (
                         <div
                           key={option.key}
                           className="flex items-center gap-2"
@@ -445,7 +455,7 @@ const QuestionBank = () => {
                 onChange={(e) => handleNewQuestionChange(e, "type")}
                 className="w-full border rounded p-2"
               >
-                {types.map((type) => (
+                {types?.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
@@ -473,7 +483,7 @@ const QuestionBank = () => {
             {newQuestion.type === "MCQ" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Options</label>
-                {newQuestion.options.map((option, index) => (
+                {newQuestion?.options?.map((option, index) => (
                   <div key={option.key} className="mb-2">
                     <label className="block text-sm font-medium">
                       Option {option.key}
@@ -506,7 +516,7 @@ const QuestionBank = () => {
                   className="w-full border rounded p-2"
                 >
                   <option value="">Select Marks</option>
-                  {marks.map((mark) => (
+                  {marks?.map((mark) => (
                     <option key={mark} value={mark}>
                       {mark}
                     </option>
@@ -521,7 +531,7 @@ const QuestionBank = () => {
                   className="w-full border rounded p-2"
                 >
                   <option value="">Select Difficulty</option>
-                  {difficulties.map((diff) => (
+                  {difficulties?.map((diff) => (
                     <option key={diff} value={diff}>
                       {diff}
                     </option>
