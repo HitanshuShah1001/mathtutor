@@ -31,8 +31,11 @@ const QuestionBank = () => {
   const types = ["MCQ", "Descriptive"];
   const difficulties = ["EASY", "MEDIUM", "HARD"];
 
-  // New state for showing the “Add Question” modal.
+  // New state for showing the “Add/Edit Question” modal.
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+  // New state to track if we are editing (true) or adding (false)
+  const [isEditing, setIsEditing] = useState(false);
+  // newQuestion state now may include an "id" when editing.
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
@@ -107,7 +110,7 @@ const QuestionBank = () => {
   };
 
   // -------------------------------------------------------------------
-  // HANDLING THE NEW QUESTION FORM (Add / Upsert)
+  // HANDLING THE NEW QUESTION / EDIT FORM (Add / Upsert)
   // -------------------------------------------------------------------
 
   // For any text input, when the user presses shift + "$",
@@ -157,15 +160,18 @@ const QuestionBank = () => {
     }
   };
 
-  // Submit the new question by calling the upsert API.
+  // Submit the new or edited question by calling the upsert API.
   const handleNewQuestionSubmit = async () => {
     try {
       const accesskey = localStorage.getItem(ACCESS_KEY);
       // Prepare the payload; note that the API expects difficulty to be lowercase.
-      const payload = {
+      let payload = {
         ...newQuestion,
         difficulty: newQuestion.difficulty.toLowerCase(),
       };
+      if (isEditing) {
+        payload.id = newQuestion.id;
+      }
       // If the question type is Descriptive, remove the options field.
       if (newQuestion.type !== "MCQ") {
         delete payload.options;
@@ -181,6 +187,8 @@ const QuestionBank = () => {
       const data = await response.json();
       console.log("Question upserted:", data);
       setShowAddQuestionModal(false);
+      setIsEditing(false);
+      // Reset the form state.
       setNewQuestion({
         type: "MCQ",
         questionText: "",
@@ -195,6 +203,8 @@ const QuestionBank = () => {
       });
       // Refresh the question list.
       fetchQuestions();
+      // Optionally, clear the selections.
+      setSelected({});
     } catch (error) {
       console.error("Error upserting question:", error);
     }
@@ -234,6 +244,44 @@ const QuestionBank = () => {
       setSelected({});
     } catch (error) {
       console.error("Error deleting questions:", error);
+    }
+  };
+
+  // -------------------------------------------------------------------
+  // EDIT QUESTION HANDLING
+  // -------------------------------------------------------------------
+  const handleEditQuestion = () => {
+    // Get the selected question IDs (should be exactly one)
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 1) {
+      const questionId = selectedIds[0];
+      // Find the question in our list
+      const questionToEdit = questions.find(
+        (q) => q.id.toString() === questionId.toString()
+      );
+      if (questionToEdit) {
+        // Pre-fill the newQuestion state with the selected question data.
+        setNewQuestion({
+          id: questionToEdit.id, // include id for editing
+          type: questionToEdit.type,
+          questionText: questionToEdit.questionText,
+          marks: questionToEdit.marks,
+          // Convert difficulty to uppercase so that it matches our dropdown options.
+          difficulty: questionToEdit.difficulty.toUpperCase(),
+          // Only include options if the question type is MCQ.
+          options:
+            questionToEdit.type === "MCQ"
+              ? questionToEdit.options
+              : [
+                  { key: "A", optionText: "" },
+                  { key: "B", optionText: "" },
+                  { key: "C", optionText: "" },
+                  { key: "D", optionText: "" },
+                ],
+        });
+        setIsEditing(true);
+        setShowAddQuestionModal(true);
+      }
     }
   };
 
@@ -299,11 +347,36 @@ const QuestionBank = () => {
           Generate Question Paper
         </button>
         <button
-          onClick={() => setShowAddQuestionModal(true)}
+          onClick={() => {
+            // When adding a new question, ensure that we reset editing mode.
+            setIsEditing(false);
+            setNewQuestion({
+              type: "MCQ",
+              questionText: "",
+              marks: "",
+              difficulty: "",
+              options: [
+                { key: "A", optionText: "" },
+                { key: "B", optionText: "" },
+                { key: "C", optionText: "" },
+                { key: "D", optionText: "" },
+              ],
+            });
+            setShowAddQuestionModal(true);
+          }}
           className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
         >
           Add Question
         </button>
+        {/* Render Edit button only if exactly one question is selected */}
+        {Object.keys(selected).filter((id) => selected[id]).length === 1 && (
+          <button
+            onClick={handleEditQuestion}
+            className="inline-flex items-center px-3 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition-colors duration-200"
+          >
+            Edit Question
+          </button>
+        )}
         {selected && Object.keys(selected).some((id) => selected[id]) && (
           <button
             onClick={handleDeleteQuestions}
@@ -356,11 +429,13 @@ const QuestionBank = () => {
         </div>
       )}
 
-      {/* ---------------- Add Question Modal ---------------- */}
+      {/* ---------------- Add/Edit Question Modal ---------------- */}
       {showAddQuestionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Add New Question</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {isEditing ? "Edit Question" : "Add New Question"}
+            </h3>
 
             {/* Question Type */}
             <div className="mb-4">
@@ -458,7 +533,22 @@ const QuestionBank = () => {
             {/* Modal Actions */}
             <div className="flex justify-end gap-4">
               <button
-                onClick={() => setShowAddQuestionModal(false)}
+                onClick={() => {
+                  setShowAddQuestionModal(false);
+                  setIsEditing(false);
+                  setNewQuestion({
+                    type: "MCQ",
+                    questionText: "",
+                    marks: "",
+                    difficulty: "",
+                    options: [
+                      { key: "A", optionText: "" },
+                      { key: "B", optionText: "" },
+                      { key: "C", optionText: "" },
+                      { key: "D", optionText: "" },
+                    ],
+                  });
+                }}
                 className="inline-flex items-center px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors duration-200"
               >
                 Cancel
@@ -467,7 +557,7 @@ const QuestionBank = () => {
                 onClick={handleNewQuestionSubmit}
                 className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
               >
-                Save Question
+                {isEditing ? "Update Question" : "Save Question"}
               </button>
             </div>
           </div>
