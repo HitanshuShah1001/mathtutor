@@ -75,6 +75,7 @@ const QuestionBank = () => {
         }
       );
       const data = await response.json();
+      console.log(data.questions);
       setQuestions(data.questions);
     } catch (error) {
       console.error("Error fetching questions:", error);
@@ -101,8 +102,8 @@ const QuestionBank = () => {
   // When “Generate Question Paper” is clicked.
   const handleGenerateQuestionPaper = () => {
     const selectedQuestions = questions.filter((q) => selected[q.id]);
-    console.log("Selected questions:", selectedQuestions);
     // Add your logic for generating a question paper.
+    console.log("Selected questions:", selectedQuestions);
   };
 
   // -------------------------------------------------------------------
@@ -138,7 +139,6 @@ const QuestionBank = () => {
   };
 
   // Generic change handler for our new question form.
-  // For the question text, marks, difficulty, type, and for option text.
   const handleNewQuestionChange = (e, field, index = null) => {
     if (field === "questionText") {
       setNewQuestion((prev) => ({ ...prev, questionText: e.target.value }));
@@ -180,7 +180,6 @@ const QuestionBank = () => {
       });
       const data = await response.json();
       console.log("Question upserted:", data);
-      // Reset the form and close the modal.
       setShowAddQuestionModal(false);
       setNewQuestion({
         type: "MCQ",
@@ -198,6 +197,43 @@ const QuestionBank = () => {
       fetchQuestions();
     } catch (error) {
       console.error("Error upserting question:", error);
+    }
+  };
+
+  // -------------------------------------------------------------------
+  // DELETE SELECTED QUESTIONS
+  // -------------------------------------------------------------------
+  const handleDeleteQuestions = async () => {
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 0) {
+      alert("Please select at least one question to delete.");
+      return;
+    }
+    if (
+      !window.confirm("Are you sure you want to delete the selected questions?")
+    ) {
+      return;
+    }
+    try {
+      const accesskey = localStorage.getItem(ACCESS_KEY);
+      // Send delete requests for each selected question
+      await Promise.all(
+        selectedIds.map((id) =>
+          fetch(`${BASE_URL_API}/question/delete`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: accesskey,
+            },
+            body: JSON.stringify({ id: id }),
+          }).then((res) => res.json())
+        )
+      );
+      // Refresh the question list and clear selections
+      fetchQuestions();
+      setSelected({});
+    } catch (error) {
+      console.error("Error deleting questions:", error);
     }
   };
 
@@ -268,6 +304,14 @@ const QuestionBank = () => {
         >
           Add Question
         </button>
+        {selected && Object.keys(selected).some((id) => selected[id]) && (
+          <button
+            onClick={handleDeleteQuestions}
+            className="inline-flex items-center px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors duration-200"
+          >
+            Delete
+          </button>
+        )}
       </div>
 
       {/* ---------------- Questions List ---------------- */}
@@ -302,7 +346,8 @@ const QuestionBank = () => {
                     </div>
                   )}
                   <div className="mt-2 text-sm text-gray-600">
-                    Marks: {question.marks} | Type: {question.type} | Difficulty: {question.difficulty}
+                    Marks: {question.marks} | Type: {question.type} |
+                    Difficulty: {question.difficulty}
                   </div>
                 </div>
               </div>
