@@ -59,6 +59,8 @@ export const DocumentSidebar = () => {
     }
   };
 
+
+  console.log(selectedDocument)
   useEffect(() => {
     fetchDocuments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -271,7 +273,7 @@ export const DocumentSidebar = () => {
               {!activeDocument && (
                 <div className="mb-6">
                   <h2 className="text-2xl font-semibold text-gray-800">
-                    {selectedDocument.title}
+                    {selectedDocument.name}
                   </h2>
                   <p className="text-gray-500 mt-1">
                     {selectedDocument.subject} • Grade {selectedDocument.grade}{" "}
@@ -376,7 +378,7 @@ export const DocumentSidebar = () => {
                       ) : (
                         <DocumentViewer
                           documentUrl={selectedDocument.questionPaperLink}
-                          title={`${selectedDocument.title} - Question Paper`}
+                          title={`${selectedDocument.name} - Question Paper`}
                         />
                       )}
                     </>
@@ -424,7 +426,7 @@ export const DocumentSidebar = () => {
                       ) : (
                         <DocumentViewer
                           documentUrl={selectedDocument.solutionLink}
-                          title={`${selectedDocument.title} - Answer Sheet`}
+                          title={`${selectedDocument.name} - Answer Sheet`}
                         />
                       )}
                     </>
