@@ -4,7 +4,7 @@ import { ChatHeader } from "../subcomponents/ChatHeader";
 import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
-import { putRequest } from "../utils/ApiCall";
+import { getRequest, postRequest, postRequestWithoutStringified, putRequest } from "../utils/ApiCall";
 import { Blueprintmodal, modalStyles } from "./BlueprintModal";
 
 // NEW IMPORT
@@ -169,14 +169,9 @@ const GenerateQuestionPaper = () => {
 
   const saveBlueprint = async () => {
     let blueprint = convertToBluePrintCompatibleFormat();
-    const res = await putRequest(
-      `${BASE_URL_API}/blueprint/create`,
-      {
-        Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
-        "Content-Type": "application/json",
-      },
-      { blueprint }
-    );
+    const res = await putRequest(`${BASE_URL_API}/blueprint/create`, {
+      blueprint,
+    });
     if (!res.success) {
       alert(res.message ?? "Some Error Occurred");
     } else {
@@ -186,14 +181,10 @@ const GenerateQuestionPaper = () => {
 
   const updateBlueprint = async () => {
     let blueprint = convertToBluePrintCompatibleFormat();
-    const res = await putRequest(
-      `${BASE_URL_API}/blueprint/update`,
-      {
-        Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
-        "Content-Type": "application/json",
-      },
-      { id: bluePrintId, blueprint }
-    );
+    const res = await putRequest(`${BASE_URL_API}/blueprint/update`, {
+      id: bluePrintId,
+      blueprint,
+    });
     if (!res.success) {
       alert(res.message ?? "Some Error Occurred");
     } else {
@@ -203,7 +194,9 @@ const GenerateQuestionPaper = () => {
 
   // UseCallback for RenderTopicSelection
   const RenderTopicSelection = useCallback(() => {
-    let renderContent = marks ? `${configuredMarks} / ${marks}` : configuredMarks;
+    let renderContent = marks
+      ? `${configuredMarks} / ${marks}`
+      : configuredMarks;
     return (
       <div style={styles.formGroup} className="fade-in">
         <div style={styles.marksTracker}>
@@ -282,14 +275,10 @@ const GenerateQuestionPaper = () => {
       const url = new URL(`${BASE_URL_API}/blueprint/getPaginatedBlueprints`);
       url.searchParams.append("limit", 100);
 
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: {
-          Authorization: `${localStorage.getItem(ACCESS_KEY)}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await response.json();
+      const data = await getRequest(
+        `${BASE_URL_API}/blueprint/getPaginatedBlueprints`,
+        { limit: 10000 } // Query parameters
+      );
       console.log(data, "data");
       if (data.success) {
         setBlueprints(data.blueprints);
@@ -376,14 +365,12 @@ const GenerateQuestionPaper = () => {
     });
 
     try {
-      const url = new URL(`${BASE_URL_API}/questionPaper/generate`);
-      const requestOptions = {
-        method: "POST",
-        headers: myHeaders,
-        body,
-      };
-      const response = await fetch(url.toString(), requestOptions);
-      const data = await response.json();
+      const response = await postRequestWithoutStringified(
+        `${BASE_URL_API}/questionPaper/generate`,
+        body // query parameters
+      );
+      console.log(response, "respo");
+      // const data = await response.json();
       // Handle the response if needed
     } catch (e) {
       console.error(e);
@@ -395,7 +382,7 @@ const GenerateQuestionPaper = () => {
   return (
     <div style={styles.pageContainer} className="fade-in">
       {/* NEW: Add a small note about required fields (optional) */}
-      
+
       <CustomAlert
         isOpen={isAlertModalOpen}
         onClose={() => setIsAlertModalOpen(false)}
@@ -411,7 +398,6 @@ const GenerateQuestionPaper = () => {
         >
           Load from existing blueprint
         </button>
-        
       </div>
 
       <ChatHeader title={"Generate Question Paper"} />

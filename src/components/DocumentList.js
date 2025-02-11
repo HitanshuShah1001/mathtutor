@@ -8,12 +8,13 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ChatHeader } from "../subcomponents/ChatHeader";
-import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
+import { BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import DocumentEditor from "./DocumentEditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { uploadToS3 } from "../utils/s3utils";
 import QuestionBank from "./QuestionBank";
+import { postRequest } from "../utils/ApiCall";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -39,22 +40,15 @@ export const DocumentSidebar = () => {
       const requestBody = {};
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
-      const accesskey = localStorage.getItem(ACCESS_KEY);
-
-      const response = await fetch(
+      const data = await postRequest(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: accesskey,
-          },
-          body: JSON.stringify(requestBody),
-        }
+        requestBody
       );
-      const data = await response.json();
-
-      if (data.message === "Invalid or expired access token") {
+      console.log(data, "dat");
+      if (
+        data.message === "Invalid or expired access token" ||
+        data.message === "Access token is required"
+      ) {
         removeDataFromLocalStorage();
       }
       setDocuments(data.data);

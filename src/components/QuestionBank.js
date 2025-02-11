@@ -3,6 +3,7 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import axios from "axios";
+import { postRequest } from "../utils/ApiCall";
 
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
@@ -77,19 +78,15 @@ const QuestionBank = () => {
       };
 
       // Make the POST request using Axios.
-      const response = await axios.post(
+      const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
-        payload,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: accesskey,
-          },
-        }
+        payload
       );
 
+      console.log(response,"response")
+
       // Assuming the API returns the questions in response.data.questions
-      setQuestions(response.data.questions);
+      setQuestions(response.questions);
     } catch (error) {
       console.error("Error fetching questions:", error);
     }
