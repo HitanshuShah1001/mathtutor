@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Download, Printer } from "lucide-react";
 
-const DocumentViewer = ({ documentUrl, title }) => {
+const DocumentViewer = ({ documentUrl, name }) => {
   const [loading, setLoading] = useState(true);
   const uniqueDocumentUrl = `${documentUrl}?t=${Date.now()}`;
   const handlePrint = () => {
@@ -54,7 +54,7 @@ const DocumentViewer = ({ documentUrl, title }) => {
   return (
     <div className="flex flex-col h-[calc(100vh-13rem)] bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between items-center p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        <h3 className="text-lg font-semibold text-gray-800">{name}</h3>
         <div className="flex gap-2">
           <button
             onClick={handleDownloadPDF}
@@ -78,7 +78,7 @@ const DocumentViewer = ({ documentUrl, title }) => {
           src={uniqueDocumentUrl}
           className="w-full h-full border-0"
           onLoad={() => setLoading(false)}
-          title={title}
+          title={name}
         />
 
         {loading && (

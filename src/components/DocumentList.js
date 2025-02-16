@@ -28,6 +28,9 @@ export const DocumentSidebar = () => {
   // State to control the modal for viewing a document
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDocument, setModalDocument] = useState(null);
+  // State to control which tab is active in the modal:
+  // "question" for Question Paper, "solution" for Answer Sheet.
+  const [modalActiveTab, setModalActiveTab] = useState("question");
 
   const navigate = useNavigate();
 
@@ -55,6 +58,7 @@ export const DocumentSidebar = () => {
       setLoading(false);
     }
   };
+  console.log(modalDocument)
 
   useEffect(() => {
     fetchDocuments();
@@ -124,7 +128,6 @@ export const DocumentSidebar = () => {
 
   return (
     <>
-      
       <div className="p-4">
         {/* Header with title, Create button, and filters */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
@@ -177,6 +180,7 @@ export const DocumentSidebar = () => {
                       <button
                         onClick={() => {
                           setModalDocument(doc);
+                          setModalActiveTab("question");
                           setModalVisible(true);
                         }}
                         className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
@@ -208,7 +212,7 @@ export const DocumentSidebar = () => {
         )}
       </div>
 
-      {/* Modal for viewing a document */}
+      {/* Modal for viewing a document with tabs */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
@@ -219,23 +223,55 @@ export const DocumentSidebar = () => {
               Close
             </button>
             <div className="p-4">
-              <h3 className="text-xl font-semibold mb-2">
-                {modalDocument.title} - Question Paper
-              </h3>
-              <div className="flex flex-wrap gap-4 mb-4">
+             
+              {/* Tabs */}
+              <div className="flex gap-4 mb-4">
                 <button
-                  onClick={() =>
-                    downloadAllSetPDFs(modalDocument.questionPapersLinks)
-                  }
-                  className="inline-flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors"
+                  onClick={() => setModalActiveTab("question")}
+                  className={`px-4 py-2 rounded ${
+                    modalActiveTab === "question"
+                      ? "bg-blue-50 text-blue-600"
+                      : "bg-gray-50 text-gray-600"
+                  }`}
                 >
-                  <DownloadIcon className="w-4 h-4 mr-2" />
-                  Download All Sets
+                  Question Paper
                 </button>
+                <button
+                  onClick={() => setModalActiveTab("solution")}
+                  className={`px-4 py-2 rounded ${
+                    modalActiveTab === "solution"
+                      ? "bg-blue-50 text-blue-600"
+                      : "bg-gray-50 text-gray-600"
+                  }`}
+                >
+                  Answer Sheet
+                </button>
+                {modalActiveTab === "question" &&
+                  modalDocument.questionPapersLinks && (
+                    <button
+                      onClick={() =>
+                        downloadAllSetPDFs(modalDocument.questionPapersLinks)
+                      }
+                      className="inline-flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors"
+                    >
+                      <DownloadIcon className="w-4 h-4 mr-2" />
+                      Download All Sets
+                    </button>
+                  )}
               </div>
+              
+              {/* Document Viewer */}
               <DocumentViewer
-                documentUrl={modalDocument.questionPaperLink}
-                title={`${modalDocument.title} - Question Paper`}
+                documentUrl={
+                  modalActiveTab === "question"
+                    ? modalDocument.questionPaperLink
+                    : modalDocument.solutionLink
+                }
+                name={`${modalDocument.name} - ${
+                  modalActiveTab === "question"
+                    ? "Question Paper"
+                    : "Answer Sheet"
+                }`}
               />
             </div>
           </div>
