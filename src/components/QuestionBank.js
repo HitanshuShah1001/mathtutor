@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
-import axios from "axios";
+
 import { postRequest } from "../utils/ApiCall";
+import { uploadToS3 } from "../utils/s3utils"; // Import your upload function
 
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
@@ -37,17 +38,18 @@ const QuestionBank = () => {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   // New state to track if we are editing (true) or adding (false)
   const [isEditing, setIsEditing] = useState(false);
-  // newQuestion state now may include an "id" when editing.
+  // newQuestion state now includes an "imageUrl" for the question.
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
+    imageUrl: "", // added for question image
     marks: "",
     difficulty: "",
     options: [
-      { key: "A", optionText: "" },
-      { key: "B", optionText: "" },
-      { key: "C", optionText: "" },
-      { key: "D", optionText: "" },
+      { key: "A", optionText: "", imageUrl: "" },
+      { key: "B", optionText: "", imageUrl: "" },
+      { key: "C", optionText: "", imageUrl: "" },
+      { key: "D", optionText: "", imageUrl: "" },
     ],
   });
 
@@ -63,9 +65,7 @@ const QuestionBank = () => {
 
       // Prepare query parameters – the limit (and optionally a cursor) go in the URL.
       const queryParams = new URLSearchParams({
-        limit: "10000", // or any limit value you require
-        // If you ever want to pass a cursor from your filters or state, for example:
-        // ...(filters.cursor && { cursor: filters.cursor }),
+        limit: "10000",
       });
 
       // Prepare the body payload with filtering options.
@@ -83,7 +83,7 @@ const QuestionBank = () => {
         payload
       );
 
-      console.log(response,"response")
+      console.log(response, "response");
 
       // Assuming the API returns the questions in response.data.questions
       setQuestions(response.questions);
@@ -112,7 +112,6 @@ const QuestionBank = () => {
   // When “Generate Question Paper” is clicked.
   const handleGenerateQuestionPaper = () => {
     const selectedQuestions = questions.filter((q) => selected[q.id]);
-    // Add your logic for generating a question paper.
     console.log("Selected questions:", selectedQuestions);
   };
 
@@ -125,12 +124,10 @@ const QuestionBank = () => {
   const MATH_MARKER = "\u200B";
 
   const handleMathKeyDown = (e, field, index = null) => {
-    // Check for command (metaKey) or shift along with '$'
     if ((e.metaKey || e.shiftKey) && e.key === "$") {
       e.preventDefault();
       const input = e.target;
       const { selectionStart, selectionEnd, value } = input;
-      // Instead of inserting "$", insert the invisible marker
       const newValue =
         value.slice(0, selectionStart) +
         MATH_MARKER +
@@ -144,7 +141,6 @@ const QuestionBank = () => {
           return { ...prev, options };
         });
       }
-      // (You can still adjust the caret position if needed.)
     }
   };
 
@@ -167,11 +163,45 @@ const QuestionBank = () => {
     }
   };
 
+  // ----------------------------------------------------------
+  // IMAGE UPLOAD HANDLERS (using the provided uploadToS3 function)
+  // ----------------------------------------------------------
+
+  // For question image
+  const handleQuestionImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    // Create a target link using file name (you can customize this logic)
+    const targetLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
+    try {
+      const fileUrl = await uploadToS3(file, targetLink);
+      setNewQuestion((prev) => ({ ...prev, imageUrl: fileUrl }));
+    } catch (error) {
+      console.error("Error uploading question image:", error);
+    }
+  };
+
+  // For option image
+  const handleOptionImageUpload = async (e, index) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const targetLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
+    try {
+      const fileUrl = await uploadToS3(file, targetLink);
+      setNewQuestion((prev) => {
+        const options = [...prev.options];
+        options[index] = { ...options[index], imageUrl: fileUrl };
+        return { ...prev, options };
+      });
+    } catch (error) {
+      console.error("Error uploading option image:", error);
+    }
+  };
+
   // Submit the new or edited question by calling the upsert API.
   const handleNewQuestionSubmit = async () => {
     try {
       const accesskey = localStorage.getItem(ACCESS_KEY);
-      // Prepare the payload; note that the API expects difficulty to be lowercase.
       let payload = {
         ...newQuestion,
         difficulty: newQuestion.difficulty.toLowerCase(),
@@ -199,13 +229,14 @@ const QuestionBank = () => {
       setNewQuestion({
         type: "MCQ",
         questionText: "",
+        imageUrl: "",
         marks: "",
         difficulty: "",
         options: [
-          { key: "A", optionText: "" },
-          { key: "B", optionText: "" },
-          { key: "C", optionText: "" },
-          { key: "D", optionText: "" },
+          { key: "A", optionText: "", imageUrl: "" },
+          { key: "B", optionText: "", imageUrl: "" },
+          { key: "C", optionText: "", imageUrl: "" },
+          { key: "D", optionText: "", imageUrl: "" },
         ],
       });
       // Refresh the question list.
@@ -233,9 +264,8 @@ const QuestionBank = () => {
     }
     try {
       const accesskey = localStorage.getItem(ACCESS_KEY);
-      // Send delete requests for each selected question
       await Promise.all(
-        selectedIds?.map((id) =>
+        selectedIds.map((id) =>
           fetch(`${BASE_URL_API}/question/delete`, {
             method: "DELETE",
             headers: {
@@ -246,7 +276,6 @@ const QuestionBank = () => {
           }).then((res) => res.json())
         )
       );
-      // Refresh the question list and clear selections
       fetchQuestions();
       setSelected({});
     } catch (error) {
@@ -258,32 +287,31 @@ const QuestionBank = () => {
   // EDIT QUESTION HANDLING
   // -------------------------------------------------------------------
   const handleEditQuestion = () => {
-    // Get the selected question IDs (should be exactly one)
     const selectedIds = Object.keys(selected).filter((id) => selected[id]);
     if (selectedIds.length === 1) {
       const questionId = selectedIds[0];
-      // Find the question in our list
       const questionToEdit = questions.find(
         (q) => q.id.toString() === questionId.toString()
       );
       if (questionToEdit) {
-        // Pre-fill the newQuestion state with the selected question data.
         setNewQuestion({
-          id: questionToEdit.id, // include id for editing
+          id: questionToEdit.id,
           type: questionToEdit.type,
           questionText: questionToEdit.questionText,
+          imageUrl: questionToEdit.imageUrl || "",
           marks: questionToEdit.marks,
-          // Convert difficulty to uppercase so that it matches our dropdown options.
           difficulty: questionToEdit.difficulty.toUpperCase(),
-          // Only include options if the question type is MCQ.
           options:
             questionToEdit.type === "MCQ"
-              ? questionToEdit.options
+              ? questionToEdit.options.map((opt) => ({
+                  ...opt,
+                  imageUrl: opt.imageUrl || "",
+                }))
               : [
-                  { key: "A", optionText: "" },
-                  { key: "B", optionText: "" },
-                  { key: "C", optionText: "" },
-                  { key: "D", optionText: "" },
+                  { key: "A", optionText: "", imageUrl: "" },
+                  { key: "B", optionText: "", imageUrl: "" },
+                  { key: "C", optionText: "", imageUrl: "" },
+                  { key: "D", optionText: "", imageUrl: "" },
                 ],
         });
         setIsEditing(true);
@@ -304,7 +332,7 @@ const QuestionBank = () => {
             className="border rounded p-2"
           >
             <option value="">All</option>
-            {marks?.map((mark) => (
+            {marks.map((mark) => (
               <option key={mark} value={mark}>
                 {mark}
               </option>
@@ -320,7 +348,7 @@ const QuestionBank = () => {
             className="border rounded p-2"
           >
             <option value="">All</option>
-            {types?.map((type) => (
+            {types.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
@@ -336,7 +364,7 @@ const QuestionBank = () => {
             className="border rounded p-2"
           >
             <option value="">All</option>
-            {difficulties?.map((diff) => (
+            {difficulties.map((diff) => (
               <option key={diff} value={diff}>
                 {diff}
               </option>
@@ -355,18 +383,18 @@ const QuestionBank = () => {
         </button>
         <button
           onClick={() => {
-            // When adding a new question, ensure that we reset editing mode.
             setIsEditing(false);
             setNewQuestion({
               type: "MCQ",
               questionText: "",
+              imageUrl: "",
               marks: "",
               difficulty: "",
               options: [
-                { key: "A", optionText: "" },
-                { key: "B", optionText: "" },
-                { key: "C", optionText: "" },
-                { key: "D", optionText: "" },
+                { key: "A", optionText: "", imageUrl: "" },
+                { key: "B", optionText: "", imageUrl: "" },
+                { key: "C", optionText: "", imageUrl: "" },
+                { key: "D", optionText: "", imageUrl: "" },
               ],
             });
             setShowAddQuestionModal(true);
@@ -375,7 +403,6 @@ const QuestionBank = () => {
         >
           Add Question
         </button>
-        {/* Render Edit button only if exactly one question is selected */}
         {Object.keys(selected).filter((id) => selected[id]).length === 1 && (
           <button
             onClick={handleEditQuestion}
@@ -399,7 +426,7 @@ const QuestionBank = () => {
         <div className="text-center py-4">Loading questions...</div>
       ) : (
         <div className="space-y-4">
-          {questions?.map((question) => (
+          {questions.map((question) => (
             <div key={question.id} className="border rounded p-4">
               <div className="flex items-start gap-4">
                 <input
@@ -412,15 +439,41 @@ const QuestionBank = () => {
                   <div className="mb-2">
                     {renderTextWithMath(question.questionText)}
                   </div>
+                  {/* Display question image if available */}
+                  {question?.imageUrl && (
+                    <img
+                      src={question.imageUrl}
+                      alt="Question"
+                      className="mb-2 rounded max-w-full h-auto"
+                    />
+                  )}
+
                   {question.type === "MCQ" && (
-                    <div className="ml-4 space-y-2">
+                    <div className="ml-4 space-y-2" style={{marginTop:10}}>
                       {question?.options?.map((option) => (
                         <div
                           key={option.key}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 flex-col sm:flex-row"
                         >
-                          <span className="font-bold">{option.key}:</span>
-                          {renderTextWithMath(option.optionText)}
+                          <div
+                            className="flex items-center gap-2"
+                           
+                          >
+                            <div>
+                              <span className="font-bold">{option.key}:</span>
+                              {renderTextWithMath(option.optionText)}
+                            </div>
+                            <div>
+                              {option.imageUrl && (
+                                <img
+                                  src={option.imageUrl}
+                                  alt={`Option ${option.key}`}
+                                  className="mt-1 rounded w-36 h-auto"
+                                />
+                              )}
+                            </div>
+                          </div>
+                          {/* Display option image if available */}
                         </div>
                       ))}
                     </div>
@@ -436,11 +489,11 @@ const QuestionBank = () => {
         </div>
       )}
 
-      {/* ---------------- Add/Edit Question Modal ---------------- */}
       {showAddQuestionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">
+          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative">
+            {/* Modal Header */}
+            <h3 className="text-lg font-semibold mb-4 top-0 bg-white z-10">
               {isEditing ? "Edit Question" : "Add New Question"}
             </h3>
 
@@ -452,7 +505,7 @@ const QuestionBank = () => {
                 onChange={(e) => handleNewQuestionChange(e, "type")}
                 className="w-full border rounded p-2"
               >
-                {types?.map((type) => (
+                {types.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
@@ -476,12 +529,31 @@ const QuestionBank = () => {
               </div>
             </div>
 
+            {/* Question Image Upload */}
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">
+                Question Image (optional)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleQuestionImageUpload}
+              />
+              {newQuestion.imageUrl && (
+                <img
+                  src={newQuestion.imageUrl}
+                  alt="Question preview"
+                  className="mt-2 rounded max-w-full h-auto border"
+                />
+              )}
+            </div>
+
             {/* Options (only for MCQ) */}
             {newQuestion.type === "MCQ" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Options</label>
-                {newQuestion?.options?.map((option, index) => (
-                  <div key={option.key} className="mb-2">
+                {newQuestion.options.map((option, index) => (
+                  <div key={option.key} className="mb-4 border p-2 rounded">
                     <label className="block text-sm font-medium">
                       Option {option.key}
                     </label>
@@ -492,11 +564,28 @@ const QuestionBank = () => {
                         handleNewQuestionChange(e, "option", index)
                       }
                       onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
-                      className="w-full border rounded p-2"
+                      className="w-full border rounded p-2 mb-1"
                       placeholder={`Enter option ${option.key} text. Use Shift + $ for math.`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
                       Preview: {renderTextWithMath(option.optionText)}
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium">
+                        Option {option.key} Image (optional)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleOptionImageUpload(e, index)}
+                      />
+                      {option.imageUrl && (
+                        <img
+                          src={option.imageUrl}
+                          alt={`Option ${option.key} preview`}
+                          className="mt-2 rounded w-24 h-auto border"
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -513,7 +602,7 @@ const QuestionBank = () => {
                   className="w-full border rounded p-2"
                 >
                   <option value="">Select Marks</option>
-                  {marks?.map((mark) => (
+                  {marks.map((mark) => (
                     <option key={mark} value={mark}>
                       {mark}
                     </option>
@@ -528,7 +617,7 @@ const QuestionBank = () => {
                   className="w-full border rounded p-2"
                 >
                   <option value="">Select Difficulty</option>
-                  {difficulties?.map((diff) => (
+                  {difficulties.map((diff) => (
                     <option key={diff} value={diff}>
                       {diff}
                     </option>
@@ -538,7 +627,7 @@ const QuestionBank = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 bottom-0 bg-white p-4 z-10 ">
               <button
                 onClick={() => {
                   setShowAddQuestionModal(false);
@@ -546,13 +635,14 @@ const QuestionBank = () => {
                   setNewQuestion({
                     type: "MCQ",
                     questionText: "",
+                    imageUrl: "",
                     marks: "",
                     difficulty: "",
                     options: [
-                      { key: "A", optionText: "" },
-                      { key: "B", optionText: "" },
-                      { key: "C", optionText: "" },
-                      { key: "D", optionText: "" },
+                      { key: "A", optionText: "", imageUrl: "" },
+                      { key: "B", optionText: "", imageUrl: "" },
+                      { key: "C", optionText: "", imageUrl: "" },
+                      { key: "D", optionText: "", imageUrl: "" },
                     ],
                   });
                 }}

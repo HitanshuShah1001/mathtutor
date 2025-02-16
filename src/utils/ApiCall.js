@@ -1,6 +1,7 @@
 // apiUtils.js
 
 import { ACCESS_KEY } from "../constants/constants";
+import { removeDataFromLocalStorage } from "./LocalStorageOps";
 
 // Define your localStorage key for the access token.
 
@@ -61,14 +62,15 @@ export const postRequest = async (url, body = {}) => {
 
   try {
     const response = await fetch(url, requestOptions);
-    console.log(response, "response received");
+    if (response.status === 401) {
+      removeDataFromLocalStorage();
+    }
     const result = await response.json();
     return result;
   } catch (error) {
     console.error("POST request failed:", error);
   }
 };
-
 
 export const postRequestWithoutStringified = async (url, body = {}) => {
   // Pass 'true' to include the Content-Type header.
