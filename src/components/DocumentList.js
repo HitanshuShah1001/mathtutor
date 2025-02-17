@@ -1,18 +1,9 @@
 import React, { useState, useEffect } from "react";
-import {
-  FileText,
-  ChevronDown,
-  Edit,
-  DownloadIcon,
-  Trash2,
-  Printer,
-} from "lucide-react";
+import { FileText, ChevronDown, DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ChatHeader } from "../subcomponents/ChatHeader";
-import { BASE_URL_API } from "../constants/constants";
+import { BASE_URL_API, COMPLETED } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { uploadToS3 } from "../utils/s3utils";
 import { postRequest } from "../utils/ApiCall";
 
 const GRADES = [7, 8, 9, 10];
@@ -58,7 +49,6 @@ export const DocumentSidebar = () => {
       setLoading(false);
     }
   };
-  console.log(modalDocument)
 
   useEffect(() => {
     fetchDocuments();
@@ -116,16 +106,60 @@ export const DocumentSidebar = () => {
     </div>
   );
 
-  // Helper function to download multiple PDFs
-  const downloadAllSetPDFs = (links) => {
-    links.forEach((link, index) => {
-      const anchor = document.createElement("a");
-      anchor.href = link;
-      anchor.download = `Set_${index + 1}.pdf`;
-      anchor.click();
-    });
+  // Helper function to download (print) multiple PDFs (all sets)
+  const downloadAllSetPDFs = async (links) => {
+    for (let index = 0; index < links.length; index++) {
+      const link = links[index];
+      try {
+        // Open a new window synchronously
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+          alert("Popup blocked. Please allow pop-ups for this site.");
+          return;
+        }
+
+        // Fetch the complete HTML content for this set
+        const response = await fetch(link);
+        const htmlContent = await response.text();
+
+        // Write the HTML content into the new window
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        // Wait until the window loads and MathJax (if available) is typeset
+        await new Promise((resolve) => {
+          printWindow.onload = () => {
+            if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
+              printWindow.MathJax.typesetPromise()
+                .then(() => {
+                  printWindow.print();
+                  printWindow.close();
+                  resolve();
+                })
+                .catch((err) => {
+                  console.error("Error during MathJax typesetting:", err);
+                  printWindow.print();
+                  printWindow.close();
+                  resolve();
+                });
+            } else {
+              // Fallback if MathJax isn't available
+              setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+                resolve();
+              }, 500);
+            }
+          };
+        });
+      } catch (error) {
+        console.error(`Error downloading PDF for set ${index + 1}:`, error);
+      }
+    }
   };
 
+  console.log(documents);
   return (
     <>
       <div className="p-4">
@@ -150,7 +184,7 @@ export const DocumentSidebar = () => {
           </div>
         ) : (
           <div>
-            {documents.length === 0 ? (
+            {documents?.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">
                   No question papers found. Adjust your filters or create a new
@@ -176,34 +210,42 @@ export const DocumentSidebar = () => {
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setModalDocument(doc);
-                          setModalActiveTab("question");
-                          setModalVisible(true);
-                        }}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() =>
-                          alert("Edit functionality not implemented yet")
-                        }
-                        className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-100 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() =>
-                          alert("Delete functionality not implemented yet")
-                        }
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    {doc.status === COMPLETED ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setModalDocument(doc);
+                            setModalActiveTab("question");
+                            setModalVisible(true);
+                          }}
+                          className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() =>
+                            alert("Edit functionality not implemented yet")
+                          }
+                          className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-100 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() =>
+                            alert("Delete functionality not implemented yet")
+                          }
+                          className="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <span className="px-4 py-2 bg-blue-50 text-gray-600 rounded transition-colors">
+                          Paper generation in progress.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -223,7 +265,6 @@ export const DocumentSidebar = () => {
               Close
             </button>
             <div className="p-4">
-             
               {/* Tabs */}
               <div className="flex gap-4 mb-4">
                 <button
@@ -259,7 +300,7 @@ export const DocumentSidebar = () => {
                     </button>
                   )}
               </div>
-              
+
               {/* Document Viewer */}
               <DocumentViewer
                 documentUrl={

@@ -11,45 +11,44 @@ const DocumentViewer = ({ documentUrl, name }) => {
     };
   };
   const handleDownloadPDF = async () => {
-  try {
-    // Fetch the complete HTML content (which should include <head> and the MathJax script)
-    const response = await fetch(documentUrl);
-    const htmlContent = await response.text();
+    try {
+      // Fetch the complete HTML content (which should include <head> and the MathJax script)
+      const response = await fetch(documentUrl);
+      const htmlContent = await response.text();
 
-    // Open a new window and write the full HTML content into it.
-    const printWindow = window.open("", "_blank");
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+      // Open a new window and write the full HTML content into it.
+      const printWindow = window.open("", "_blank");
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
 
-    // When the new window finishes loading, wait for MathJax to typeset the math.
-    printWindow.onload = () => {
-      if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
-        // Wait until MathJax finishes rendering all math
-        printWindow.MathJax.typesetPromise()
-          .then(() => {
+      // When the new window finishes loading, wait for MathJax to typeset the math.
+      printWindow.onload = () => {
+        if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
+          // Wait until MathJax finishes rendering all math
+          printWindow.MathJax.typesetPromise()
+            .then(() => {
+              printWindow.print();
+              printWindow.close();
+            })
+            .catch((err) => {
+              console.error("Error during MathJax typesetting:", err);
+              // Fallback: attempt to print even if typesetting fails
+              printWindow.print();
+              printWindow.close();
+            });
+        } else {
+          // Fallback if MathJax is not available: wait a bit longer.
+          setTimeout(() => {
             printWindow.print();
             printWindow.close();
-          })
-          .catch((err) => {
-            console.error("Error during MathJax typesetting:", err);
-            // Fallback: attempt to print even if typesetting fails
-            printWindow.print();
-            printWindow.close();
-          });
-      } else {
-        // Fallback if MathJax is not available: wait a bit longer.
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 500);
-      }
-    };
-  } catch (error) {
-    console.error("Error downloading PDF:", error);
-  }
-};
-
+          }, 500);
+        }
+      };
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    }
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-13rem)] bg-white rounded-lg shadow-sm border border-gray-200">

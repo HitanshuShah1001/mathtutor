@@ -5,6 +5,7 @@ export const API_SEND_OTP = "auth/send-otp";
 export const OTP_VERIFY = "auth/verify-otp";
 export const ACCESS_KEY = "accessKey";
 export const SYSTEM = "system";
+export const COMPLETED = "completed";
 export const difficulty = {
   EASY: "EASY",
   MEDIUM: "MEDIUM",
