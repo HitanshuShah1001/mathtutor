@@ -17,6 +17,7 @@ import { ResultAnalyser } from "./components/ResultVisualiser";
 import { SelectStandard } from "./components/SelectStandardAndGrade";
 import { DocumentSidebar } from "./components/DocumentList";
 import GenerateQuestionPaper from "./components/Questionpaper";
+import QuestionBank from "./components/QuestionBank";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -57,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DocumentSidebar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/question-bank"
+              element={
+                <ProtectedRoute>
+                  <QuestionBank />
                 </ProtectedRoute>
               }
             />

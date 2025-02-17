@@ -59,9 +59,9 @@ export const DocumentSidebar = () => {
     navigate("/question-paper-generation");
   };
 
-  // Render the filter dropdowns at the top
+  // Render the filter dropdowns at the top including a "Question Bank" chip
   const FilterDropdowns = () => (
-    <div className="mb-6 flex gap-4">
+    <div className="mb-6 flex items-center gap-4">
       <div className="relative">
         <select
           value={filters.grade || ""}
@@ -103,6 +103,15 @@ export const DocumentSidebar = () => {
         </select>
         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
       </div>
+
+      {/* Question Bank Chip */}
+      <button
+        onClick={() => navigate("/question-bank")}
+        className="py-2 px-4 top-1/2 rounded-lg bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-colors"
+        style={{height:'41px'}}
+      >
+        Question Bank
+      </button>
     </div>
   );
 
@@ -117,16 +126,13 @@ export const DocumentSidebar = () => {
           alert("Popup blocked. Please allow pop-ups for this site.");
           return;
         }
-
         // Fetch the complete HTML content for this set
         const response = await fetch(link);
         const htmlContent = await response.text();
-
         // Write the HTML content into the new window
         printWindow.document.open();
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-
         // Wait until the window loads and MathJax (if available) is typeset
         await new Promise((resolve) => {
           printWindow.onload = () => {
@@ -159,7 +165,6 @@ export const DocumentSidebar = () => {
     }
   };
 
-  console.log(documents);
   return (
     <>
       <div className="p-4">
