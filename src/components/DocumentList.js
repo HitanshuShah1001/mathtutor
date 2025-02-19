@@ -107,7 +107,7 @@ export const DocumentSidebar = () => {
       {/* Question Bank Chip */}
       <button
         onClick={() => navigate("/question-bank")}
-        className="py-2 px-4 top-1/2 rounded-lg bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-colors"
+        className="py-2 px-4 top-1/2 rounded-lg bg-green-100 text-green-700 text-m font-medium hover:bg-green-200 transition-colors"
         style={{ height: "41px" }}
       >
         Question Bank

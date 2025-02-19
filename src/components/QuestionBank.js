@@ -53,6 +53,18 @@ const QuestionBank = () => {
     ],
   });
 
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Set to opaque if scrolled down even a little.
+      setIsScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   useEffect(() => {
     fetchQuestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -188,9 +200,8 @@ const QuestionBank = () => {
     if (!file) return;
     const targetLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
     try {
-      
       const fileUrl = await uploadToS3(file, targetLink);
-      console.log(fileUrl,"file url that camer")
+      console.log(fileUrl, "file url that camer");
       setNewQuestion((prev) => {
         const options = [...prev.options];
         options[index] = { ...options[index], imageUrl: fileUrl };
@@ -325,105 +336,111 @@ const QuestionBank = () => {
 
   return (
     <div className="p-6 relative">
-      {/* ---------------- Filter Section ---------------- */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium">Marks</label>
-          <select
-            value={filters.marks}
-            onChange={(e) => handleFilterChange("marks", e.target.value)}
-            className="border rounded p-2"
-          >
-            <option value="">All</option>
-            {marks.map((mark) => (
-              <option key={mark} value={mark}>
-                {mark}
-              </option>
-            ))}
-          </select>
+      <div
+        className={`sticky top-0 bg-white p-1 transition-opacity duration-300 border rounded ${
+          isScrolled ? "opacity-100" : "opacity-90"
+        }`}
+        style={{ zIndex: 50 }}
+      >
+        {/* ---------------- Filter Section ---------------- */}
+        <div className="flex gap-4 mb-6">
+          <div className="flex flex-col">
+            <label className="mb-1 text-sm font-medium">Marks</label>
+            <select
+              value={filters.marks}
+              onChange={(e) => handleFilterChange("marks", e.target.value)}
+              className="border rounded p-2"
+            >
+              <option value="">All</option>
+              {marks.map((mark) => (
+                <option key={mark} value={mark}>
+                  {mark}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col">
+            <label className="mb-1 text-sm font-medium">Type</label>
+            <select
+              value={filters.type}
+              onChange={(e) => handleFilterChange("type", e.target.value)}
+              className="border rounded p-2"
+            >
+              <option value="">All</option>
+              {types.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col">
+            <label className="mb-1 text-sm font-medium">Difficulty</label>
+            <select
+              value={filters.difficulty}
+              onChange={(e) => handleFilterChange("difficulty", e.target.value)}
+              className="border rounded p-2"
+            >
+              <option value="">All</option>
+              {difficulties.map((diff) => (
+                <option key={diff} value={diff}>
+                  {diff}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium">Type</label>
-          <select
-            value={filters.type}
-            onChange={(e) => handleFilterChange("type", e.target.value)}
-            className="border rounded p-2"
+        {/* ---------------- Action Buttons ---------------- */}
+        <div className="flex gap-4 mb-6">
+          <button
+            onClick={handleGenerateQuestionPaper}
+            className="inline-flex items-center px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors duration-200"
           >
-            <option value="">All</option>
-            {types.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="mb-1 text-sm font-medium">Difficulty</label>
-          <select
-            value={filters.difficulty}
-            onChange={(e) => handleFilterChange("difficulty", e.target.value)}
-            className="border rounded p-2"
+            Generate Question Paper
+          </button>
+          <button
+            onClick={() => {
+              setIsEditing(false);
+              setNewQuestion({
+                type: "MCQ",
+                questionText: "",
+                imageUrl: "",
+                marks: "",
+                difficulty: "",
+                options: [
+                  { key: "A", optionText: "", imageUrl: "" },
+                  { key: "B", optionText: "", imageUrl: "" },
+                  { key: "C", optionText: "", imageUrl: "" },
+                  { key: "D", optionText: "", imageUrl: "" },
+                ],
+              });
+              setShowAddQuestionModal(true);
+            }}
+            className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
           >
-            <option value="">All</option>
-            {difficulties.map((diff) => (
-              <option key={diff} value={diff}>
-                {diff}
-              </option>
-            ))}
-          </select>
+            Add Question
+          </button>
+          {Object.keys(selected).filter((id) => selected[id]).length === 1 && (
+            <button
+              onClick={handleEditQuestion}
+              className="inline-flex items-center px-3 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition-colors duration-200"
+            >
+              Edit Question
+            </button>
+          )}
+          {selected && Object.keys(selected).some((id) => selected[id]) && (
+            <button
+              onClick={handleDeleteQuestions}
+              className="inline-flex items-center px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors duration-200"
+            >
+              Delete
+            </button>
+          )}
         </div>
       </div>
-
-      {/* ---------------- Action Buttons ---------------- */}
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={handleGenerateQuestionPaper}
-          className="inline-flex items-center px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors duration-200"
-        >
-          Generate Question Paper
-        </button>
-        <button
-          onClick={() => {
-            setIsEditing(false);
-            setNewQuestion({
-              type: "MCQ",
-              questionText: "",
-              imageUrl: "",
-              marks: "",
-              difficulty: "",
-              options: [
-                { key: "A", optionText: "", imageUrl: "" },
-                { key: "B", optionText: "", imageUrl: "" },
-                { key: "C", optionText: "", imageUrl: "" },
-                { key: "D", optionText: "", imageUrl: "" },
-              ],
-            });
-            setShowAddQuestionModal(true);
-          }}
-          className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
-        >
-          Add Question
-        </button>
-        {Object.keys(selected).filter((id) => selected[id]).length === 1 && (
-          <button
-            onClick={handleEditQuestion}
-            className="inline-flex items-center px-3 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition-colors duration-200"
-          >
-            Edit Question
-          </button>
-        )}
-        {selected && Object.keys(selected).some((id) => selected[id]) && (
-          <button
-            onClick={handleDeleteQuestions}
-            className="inline-flex items-center px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors duration-200"
-          >
-            Delete
-          </button>
-        )}
-      </div>
-
       {/* ---------------- Questions List ---------------- */}
       {loading ? (
         <div className="text-center py-4">Loading questions...</div>
