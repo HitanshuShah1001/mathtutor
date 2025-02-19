@@ -32,7 +32,7 @@ export const DocumentSidebar = () => {
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
       const data = await postRequest(
-        `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers`,
+        `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?limit=10000`,
         requestBody
       );
       // Remove local storage data if token issues arise
@@ -108,7 +108,7 @@ export const DocumentSidebar = () => {
       <button
         onClick={() => navigate("/question-bank")}
         className="py-2 px-4 top-1/2 rounded-lg bg-green-100 text-green-700 text-xs font-medium hover:bg-green-200 transition-colors"
-        style={{height:'41px'}}
+        style={{ height: "41px" }}
       >
         Question Bank
       </button>

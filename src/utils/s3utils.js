@@ -4,7 +4,6 @@ import s3 from "./s3Configure";
 
 export async function uploadToS3(content, link) {
   const fileKey = link.split(".com/")[1];
-  console.log(fileKey)
   const uploadParams = {
     Bucket: 'tutor-staffroom-files',
     Key: fileKey,
