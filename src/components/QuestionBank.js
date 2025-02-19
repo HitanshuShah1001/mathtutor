@@ -9,9 +9,9 @@ import { uploadToS3 } from "../utils/s3utils"; // Import your upload function
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
   // Replace the invisible marker with "$" for parsing
-  const processedText = text.replace(new RegExp(MATH_MARKER, "g"), "$");
-  const parts = processedText.split("$");
-  return parts.map((part, index) =>
+  const processedText = text?.replace(new RegExp(MATH_MARKER, "g"), "$");
+  const parts = processedText?.split("$");
+  return parts?.map((part, index) =>
     index % 2 === 1 ? (
       <InlineMath key={index} math={part} />
     ) : (
@@ -175,6 +175,7 @@ const QuestionBank = () => {
     const targetLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
     try {
       const fileUrl = await uploadToS3(file, targetLink);
+      console.log(fileUrl, "file url uploaded to s3");
       setNewQuestion((prev) => ({ ...prev, imageUrl: fileUrl }));
     } catch (error) {
       console.error("Error uploading question image:", error);
@@ -187,7 +188,9 @@ const QuestionBank = () => {
     if (!file) return;
     const targetLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
     try {
+      
       const fileUrl = await uploadToS3(file, targetLink);
+      console.log(fileUrl,"file url that camer")
       setNewQuestion((prev) => {
         const options = [...prev.options];
         options[index] = { ...options[index], imageUrl: fileUrl };
@@ -444,21 +447,18 @@ const QuestionBank = () => {
                     <img
                       src={question.imageUrl}
                       alt="Question"
-                      className="mb-2 rounded max-w-full h-auto"
+                      className="mb-2 rounded w-24 h-24 h-auto"
                     />
                   )}
 
                   {question.type === "MCQ" && (
-                    <div className="ml-4 space-y-2" style={{marginTop:10}}>
+                    <div className="ml-4 space-y-2" style={{ marginTop: 10 }}>
                       {question?.options?.map((option) => (
                         <div
                           key={option.key}
                           className="flex items-center gap-2 flex-col sm:flex-row"
                         >
-                          <div
-                            className="flex items-center gap-2"
-                           
-                          >
+                          <div className="flex items-center gap-2">
                             <div>
                               <span className="font-bold">{option.key}:</span>
                               {renderTextWithMath(option.optionText)}
@@ -468,7 +468,7 @@ const QuestionBank = () => {
                                 <img
                                   src={option.imageUrl}
                                   alt={`Option ${option.key}`}
-                                  className="mt-1 rounded w-36 h-auto"
+                                  className="mt-1 rounded w-24 h-24"
                                 />
                               )}
                             </div>
@@ -543,7 +543,7 @@ const QuestionBank = () => {
                 <img
                   src={newQuestion.imageUrl}
                   alt="Question preview"
-                  className="mt-2 rounded max-w-full h-auto border"
+                  className="mt-2 rounded w-24 h-24 h-auto border"
                 />
               )}
             </div>
@@ -583,7 +583,7 @@ const QuestionBank = () => {
                         <img
                           src={option.imageUrl}
                           alt={`Option ${option.key} preview`}
-                          className="mt-2 rounded w-24 h-auto border"
+                          className="mt-2 rounded w-24 h-24 border"
                         />
                       )}
                     </div>

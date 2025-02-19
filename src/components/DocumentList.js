@@ -198,7 +198,7 @@ export const DocumentSidebar = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {documents.map((doc) => (
+                {documents?.map((doc) => (
                   <div
                     key={doc.id}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
