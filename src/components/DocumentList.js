@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FileText, ChevronDown, DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL_API, COMPLETED } from "../constants/constants";
+import { BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { postRequest } from "../utils/ApiCall";
@@ -16,11 +16,10 @@ export const DocumentSidebar = () => {
     grade: null,
     subject: null,
   });
-  // State to control the modal for viewing a document
+
+  // Modal-related states
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDocument, setModalDocument] = useState(null);
-  // State to control which tab is active in the modal:
-  // "question" for Question Paper, "solution" for Answer Sheet.
   const [modalActiveTab, setModalActiveTab] = useState("question");
 
   const navigate = useNavigate();
@@ -31,20 +30,33 @@ export const DocumentSidebar = () => {
       const requestBody = {};
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
+
       const data = await postRequest(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?limit=10000`,
         requestBody
       );
-      // Remove local storage data if token issues arise
-      if (
-        data.message === "Invalid or expired access token" ||
-        data.message === "Access token is required"
-      ) {
-        removeDataFromLocalStorage();
+
+      console.log("Data that was received", data);
+
+      // If the API sends a message indicating invalid token, handle it
+      if (data.message) {
+        if (
+          data.message === "Invalid or expired access token" ||
+          data.message === "Access token is required"
+        ) {
+          removeDataFromLocalStorage();
+        }
       }
-      setDocuments(data.data);
+
+      // Safely set the documents from the new structure
+      if (data.success && data.questionPapers) {
+        setDocuments(data.questionPapers);
+      } else {
+        setDocuments([]);
+      }
     } catch (error) {
       console.error("Error fetching documents:", error);
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
@@ -59,7 +71,7 @@ export const DocumentSidebar = () => {
     navigate("/question-paper-generation");
   };
 
-  // Render the filter dropdowns at the top including a "Question Bank" chip
+  // Dropdown Filters + "Question Bank" Chip
   const FilterDropdowns = () => (
     <div className="mb-6 flex items-center gap-4">
       <div className="relative">
@@ -104,7 +116,6 @@ export const DocumentSidebar = () => {
         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
       </div>
 
-      {/* Question Bank Chip */}
       <button
         onClick={() => navigate("/question-bank")}
         className="py-2 px-4 top-1/2 rounded-lg bg-green-100 text-green-700 text-m font-medium hover:bg-green-200 transition-colors"
@@ -115,9 +126,9 @@ export const DocumentSidebar = () => {
     </div>
   );
 
-  // Helper function to download (print) multiple PDFs (all sets)
+  // Helper function to download/print multiple PDFs (for all sets)
   const downloadAllSetPDFs = async (links) => {
-    for (let index = 0; index < links.length; index++) {
+    for (let index = 0; index < links?.length; index++) {
       const link = links[index];
       try {
         // Open a new window synchronously
@@ -126,14 +137,16 @@ export const DocumentSidebar = () => {
           alert("Popup blocked. Please allow pop-ups for this site.");
           return;
         }
-        // Fetch the complete HTML content for this set
+        // Fetch the HTML content
         const response = await fetch(link);
         const htmlContent = await response.text();
+
         // Write the HTML content into the new window
         printWindow.document.open();
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-        // Wait until the window loads and MathJax (if available) is typeset
+
+        // Wait until the window loads and possibly MathJax is typeset
         await new Promise((resolve) => {
           printWindow.onload = () => {
             if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
@@ -150,7 +163,7 @@ export const DocumentSidebar = () => {
                   resolve();
                 });
             } else {
-              // Fallback if MathJax isn't available
+              // Fallback if MathJax isn't present
               setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
@@ -168,7 +181,7 @@ export const DocumentSidebar = () => {
   return (
     <>
       <div className="p-4">
-        {/* Header with title, Create button, and filters */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
           <button
@@ -198,14 +211,14 @@ export const DocumentSidebar = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {documents?.map((doc) => (
+                {documents.map((doc) => (
                   <div
                     key={doc.id}
                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
                   >
                     <div>
                       <h3 className="text-lg font-medium text-gray-800">
-                        {doc.title}
+                        {doc.name}
                       </h3>
                       <p className="text-sm text-gray-500">
                         {doc.subject} • Grade {doc.grade}
@@ -215,7 +228,9 @@ export const DocumentSidebar = () => {
                         {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    {doc.status === COMPLETED ? (
+
+                    {/* Check if paper is fully generated or not */}
+                    {doc.questionPaperLink && doc.solutionLink ? (
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
@@ -227,14 +242,29 @@ export const DocumentSidebar = () => {
                         >
                           View
                         </button>
+                        {/* Inside the map for each document */}
                         <button
-                          onClick={() =>
-                            alert("Edit functionality not implemented yet")
-                          }
+                          onClick={() => {
+                            if (doc.sections && doc.sections.length > 0) {
+                              // Navigate to the edit page. You could pass the document ID
+                              // as a route param or pass the entire doc in route state.
+                              navigate(`/edit-document/${doc.id}`, {
+                                state: {
+                                  sections: doc.sections,
+                                  docName: doc.name,
+                                },
+                              });
+                            } else {
+                              alert(
+                                "No sections found for this document. Cannot edit."
+                              );
+                            }
+                          }}
                           className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-100 transition-colors"
                         >
                           Edit
                         </button>
+
                         <button
                           onClick={() =>
                             alert("Delete functionality not implemented yet")
@@ -259,7 +289,7 @@ export const DocumentSidebar = () => {
         )}
       </div>
 
-      {/* Modal for viewing a document with tabs */}
+      {/* Modal for viewing a document */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
@@ -292,8 +322,9 @@ export const DocumentSidebar = () => {
                 >
                   Answer Sheet
                 </button>
+
                 {modalActiveTab === "question" &&
-                  modalDocument.questionPapersLinks && (
+                  modalDocument?.questionPapersLinks?.length > 0 && (
                     <button
                       onClick={() =>
                         downloadAllSetPDFs(modalDocument.questionPapersLinks)
