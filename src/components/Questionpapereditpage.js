@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
-// npm install react-katex katex
+import { Trash } from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
+// Import the deleteRequest function from its module (adjust the path as needed)
+import { deleteRequest } from "../utils/ApiCall";
+import { BASE_URL_API } from "../constants/constants";
 
 const QuestionPaperEditPage = () => {
   const { docId } = useParams();
@@ -17,7 +20,6 @@ const QuestionPaperEditPage = () => {
   // Left-panel search
   const [searchTerm, setSearchTerm] = useState("");
 
-  // On mount / route change, load sections from router state
   useEffect(() => {
     if (location.state && location.state.sections) {
       setSections(location.state.sections);
@@ -28,22 +30,27 @@ const QuestionPaperEditPage = () => {
   // When a question is clicked in the left panel
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
-    setEditedQuestion(JSON.parse(JSON.stringify(question))); 
-    // Deep copy to safely edit (so we can revert if needed)
+    setEditedQuestion(JSON.parse(JSON.stringify(question)));
+    // Deep copy to safely edit
   };
 
   // We'll compare the entire question object in `editedQuestion` vs. `originalQuestion`
   // If they differ, something changed -> show Save button
-  const isModified = editedQuestion && originalQuestion
-    ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion)
-    : false;
+  const isModified =
+    editedQuestion && originalQuestion
+      ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion)
+      : false;
 
   // ----- Inline math renderer (no truncation) -----
   const renderTextWithMath = (text) => {
     if (!text) return null;
     const parts = text.split("$");
     return parts.map((part, index) =>
-      index % 2 === 1 ? <InlineMath key={index} math={part} /> : <span key={index}>{part}</span>
+      index % 2 === 1 ? (
+        <InlineMath key={index} math={part} />
+      ) : (
+        <span key={index}>{part}</span>
+      )
     );
   };
 
@@ -56,7 +63,11 @@ const QuestionPaperEditPage = () => {
     }
     const parts = truncated.split("$");
     return parts.map((part, index) =>
-      index % 2 === 1 ? <InlineMath key={index} math={part} /> : <span key={index}>{part}</span>
+      index % 2 === 1 ? (
+        <InlineMath key={index} math={part} />
+      ) : (
+        <span key={index}>{part}</span>
+      )
     );
   };
 
@@ -78,7 +89,6 @@ const QuestionPaperEditPage = () => {
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
   // ------ Handlers for changes in the right panel -------
-
   const handleQuestionTextChange = (e) => {
     const newText = e.target.value;
     setEditedQuestion((prev) => ({
@@ -87,7 +97,7 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
-  // Type, difficulty, marks are in the form of "chips" but let's allow them to be edited if needed
+  // Editable chip handlers for type, difficulty, marks
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setEditedQuestion((prev) => ({
@@ -112,7 +122,7 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
-  // If question has options, handle them as well
+  // Editable option handler
   const handleOptionChange = (index, newValue) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -126,13 +136,40 @@ const QuestionPaperEditPage = () => {
 
   // Simulate "save" to server
   const handleSave = () => {
-    alert("Save feature not yet implemented. You would send updates to the server here.");
-
+    alert(
+      "Save feature not yet implemented. You would send updates to the server here."
+    );
     // After successful save, you might do:
     // setOriginalQuestion({ ...editedQuestion });
   };
 
-  // ------ Rendering ------
+  // ----- Delete Question Handler with API integration -----
+  const handleDeleteQuestion = async (questionId) => {
+    if (window.confirm("Are you sure you want to delete this question?")) {
+      try {
+        // Call the delete API; sending the id as a parameter
+        await deleteRequest(`${BASE_URL_API}/question/delete`, {
+          id: questionId,
+        });
+        // Update local state after successful deletion
+        const updatedSections = sections.map((section) => {
+          const updatedQuestions = section.questions.filter(
+            (q) => q.id !== questionId
+          );
+          return { ...section, questions: updatedQuestions };
+        });
+        setSections(updatedSections);
+        // Clear selection if the deleted question was selected
+        if (editedQuestion && editedQuestion.id === questionId) {
+          setOriginalQuestion(null);
+          setEditedQuestion(null);
+        }
+      } catch (error) {
+        console.error("Error deleting question:", error);
+      }
+    }
+  };
+
   return (
     <div className="flex h-screen">
       {/* LEFT PANEL: Sections & Questions (Cards) */}
@@ -152,13 +189,12 @@ const QuestionPaperEditPage = () => {
           <div key={sectionIndex} className="mb-6">
             <h3 className="font-bold text-lg mb-2">Section {section.name}</h3>
             {section.questions.map((question) => {
-              // highlight if this question is the currently "editedQuestion"
               const isSelected = editedQuestion?.id === question.id;
               return (
                 <div
                   key={question.id}
                   onClick={() => handleQuestionClick(question)}
-                  className={`p-3 mb-3 rounded shadow cursor-pointer transition-colors 
+                  className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors 
                     ${
                       isSelected
                         ? "bg-blue-50 border-l-4 border-blue-500"
@@ -166,7 +202,18 @@ const QuestionPaperEditPage = () => {
                     }
                   `}
                 >
-                  {renderTruncatedTextWithMath(question.questionText, 60)}
+                  <div>
+                    {renderTruncatedTextWithMath(question.questionText, 60)}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteQuestion(question.id);
+                    }}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash size={16} />
+                  </button>
                 </div>
               );
             })}
@@ -176,7 +223,6 @@ const QuestionPaperEditPage = () => {
 
       {/* RIGHT PANEL: Selected Question Edit */}
       <div className="w-2/3 p-4 overflow-y-auto">
-        {/* If no question selected, show prompt */}
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
@@ -187,7 +233,7 @@ const QuestionPaperEditPage = () => {
               {isModified ? (
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-blue-500 text-white rounded"
+                  className="px-4 py-2 bg-blue-500 text-white rounded shadow-md"
                 >
                   Save
                 </button>
@@ -198,46 +244,48 @@ const QuestionPaperEditPage = () => {
 
             {/* Editable Question Fields */}
             <div className="flex flex-col md:flex-row md:items-start gap-4">
-              {/* Left column: text + metadata */}
+              {/* Left Column: Editable Fields */}
               <div className="md:w-1/2">
-                {/* Instead of showing question ID, we skip it as per requirement */}
-
-                {/* Show "chips" for type, difficulty, marks */}
-                <div className="flex flex-col gap-2 mt-2">
-                  {/* Type */}
+                {/* Chips for Type, Difficulty, Marks */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {/* Type Chip */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
                     <input
-                      className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm"
+                      type="text"
                       value={editedQuestion.type || ""}
                       onChange={handleTypeChange}
+                      className="w-auto bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     />
                   </div>
-                  {/* Difficulty */}
+                  {/* Difficulty Chip */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Difficulty:</span>
                     <input
-                      className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm"
+                      type="text"
                       value={editedQuestion.difficulty || ""}
                       onChange={handleDifficultyChange}
+                      className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     />
                   </div>
-                  {/* Marks */}
+                  {/* Marks Chip */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Marks:</span>
                     <input
-                      className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm"
                       type="number"
                       min="0"
                       value={editedQuestion.marks || ""}
                       onChange={handleMarksChange}
+                      className="w-auto bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Editable Question Text */}
                 <div className="mt-4">
-                  <label className="font-semibold mb-2 block">Edit Question Text:</label>
+                  <label className="font-semibold mb-2 block">
+                    Edit Question Text:
+                  </label>
                   <textarea
                     className="w-full p-2 border rounded min-h-[100px]"
                     value={editedQuestion.questionText}
@@ -246,7 +294,7 @@ const QuestionPaperEditPage = () => {
                 </div>
               </div>
 
-              {/* Right column: Live Preview if there's math */}
+              {/* Right Column: Live Math Preview (if applicable) */}
               {isEditingMath && (
                 <div className="md:w-1/2 border-l pl-4">
                   <h3 className="font-semibold mb-2">Math Preview</h3>
@@ -264,14 +312,23 @@ const QuestionPaperEditPage = () => {
                 <ul className="list-disc ml-6 mt-2 space-y-3">
                   {editedQuestion.options.map((opt, idx) => (
                     <li key={idx} className="ml-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold">{opt.key}.</span>
-                        {/* We'll let the user edit the 'option' text. */}
-                        <textarea
-                          className="w-full p-2 border rounded min-h-[40px]"
-                          value={opt.option || ""}
-                          onChange={(e) => handleOptionChange(idx, e.target.value)}
-                        />
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">{opt.key}.</span>
+                          <textarea
+                            className="w-full p-2 border rounded min-h-[40px]"
+                            value={opt.option || ""}
+                            onChange={(e) =>
+                              handleOptionChange(idx, e.target.value)
+                            }
+                          />
+                        </div>
+                        {/* If option text contains math, show a preview */}
+                        {opt.option && opt.option.includes("$") && (
+                          <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
+                            {renderTextWithMath(opt.option)}
+                          </div>
+                        )}
                       </div>
                     </li>
                   ))}

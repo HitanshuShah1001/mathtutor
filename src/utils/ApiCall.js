@@ -12,17 +12,19 @@ import { removeDataFromLocalStorage } from "./LocalStorageOps";
  * - Merges in any additional headers (ignoring any "Authorization" key from the caller).
  */
 const buildHeaders = () => {
-  const myHeaders = new Headers();
+  let myHeaders = new Headers();
 
   // Always add the token from localStorage as the Authorization header.
   const token = localStorage.getItem(ACCESS_KEY);
+  console.log(token);
   if (token) {
+    console.log("in here");
     myHeaders.append("Authorization", token);
   }
+
   // For POST/PUT requests, ensure the Content-Type header is set.
   myHeaders.append("Content-Type", "application/json");
-
-  return myHeaders;
+  return Object.fromEntries(myHeaders.entries());
 };
 
 // Function to make GET requests
@@ -114,21 +116,19 @@ export const putRequest = async (url, body = {}) => {
 };
 
 // Function to make DELETE requests
-export const deleteRequest = async (url, params = {}) => {
+export const deleteRequest = async (url, body = {}) => {
   const myHeaders = buildHeaders();
-
-  // Append query parameters to the URL if any
-  const queryParams = new URLSearchParams(params).toString();
-  const finalUrl = queryParams ? `${url}?${queryParams}` : url;
-
+  console.log(body, "body");
   const requestOptions = {
     method: "DELETE",
-    headers: myHeaders,
-    redirect: "follow",
+    headers: {
+      ...myHeaders,
+    },
+    body: JSON.stringify(body),
   };
 
   try {
-    const response = await fetch(finalUrl, requestOptions);
+    const response = await fetch(url, requestOptions);
     const result = await response.json();
     return result;
   } catch (error) {

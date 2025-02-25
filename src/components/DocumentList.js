@@ -44,6 +44,8 @@ export const DocumentSidebar = () => {
           data.message === "Invalid or expired access token" ||
           data.message === "Access token is required"
         ) {
+          console.log('in here')
+          navigate('/login');
           removeDataFromLocalStorage();
         }
       }
