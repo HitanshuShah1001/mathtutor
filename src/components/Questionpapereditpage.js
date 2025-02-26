@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import { Trash } from "lucide-react";
+import { Trash, Image as ImageIcon } from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
-// Import the deleteRequest function from its module (adjust the path as needed)
-import { deleteRequest } from "../utils/ApiCall";
+import { deleteRequest, postRequest } from "../utils/ApiCall";
+import { uploadToS3 } from "../utils/s3utils";
 import { BASE_URL_API } from "../constants/constants";
 
 const QuestionPaperEditPage = () => {
@@ -12,36 +12,34 @@ const QuestionPaperEditPage = () => {
   const location = useLocation();
 
   const [sections, setSections] = useState([]);
-
-  // Keep the "original" (API data) & "edited" (UI changes) versions of the currently selected question
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
-
-  // Left-panel search
+  // State to hold a new file for the question image (if one is selected)
+  const [questionImageFile, setQuestionImageFile] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     if (location.state && location.state.sections) {
       setSections(location.state.sections);
     }
-    // else: optionally fetch data by docId from your API
   }, [location.state]);
 
-  // When a question is clicked in the left panel
+  // When a question is clicked, deep copy it for editing
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    // Deep copy to safely edit
+    // Reset any pending file selection
+    setQuestionImageFile(null);
   };
 
-  // We'll compare the entire question object in `editedQuestion` vs. `originalQuestion`
-  // If they differ, something changed -> show Save button
+  // Compare edited vs. original to decide whether to show Save button
   const isModified =
     editedQuestion && originalQuestion
-      ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion)
+      ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
+        questionImageFile !== null
       : false;
 
-  // ----- Inline math renderer (no truncation) -----
+  // Render math segments if wrapped in "$"
   const renderTextWithMath = (text) => {
     if (!text) return null;
     const parts = text.split("$");
@@ -54,7 +52,6 @@ const QuestionPaperEditPage = () => {
     );
   };
 
-  // ----- Truncated math renderer (for left panel) -----
   const renderTruncatedTextWithMath = (text, maxLength = 60) => {
     if (!text) return null;
     let truncated = text;
@@ -71,7 +68,7 @@ const QuestionPaperEditPage = () => {
     );
   };
 
-  // Filter sections/questions by searchTerm
+  // Filter sections/questions by the search term
   const getFilteredSections = () => {
     const lowerSearch = searchTerm.toLowerCase();
     const filtered = sections.map((section) => {
@@ -84,11 +81,9 @@ const QuestionPaperEditPage = () => {
   };
 
   const visibleSections = getFilteredSections();
-
-  // Check if the current question text has any `$` => show math preview column
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
-  // ------ Handlers for changes in the right panel -------
+  // Handlers for updating question properties
   const handleQuestionTextChange = (e) => {
     const newText = e.target.value;
     setEditedQuestion((prev) => ({
@@ -97,7 +92,6 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
-  // Editable chip handlers for type, difficulty, marks
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setEditedQuestion((prev) => ({
@@ -122,7 +116,6 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
-  // Editable option handler
   const handleOptionChange = (index, newValue) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -134,24 +127,110 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // Simulate "save" to server
-  const handleSave = () => {
-    alert(
-      "Save feature not yet implemented. You would send updates to the server here."
-    );
-    // After successful save, you might do:
-    // setOriginalQuestion({ ...editedQuestion });
+  // Handler for when the user selects a new question image file
+  const handleQuestionImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setQuestionImageFile(file);
+    }
   };
 
-  // ----- Delete Question Handler with API integration -----
+  // Delete question image handler – clears both file and URL
+  const handleDeleteQuestionImage = () => {
+    setQuestionImageFile(null);
+    setEditedQuestion((prev) => ({ ...prev, imageUrl: "" }));
+  };
+
+  // Handler for when an option image is selected.
+  // We store the file temporarily in the option as "imageFile".
+  const handleOptionImageChange = (index, file) => {
+    setEditedQuestion((prev) => {
+      const updatedOptions = [...(prev.options || [])];
+      updatedOptions[index] = {
+        ...updatedOptions[index],
+        imageFile: file,
+      };
+      return { ...prev, options: updatedOptions };
+    });
+  };
+
+  // Delete option image handler – removes imageFile and imageUrl for the option
+  const handleDeleteOptionImage = (index) => {
+    setEditedQuestion((prev) => {
+      const updatedOptions = [...(prev.options || [])];
+      updatedOptions[index] = { ...updatedOptions[index] };
+      delete updatedOptions[index].imageUrl;
+      delete updatedOptions[index].imageFile;
+      return { ...prev, options: updatedOptions };
+    });
+  };
+
+  // Save (upsert) handler that uploads new images to S3 before sending the data to the backend
+  const handleSave = async () => {
+    try {
+      // Process question image: if a new image file is selected, upload it to S3
+      let updatedImageUrl = editedQuestion.imageUrl || "";
+      if (questionImageFile) {
+        // Generate a unique link for the file (using timestamp and file name)
+        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+          questionImageFile.name
+        }`;
+        updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
+        console.log(updatedImageUrl, "UPDATED IMAGE URL");
+      }
+
+      // Process each option: if an option has a new image file, upload it
+      const updatedOptions = await Promise.all(
+        (editedQuestion.options || []).map(async (opt) => {
+          let updatedOption = { ...opt };
+          if (opt.imageFile) {
+            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+              opt.imageFile.name
+            }`;
+            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+            updatedOption.imageUrl = uploadedUrl;
+            delete updatedOption.imageFile;
+          }
+          return updatedOption;
+        })
+      );
+
+      // Build payload for the upsert API
+      const payload = {
+        id: editedQuestion.id, // if exists, this will update; otherwise, create new question
+        type: editedQuestion.type,
+        questionText: editedQuestion.questionText,
+        marks: editedQuestion.marks,
+        options: updatedOptions,
+        difficulty: editedQuestion.difficulty,
+        imageUrl: updatedImageUrl,
+        // Additional fields (e.g., questionPaperId, section, orderIndex) can be added as needed.
+      };
+
+      // Call your backend upsert endpoint
+      const response = await postRequest(
+        `${BASE_URL_API}/question/upsert`,
+        payload
+      );
+      if (response && response.success) {
+        alert("Question saved successfully!");
+        setOriginalQuestion(payload);
+      } else {
+        alert("Failed to save question.");
+      }
+    } catch (error) {
+      console.error("Error saving question:", error);
+      alert("Error saving question.");
+    }
+  };
+
+  // Delete question handler
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm("Are you sure you want to delete this question?")) {
       try {
-        // Call the delete API; sending the id as a parameter
         await deleteRequest(`${BASE_URL_API}/question/delete`, {
           id: questionId,
         });
-        // Update local state after successful deletion
         const updatedSections = sections.map((section) => {
           const updatedQuestions = section.questions.filter(
             (q) => q.id !== questionId
@@ -159,7 +238,6 @@ const QuestionPaperEditPage = () => {
           return { ...section, questions: updatedQuestions };
         });
         setSections(updatedSections);
-        // Clear selection if the deleted question was selected
         if (editedQuestion && editedQuestion.id === questionId) {
           setOriginalQuestion(null);
           setEditedQuestion(null);
@@ -172,9 +250,8 @@ const QuestionPaperEditPage = () => {
 
   return (
     <div className="flex h-screen">
-      {/* LEFT PANEL: Sections & Questions (Cards) */}
+      {/* LEFT PANEL: List sections and questions */}
       <div className="w-1/3 border-r p-4 overflow-y-auto">
-        {/* Search Bar */}
         <div className="mb-4">
           <input
             type="text"
@@ -184,7 +261,6 @@ const QuestionPaperEditPage = () => {
             className="w-full p-2 border rounded"
           />
         </div>
-
         {visibleSections.map((section, sectionIndex) => (
           <div key={sectionIndex} className="mb-6">
             <h3 className="font-bold text-lg mb-2">Section {section.name}</h3>
@@ -194,13 +270,11 @@ const QuestionPaperEditPage = () => {
                 <div
                   key={question.id}
                   onClick={() => handleQuestionClick(question)}
-                  className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors 
-                    ${
-                      isSelected
-                        ? "bg-blue-50 border-l-4 border-blue-500"
-                        : "bg-white hover:bg-gray-100"
-                    }
-                  `}
+                  className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
+                    isSelected
+                      ? "bg-blue-50 border-l-4 border-blue-500"
+                      : "bg-white hover:bg-gray-100"
+                  }`}
                 >
                   <div>
                     {renderTruncatedTextWithMath(question.questionText, 60)}
@@ -221,34 +295,28 @@ const QuestionPaperEditPage = () => {
         ))}
       </div>
 
-      {/* RIGHT PANEL: Selected Question Edit */}
+      {/* RIGHT PANEL: Question edit form */}
       <div className="w-2/3 p-4 overflow-y-auto">
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
           <div className="space-y-6">
-            {/* Title & Save Button */}
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              {isModified ? (
+              {isModified && (
                 <button
                   onClick={handleSave}
                   className="px-4 py-2 bg-blue-500 text-white rounded shadow-md"
                 >
                   Save
                 </button>
-              ) : (
-                <div />
               )}
             </div>
 
-            {/* Editable Question Fields */}
             <div className="flex flex-col md:flex-row md:items-start gap-4">
-              {/* Left Column: Editable Fields */}
               <div className="md:w-1/2">
-                {/* Chips for Type, Difficulty, Marks */}
+                {/* Editable fields for type, difficulty, marks */}
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {/* Type Chip */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
                     <input
@@ -258,7 +326,6 @@ const QuestionPaperEditPage = () => {
                       className="w-auto bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     />
                   </div>
-                  {/* Difficulty Chip */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Difficulty:</span>
                     <input
@@ -268,7 +335,6 @@ const QuestionPaperEditPage = () => {
                       className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     />
                   </div>
-                  {/* Marks Chip */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Marks:</span>
                     <input
@@ -281,7 +347,7 @@ const QuestionPaperEditPage = () => {
                   </div>
                 </div>
 
-                {/* Editable Question Text */}
+                {/* Editable question text */}
                 <div className="mt-4">
                   <label className="font-semibold mb-2 block">
                     Edit Question Text:
@@ -292,9 +358,52 @@ const QuestionPaperEditPage = () => {
                     onChange={handleQuestionTextChange}
                   />
                 </div>
+
+                {/* Question image upload */}
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="font-semibold">Question Image:</span>
+                  {!(editedQuestion.imageUrl || questionImageFile) ? (
+                    <>
+                      <label
+                        htmlFor="question-image-input"
+                        className="cursor-pointer"
+                      >
+                        <ImageIcon
+                          size={20}
+                          className="text-gray-500 hover:text-gray-700"
+                        />
+                      </label>
+                      <input
+                        id="question-image-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleQuestionImageChange}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 ml-4">
+                      <img
+                        src={
+                          questionImageFile
+                            ? URL.createObjectURL(questionImageFile)
+                            : editedQuestion.imageUrl
+                        }
+                        alt="Question"
+                        className="max-w-xs"
+                      />
+                      <button
+                        onClick={handleDeleteQuestionImage}
+                        className="text-red-500 hover:text-red-700"
+                        title="Delete Question Image"
+                      >
+                        <Trash size={20} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Right Column: Live Math Preview (if applicable) */}
               {isEditingMath && (
                 <div className="md:w-1/2 border-l pl-4">
                   <h3 className="font-semibold mb-2">Math Preview</h3>
@@ -305,31 +414,71 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
-            {/* Editable Options (for MCQs) */}
+            {/* Editable Options */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
                 <ul className="list-disc ml-6 mt-2 space-y-3">
                   {editedQuestion.options.map((opt, idx) => (
                     <li key={idx} className="ml-3">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">{opt.key}.</span>
-                          <textarea
-                            className="w-full p-2 border rounded min-h-[40px]"
-                            value={opt.option || ""}
-                            onChange={(e) =>
-                              handleOptionChange(idx, e.target.value)
-                            }
-                          />
-                        </div>
-                        {/* If option text contains math, show a preview */}
-                        {opt.option && opt.option.includes("$") && (
-                          <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
-                            {renderTextWithMath(opt.option)}
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{opt.key}.</span>
+                        <textarea
+                          className="w-1/2 p-2 border rounded min-h-[40px]"
+                          value={opt.option || ""}
+                          onChange={(e) =>
+                            handleOptionChange(idx, e.target.value)
+                          }
+                        />
+                        {/* Option image upload */}
+                        {!(opt.imageUrl || opt.imageFile) ? (
+                          <>
+                            <label
+                              htmlFor={`option-image-${idx}`}
+                              className="cursor-pointer"
+                              title="Upload/Change Option Image"
+                            >
+                              <ImageIcon
+                                size={20}
+                                className="text-gray-500 hover:text-gray-700"
+                              />
+                            </label>
+                            <input
+                              id={`option-image-${idx}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) =>
+                                handleOptionImageChange(idx, e.target.files[0])
+                              }
+                            />
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2 ml-2">
+                            <img
+                              src={
+                                opt.imageFile
+                                  ? URL.createObjectURL(opt.imageFile)
+                                  : opt.imageUrl
+                              }
+                              alt={`Option ${opt.key}`}
+                              className="max-w-[50px]"
+                            />
+                            <button
+                              onClick={() => handleDeleteOptionImage(idx)}
+                              className="text-red-500 hover:text-red-700"
+                              title="Delete Option Image"
+                            >
+                              <Trash size={16} />
+                            </button>
                           </div>
                         )}
                       </div>
+                      {opt.option && opt.option.includes("$") && (
+                        <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
+                          {renderTextWithMath(opt.option)}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

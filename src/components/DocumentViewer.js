@@ -15,7 +15,7 @@ const DocumentViewer = ({ documentUrl, name }) => {
       // Fetch the complete HTML content (which should include <head> and the MathJax script)
       const response = await fetch(documentUrl);
       const htmlContent = await response.text();
-
+      console.log(htmlContent, "html content that was received");
       // Open a new window and write the full HTML content into it.
       const printWindow = window.open("", "_blank");
       printWindow.document.open();

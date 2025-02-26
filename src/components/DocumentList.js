@@ -36,7 +36,6 @@ export const DocumentSidebar = () => {
         requestBody
       );
 
-      console.log("Data that was received", data);
 
       // If the API sends a message indicating invalid token, handle it
       if (data.message) {
@@ -44,8 +43,8 @@ export const DocumentSidebar = () => {
           data.message === "Invalid or expired access token" ||
           data.message === "Access token is required"
         ) {
-          console.log('in here')
-          navigate('/login');
+          console.log("in here");
+          navigate("/login");
           removeDataFromLocalStorage();
         }
       }

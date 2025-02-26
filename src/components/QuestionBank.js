@@ -13,9 +13,9 @@ const renderTextWithMath = (text) => {
   const parts = processedText?.split("$");
   return parts?.map((part, index) =>
     index % 2 === 1 ? (
-      <InlineMath key={index} math={part} />
+      <InlineMath key={index} math={part}/>
     ) : (
-      <span key={index}>{part}</span>
+      <span key={index} className="ml-3">{part}</span>
     )
   );
 };
@@ -446,7 +446,7 @@ const QuestionBank = () => {
         <div className="text-center py-4">Loading questions...</div>
       ) : (
         <div className="space-y-4">
-          {questions.map((question) => (
+          {questions?.map((question) => (
             <div key={question.id} className="border rounded p-4">
               <div className="flex items-start gap-4">
                 <input
@@ -478,7 +478,7 @@ const QuestionBank = () => {
                           <div className="flex items-center gap-2">
                             <div>
                               <span className="font-bold">{option.key}:</span>
-                              {renderTextWithMath(option.optionText)}
+                              {renderTextWithMath(option.option)}
                             </div>
                             <div>
                               {option.imageUrl && (
