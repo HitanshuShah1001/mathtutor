@@ -6,6 +6,7 @@ import "katex/dist/katex.min.css";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
 import { BASE_URL_API } from "../constants/constants";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 const QuestionPaperEditPage = () => {
   const { docId } = useParams();
@@ -14,7 +15,6 @@ const QuestionPaperEditPage = () => {
   const [sections, setSections] = useState([]);
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
-  // State to hold a new file for the question image (if one is selected)
   const [questionImageFile, setQuestionImageFile] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -24,22 +24,18 @@ const QuestionPaperEditPage = () => {
     }
   }, [location.state]);
 
-  // When a question is clicked, deep copy it for editing
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    // Reset any pending file selection
     setQuestionImageFile(null);
   };
 
-  // Compare edited vs. original to decide whether to show Save button
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
         questionImageFile !== null
       : false;
 
-  // Render math segments if wrapped in "$"
   const renderTextWithMath = (text) => {
     if (!text) return null;
     const parts = text.split("$");
@@ -68,7 +64,6 @@ const QuestionPaperEditPage = () => {
     );
   };
 
-  // Filter sections/questions by the search term
   const getFilteredSections = () => {
     const lowerSearch = searchTerm.toLowerCase();
     const filtered = sections.map((section) => {
@@ -83,7 +78,6 @@ const QuestionPaperEditPage = () => {
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
-  // Handlers for updating question properties
   const handleQuestionTextChange = (e) => {
     const newText = e.target.value;
     setEditedQuestion((prev) => ({
@@ -127,7 +121,6 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // Handler for when the user selects a new question image file
   const handleQuestionImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -135,14 +128,11 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // Delete question image handler – clears both file and URL
   const handleDeleteQuestionImage = () => {
     setQuestionImageFile(null);
     setEditedQuestion((prev) => ({ ...prev, imageUrl: "" }));
   };
 
-  // Handler for when an option image is selected.
-  // We store the file temporarily in the option as "imageFile".
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -154,7 +144,6 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // Delete option image handler – removes imageFile and imageUrl for the option
   const handleDeleteOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -165,21 +154,16 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // Save (upsert) handler that uploads new images to S3 before sending the data to the backend
   const handleSave = async () => {
     try {
-      // Process question image: if a new image file is selected, upload it to S3
       let updatedImageUrl = editedQuestion.imageUrl || "";
       if (questionImageFile) {
-        // Generate a unique link for the file (using timestamp and file name)
         const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
           questionImageFile.name
         }`;
         updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
-        console.log(updatedImageUrl, "UPDATED IMAGE URL");
       }
 
-      // Process each option: if an option has a new image file, upload it
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
@@ -195,42 +179,58 @@ const QuestionPaperEditPage = () => {
         })
       );
 
-      // Build payload for the upsert API
-      const payload = {
-        id: editedQuestion.id, // if exists, this will update; otherwise, create new question
-        type: editedQuestion.type,
-        questionText: editedQuestion.questionText,
-        marks: editedQuestion.marks,
-        options: updatedOptions,
-        difficulty: editedQuestion.difficulty,
+      const updatedQuestion = {
+        ...editedQuestion,
         imageUrl: updatedImageUrl,
-        // Additional fields (e.g., questionPaperId, section, orderIndex) can be added as needed.
+        options: updatedOptions,
       };
 
-      // Call your backend upsert endpoint
+      const updatedSections = sections.map((section) => {
+        const updatedQuestions = section.questions.map((question) => {
+          if (question.id === updatedQuestion.id) {
+            return updatedQuestion;
+          }
+          return question;
+        });
+        return { ...section, questions: updatedQuestions };
+      });
+
+      const payload = {
+        id: docId,
+        sections: updatedSections,
+      };
+
       const response = await postRequest(
-        `${BASE_URL_API}/question/upsert`,
+        `${BASE_URL_API}/questionPaper/update`,
         payload
       );
+
       if (response && response.success) {
-        alert("Question saved successfully!");
-        setOriginalQuestion(payload);
+        alert("Question paper updated successfully!");
+        setSections(updatedSections);
+        setOriginalQuestion(updatedQuestion);
       } else {
-        alert("Failed to save question.");
+        alert("Failed to update question paper.");
       }
     } catch (error) {
-      console.error("Error saving question:", error);
-      alert("Error saving question.");
+      console.error("Error updating question paper:", error);
+      alert("Error updating question paper.");
     }
   };
 
-  // Delete question handler
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm("Are you sure you want to delete this question?")) {
       try {
-        await deleteRequest(`${BASE_URL_API}/question/delete`, {
-          id: questionId,
-        });
+        const res = await postRequest(
+          `${BASE_URL_API}/questionPaper/removeQuestion`,
+          {
+            questionId,
+            questionPaperId: parseInt(docId),
+          }
+        );
+        if (res.success === true) {
+          alert("Question deleted successfully");
+        }
         const updatedSections = sections.map((section) => {
           const updatedQuestions = section.questions.filter(
             (q) => q.id !== questionId
@@ -248,52 +248,108 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  // Drag and Drop handler to reorder questions within a section.
+  const handleDragEnd = async (result) => {
+    const { source, destination } = result;
+    if (!destination) return;
+
+    // Only handle reordering within the same section for now.
+    if (source.droppableId === destination.droppableId) {
+      const sectionIndex = parseInt(source.droppableId, 10);
+      const section = sections[sectionIndex];
+      const newQuestions = Array.from(section.questions);
+      const [removed] = newQuestions.splice(source.index, 1);
+      newQuestions.splice(destination.index, 0, removed);
+
+      const updatedSections = [...sections];
+      updatedSections[sectionIndex] = { ...section, questions: newQuestions };
+      setSections(updatedSections);
+      const payload = {
+        id: docId,
+        sections: updatedSections,
+      };
+
+      // Make the POST call to update the question paper.
+      const response = await postRequest(
+        `${BASE_URL_API}/questionPaper/update`,
+        payload
+      );
+
+      console.log(response,"response received!");
+      // TODO: Make API call here to update the question order on the server.
+    } else {
+      // If needed, handle moving questions between sections.
+    }
+  };
+
   return (
     <div className="flex h-screen">
-      {/* LEFT PANEL: List sections and questions */}
-      <div className="w-1/3 border-r p-4 overflow-y-auto">
-        <div className="mb-4">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search questions..."
-            className="w-full p-2 border rounded"
-          />
-        </div>
-        {visibleSections.map((section, sectionIndex) => (
-          <div key={sectionIndex} className="mb-6">
-            <h3 className="font-bold text-lg mb-2">Section {section.name}</h3>
-            {section.questions.map((question) => {
-              const isSelected = editedQuestion?.id === question.id;
-              return (
-                <div
-                  key={question.id}
-                  onClick={() => handleQuestionClick(question)}
-                  className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
-                    isSelected
-                      ? "bg-blue-50 border-l-4 border-blue-500"
-                      : "bg-white hover:bg-gray-100"
-                  }`}
-                >
-                  <div>
-                    {renderTruncatedTextWithMath(question.questionText, 60)}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteQuestion(question.id);
-                    }}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash size={16} />
-                  </button>
-                </div>
-              );
-            })}
+      {/* LEFT PANEL: List sections and questions with drag-and-drop */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="w-1/3 border-r p-4 overflow-y-auto">
+          <div className="mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search questions..."
+              className="w-full p-2 border rounded"
+            />
           </div>
-        ))}
-      </div>
+          {visibleSections.map((section, sectionIndex) => (
+            <div key={sectionIndex} className="mb-6">
+              <h3 className="font-bold text-lg mb-2">Section {section.name}</h3>
+              <Droppable droppableId={`${sectionIndex}`}>
+                {(provided) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps}>
+                    {section.questions.map((question, index) => {
+                      const isSelected = editedQuestion?.id === question.id;
+                      return (
+                        <Draggable
+                          key={question.id}
+                          draggableId={`${question.id}`}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              onClick={() => handleQuestionClick(question)}
+                              className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
+                                isSelected
+                                  ? "bg-blue-50 border-l-4 border-blue-500"
+                                  : "bg-white hover:bg-gray-100"
+                              }`}
+                            >
+                              <div>
+                                {renderTruncatedTextWithMath(
+                                  question.questionText,
+                                  60
+                                )}
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteQuestion(question.id);
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </div>
+          ))}
+        </div>
+      </DragDropContext>
 
       {/* RIGHT PANEL: Question edit form */}
       <div className="w-2/3 p-4 overflow-y-auto">
@@ -315,7 +371,6 @@ const QuestionPaperEditPage = () => {
 
             <div className="flex flex-col md:flex-row md:items-start gap-4">
               <div className="md:w-1/2">
-                {/* Editable fields for type, difficulty, marks */}
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
@@ -347,7 +402,6 @@ const QuestionPaperEditPage = () => {
                   </div>
                 </div>
 
-                {/* Editable question text */}
                 <div className="mt-4">
                   <label className="font-semibold mb-2 block">
                     Edit Question Text:
@@ -359,7 +413,6 @@ const QuestionPaperEditPage = () => {
                   />
                 </div>
 
-                {/* Question image upload */}
                 <div className="mt-4 flex items-center gap-2">
                   <span className="font-semibold">Question Image:</span>
                   {!(editedQuestion.imageUrl || questionImageFile) ? (
@@ -414,7 +467,6 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
-            {/* Editable Options */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
@@ -430,7 +482,6 @@ const QuestionPaperEditPage = () => {
                             handleOptionChange(idx, e.target.value)
                           }
                         />
-                        {/* Option image upload */}
                         {!(opt.imageUrl || opt.imageFile) ? (
                           <>
                             <label
