@@ -15,6 +15,7 @@ const QuestionPaperEditPage = () => {
   const [sections, setSections] = useState([]);
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
+  // This holds a new image file for the question (if selected)
   const [questionImageFile, setQuestionImageFile] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -121,6 +122,11 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  // ---------------------------
+  // Question Image Handlers
+  // ---------------------------
+
+  // When a new file is selected, we update questionImageFile.
   const handleQuestionImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -128,10 +134,21 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  // When the user wants to remove the image altogether.
   const handleDeleteQuestionImage = () => {
     setQuestionImageFile(null);
     setEditedQuestion((prev) => ({ ...prev, imageUrl: "" }));
   };
+
+  // When the user wants to discard a new image selection.
+  // This reverts back to the original image (if any) by clearing the new file.
+  const handleDiscardQuestionImage = () => {
+    setQuestionImageFile(null);
+  };
+
+  // ---------------------------
+  // Option Image Handlers
+  // ---------------------------
 
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
@@ -144,9 +161,11 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  // When the user wants to remove an option image completely.
   const handleDeleteOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
+      // Remove both imageUrl and imageFile to completely delete the image.
       updatedOptions[index] = { ...updatedOptions[index] };
       delete updatedOptions[index].imageUrl;
       delete updatedOptions[index].imageFile;
@@ -154,6 +173,21 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  // When the user wants to discard a new image selection for an option.
+  // This will simply remove the new file (imageFile) and keep the existing imageUrl.
+  const handleDiscardOptionImage = (index) => {
+    setEditedQuestion((prev) => {
+      const updatedOptions = [...(prev.options || [])];
+      if (updatedOptions[index].imageFile) {
+        delete updatedOptions[index].imageFile;
+      }
+      return { ...prev, options: updatedOptions };
+    });
+  };
+
+  // ---------------------------
+  // Save (Upsert) Handler
+  // ---------------------------
   const handleSave = async () => {
     try {
       // Handle image upload for the question.
@@ -235,6 +269,9 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  // ---------------------------
+  // Delete Question Handler
+  // ---------------------------
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm("Are you sure you want to delete this question?")) {
       try {
@@ -265,7 +302,9 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // Drag and Drop handler to reorder questions within a section.
+  // ---------------------------
+  // Drag and Drop Handler
+  // ---------------------------
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
@@ -286,14 +325,13 @@ const QuestionPaperEditPage = () => {
         sections: updatedSections,
       };
 
-      // Make the POST call to update the question paper.
+      // Make the POST call to update the question paper order.
       const response = await postRequest(
         `${BASE_URL_API}/questionPaper/update`,
         payload
       );
 
       console.log(response, "response received!");
-      // TODO: Make API call here to update the question order on the server.
     } else {
       // If needed, handle moving questions between sections.
     }
@@ -315,7 +353,9 @@ const QuestionPaperEditPage = () => {
           </div>
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              <h3 className="font-bold text-lg mb-2">Section {section.name}</h3>
+              <h3 className="font-bold text-lg mb-2">
+                Section {section.name}
+              </h3>
               <Droppable droppableId={`${sectionIndex}`}>
                 {(provided) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}>
@@ -388,6 +428,7 @@ const QuestionPaperEditPage = () => {
 
             <div className="flex flex-col md:flex-row md:items-start gap-4">
               <div className="md:w-1/2">
+                {/* Editable fields for type, difficulty, marks */}
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
@@ -419,6 +460,7 @@ const QuestionPaperEditPage = () => {
                   </div>
                 </div>
 
+                {/* Editable question text */}
                 <div className="mt-4">
                   <label className="font-semibold mb-2 block">
                     Edit Question Text:
@@ -430,28 +472,10 @@ const QuestionPaperEditPage = () => {
                   />
                 </div>
 
+                {/* Question image upload block */}
                 <div className="mt-4 flex items-center gap-2">
                   <span className="font-semibold">Question Image:</span>
-                  {!(editedQuestion.imageUrl || questionImageFile) ? (
-                    <>
-                      <label
-                        htmlFor="question-image-input"
-                        className="cursor-pointer"
-                      >
-                        <ImageIcon
-                          size={20}
-                          className="text-gray-500 hover:text-gray-700"
-                        />
-                      </label>
-                      <input
-                        id="question-image-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQuestionImageChange}
-                      />
-                    </>
-                  ) : (
+                  {editedQuestion.imageUrl || questionImageFile ? (
                     <div className="flex items-center gap-2 ml-4">
                       <img
                         src={
@@ -462,14 +486,62 @@ const QuestionPaperEditPage = () => {
                         alt="Question"
                         className="max-w-xs"
                       />
-                      <button
-                        onClick={handleDeleteQuestionImage}
-                        className="text-red-500 hover:text-red-700"
-                        title="Delete Question Image"
-                      >
-                        <Trash size={20} />
-                      </button>
+                      {questionImageFile ? (
+                        <>
+                          <button
+                            onClick={handleDiscardQuestionImage}
+                            className="px-2 py-1 bg-gray-200 rounded text-sm"
+                          >
+                            Discard
+                          </button>
+                          <button
+                            onClick={handleDeleteQuestionImage}
+                            className="px-2 py-1 bg-red-200 rounded text-sm"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <label
+                            htmlFor="question-image-input"
+                            className="cursor-pointer"
+                          >
+                            <ImageIcon
+                              size={20}
+                              className="text-gray-500 hover:text-gray-700"
+                            />
+                          </label>
+                          <button
+                            onClick={handleDeleteQuestionImage}
+                            className="px-2 py-1 bg-red-200 rounded text-sm"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      )}
+                      <input
+                        id="question-image-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleQuestionImageChange}
+                      />
                     </div>
+                  ) : (
+                    <label htmlFor="question-image-input" className="cursor-pointer">
+                      <ImageIcon
+                        size={20}
+                        className="text-gray-500 hover:text-gray-700"
+                      />
+                      <input
+                        id="question-image-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleQuestionImageChange}
+                      />
+                    </label>
                   )}
                 </div>
               </div>
@@ -484,6 +556,7 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
+            {/* Editable Options */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
@@ -499,12 +572,71 @@ const QuestionPaperEditPage = () => {
                             handleOptionChange(idx, e.target.value)
                           }
                         />
-                        {!(opt.imageUrl || opt.imageFile) ? (
+                        {opt.imageUrl || opt.imageFile ? (
+                          <div className="flex items-center gap-2 ml-2">
+                            <img
+                              src={
+                                opt.imageFile
+                                  ? URL.createObjectURL(opt.imageFile)
+                                  : opt.imageUrl
+                              }
+                              alt={`Option ${opt.key}`}
+                              className="max-w-[50px]"
+                            />
+                            {opt.imageFile ? (
+                              <>
+                                <button
+                                  onClick={() => handleDiscardOptionImage(idx)}
+                                  className="px-2 py-1 bg-gray-200 rounded text-sm"
+                                  title="Discard new image"
+                                >
+                                  Discard
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteOptionImage(idx)}
+                                  className="px-2 py-1 bg-red-200 rounded text-sm"
+                                  title="Remove Option Image"
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <label
+                                  htmlFor={`option-image-${idx}`}
+                                  className="cursor-pointer"
+                                  title="Change Option Image"
+                                >
+                                  <ImageIcon
+                                    size={20}
+                                    className="text-gray-500 hover:text-gray-700"
+                                  />
+                                </label>
+                                <button
+                                  onClick={() => handleDeleteOptionImage(idx)}
+                                  className="px-2 py-1 bg-red-200 rounded text-sm"
+                                  title="Remove Option Image"
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              </>
+                            )}
+                            <input
+                              id={`option-image-${idx}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) =>
+                                handleOptionImageChange(idx, e.target.files[0])
+                              }
+                            />
+                          </div>
+                        ) : (
                           <>
                             <label
                               htmlFor={`option-image-${idx}`}
                               className="cursor-pointer"
-                              title="Upload/Change Option Image"
+                              title="Upload Option Image"
                             >
                               <ImageIcon
                                 size={20}
@@ -521,25 +653,6 @@ const QuestionPaperEditPage = () => {
                               }
                             />
                           </>
-                        ) : (
-                          <div className="flex items-center gap-2 ml-2">
-                            <img
-                              src={
-                                opt.imageFile
-                                  ? URL.createObjectURL(opt.imageFile)
-                                  : opt.imageUrl
-                              }
-                              alt={`Option ${opt.key}`}
-                              className="max-w-[50px]"
-                            />
-                            <button
-                              onClick={() => handleDeleteOptionImage(idx)}
-                              className="text-red-500 hover:text-red-700"
-                              title="Delete Option Image"
-                            >
-                              <Trash size={16} />
-                            </button>
-                          </div>
                         )}
                       </div>
                       {opt.option && opt.option.includes("$") && (

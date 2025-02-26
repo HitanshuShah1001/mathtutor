@@ -44,10 +44,10 @@ const QuestionBank = () => {
     marks: "",
     difficulty: "",
     options: [
-      { key: "A", optionText: "", imageUrl: "" },
-      { key: "B", optionText: "", imageUrl: "" },
-      { key: "C", optionText: "", imageUrl: "" },
-      { key: "D", optionText: "", imageUrl: "" },
+      { key: "A", option: "", imageUrl: "" },
+      { key: "B", option: "", imageUrl: "" },
+      { key: "C", option: "", imageUrl: "" },
+      { key: "D", option: "", imageUrl: "" },
     ],
   });
   const [isScrolled, setIsScrolled] = useState(false);
@@ -129,7 +129,7 @@ const QuestionBank = () => {
       } else if (field === "option" && index !== null) {
         setNewQuestion((prev) => {
           const options = [...prev.options];
-          options[index] = { ...options[index], optionText: newValue };
+          options[index] = { ...options[index], option: newValue };
           return { ...prev, options };
         });
       }
@@ -144,7 +144,7 @@ const QuestionBank = () => {
     } else if (field === "option" && index !== null) {
       setNewQuestion((prev) => {
         const options = [...prev.options];
-        options[index] = { ...options[index], optionText: e.target.value };
+        options[index] = { ...options[index], option: e.target.value };
         return { ...prev, options };
       });
     }
@@ -212,10 +212,10 @@ const QuestionBank = () => {
         marks: "",
         difficulty: "",
         options: [
-          { key: "A", optionText: "", imageUrl: "" },
-          { key: "B", optionText: "", imageUrl: "" },
-          { key: "C", optionText: "", imageUrl: "" },
-          { key: "D", optionText: "", imageUrl: "" },
+          { key: "A", option: "", imageUrl: "" },
+          { key: "B", option: "", imageUrl: "" },
+          { key: "C", option: "", imageUrl: "" },
+          { key: "D", option: "", imageUrl: "" },
         ],
       });
       fetchQuestions();
@@ -260,6 +260,7 @@ const QuestionBank = () => {
       const questionToEdit = questions.find(
         (q) => q.id.toString() === questionId.toString()
       );
+      console.log(questionToEdit, "question to edit");
       if (questionToEdit) {
         setNewQuestion({
           id: questionToEdit.id,
@@ -275,10 +276,10 @@ const QuestionBank = () => {
                   imageUrl: opt.imageUrl || "",
                 }))
               : [
-                  { key: "A", optionText: "", imageUrl: "" },
-                  { key: "B", optionText: "", imageUrl: "" },
-                  { key: "C", optionText: "", imageUrl: "" },
-                  { key: "D", optionText: "", imageUrl: "" },
+                  { key: "A", option: "", imageUrl: "" },
+                  { key: "B", option: "", imageUrl: "" },
+                  { key: "C", option: "", imageUrl: "" },
+                  { key: "D", option: "", imageUrl: "" },
                 ],
         });
         setIsEditing(true);
@@ -364,10 +365,10 @@ const QuestionBank = () => {
                 marks: "",
                 difficulty: "",
                 options: [
-                  { key: "A", optionText: "", imageUrl: "" },
-                  { key: "B", optionText: "", imageUrl: "" },
-                  { key: "C", optionText: "", imageUrl: "" },
-                  { key: "D", optionText: "", imageUrl: "" },
+                  { key: "A", option: "", imageUrl: "" },
+                  { key: "B", option: "", imageUrl: "" },
+                  { key: "C", option: "", imageUrl: "" },
+                  { key: "D", option: "", imageUrl: "" },
                 ],
               });
               setShowAddQuestionModal(true);
@@ -522,7 +523,7 @@ const QuestionBank = () => {
                     </label>
                     <input
                       type="text"
-                      value={option.optionText}
+                      value={option.option}
                       onChange={(e) =>
                         handleNewQuestionChange(e, "option", index)
                       }
@@ -531,7 +532,7 @@ const QuestionBank = () => {
                       placeholder={`Enter option ${option.key} text. Use Shift + $ for math.`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
-                      Preview: {renderTextWithMath(option.optionText)}
+                      Preview: {renderTextWithMath(option.option)}
                     </div>
                     <div className="mt-2">
                       <label className="block text-sm font-medium">
@@ -606,10 +607,10 @@ const QuestionBank = () => {
                     marks: "",
                     difficulty: "",
                     options: [
-                      { key: "A", optionText: "", imageUrl: "" },
-                      { key: "B", optionText: "", imageUrl: "" },
-                      { key: "C", optionText: "", imageUrl: "" },
-                      { key: "D", optionText: "", imageUrl: "" },
+                      { key: "A", option: "", imageUrl: "" },
+                      { key: "B", option: "", imageUrl: "" },
+                      { key: "C", option: "", imageUrl: "" },
+                      { key: "D", option: "", imageUrl: "" },
                     ],
                   });
                 }}
