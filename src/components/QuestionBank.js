@@ -188,7 +188,6 @@ const QuestionBank = () => {
   // -----------------------------------------------------
   const handleNewQuestionSubmit = async () => {
     try {
-      const accesskey = localStorage.getItem(ACCESS_KEY);
       let payload = {
         ...newQuestion,
         difficulty: newQuestion.difficulty.toLowerCase(),

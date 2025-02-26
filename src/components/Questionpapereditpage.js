@@ -156,6 +156,7 @@ const QuestionPaperEditPage = () => {
 
   const handleSave = async () => {
     try {
+      // Handle image upload for the question.
       let updatedImageUrl = editedQuestion.imageUrl || "";
       if (questionImageFile) {
         const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
@@ -164,6 +165,7 @@ const QuestionPaperEditPage = () => {
         updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
       }
 
+      // Handle image uploads for each option (if present).
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
@@ -179,42 +181,57 @@ const QuestionPaperEditPage = () => {
         })
       );
 
+      // Construct the updated question object.
       const updatedQuestion = {
         ...editedQuestion,
         imageUrl: updatedImageUrl,
         options: updatedOptions,
       };
 
-      const updatedSections = sections.map((section) => {
-        const updatedQuestions = section.questions.map((question) => {
-          if (question.id === updatedQuestion.id) {
-            return updatedQuestion;
-          }
-          return question;
-        });
-        return { ...section, questions: updatedQuestions };
-      });
-
-      const payload = {
-        id: docId,
-        sections: updatedSections,
+      // Build payload for upserting the question.
+      let payload = {
+        ...updatedQuestion,
+        difficulty: updatedQuestion.difficulty.toLowerCase(),
+        questionPaperId: docId, // Attach the question paper id.
       };
 
+      // Include the question id if we're editing an existing question.
+      if (originalQuestion) {
+        payload.id = updatedQuestion.id;
+      }
+
+      // Remove options if the question type is not "MCQ".
+      if (updatedQuestion.type !== "MCQ") {
+        delete payload.options;
+      }
+
+      // Make the API call to upsert the question.
       const response = await postRequest(
-        `${BASE_URL_API}/questionPaper/update`,
+        `${BASE_URL_API}/question/upsert`,
         payload
       );
-
+      console.log("Question upserted:", response);
       if (response && response.success) {
-        alert("Question paper updated successfully!");
+        alert("Question upserted successfully!");
+
+        // Update the sections state by replacing the edited question.
+        const updatedSections = sections.map((section) => {
+          const updatedQuestions = section.questions.map((question) => {
+            if (question.id === updatedQuestion.id) {
+              return updatedQuestion;
+            }
+            return question;
+          });
+          return { ...section, questions: updatedQuestions };
+        });
         setSections(updatedSections);
         setOriginalQuestion(updatedQuestion);
       } else {
-        alert("Failed to update question paper.");
+        alert("Failed to upsert question.");
       }
     } catch (error) {
-      console.error("Error updating question paper:", error);
-      alert("Error updating question paper.");
+      console.error("Error upserting question:", error);
+      alert("Error upserting question.");
     }
   };
 
@@ -275,7 +292,7 @@ const QuestionPaperEditPage = () => {
         payload
       );
 
-      console.log(response,"response received!");
+      console.log(response, "response received!");
       // TODO: Make API call here to update the question order on the server.
     } else {
       // If needed, handle moving questions between sections.
