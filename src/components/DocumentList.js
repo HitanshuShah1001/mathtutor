@@ -36,7 +36,6 @@ export const DocumentSidebar = () => {
         requestBody
       );
 
-
       // If the API sends a message indicating invalid token, handle it
       if (data.message) {
         if (
@@ -231,57 +230,50 @@ export const DocumentSidebar = () => {
                     </div>
 
                     {/* Check if paper is fully generated or not */}
-                    {doc.questionPaperLink && doc.solutionLink ? (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setModalDocument(doc);
-                            setModalActiveTab("question");
-                            setModalVisible(true);
-                          }}
-                          className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
-                        >
-                          View
-                        </button>
-                        {/* Inside the map for each document */}
-                        <button
-                          onClick={() => {
-                            if (doc.sections && doc.sections.length > 0) {
-                              // Navigate to the edit page. You could pass the document ID
-                              // as a route param or pass the entire doc in route state.
-                              navigate(`/edit-document/${doc.id}`, {
-                                state: {
-                                  sections: doc.sections,
-                                  docName: doc.name,
-                                },
-                              });
-                            } else {
-                              alert(
-                                "No sections found for this document. Cannot edit."
-                              );
-                            }
-                          }}
-                          className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-100 transition-colors"
-                        >
-                          Edit
-                        </button>
 
-                        <button
-                          onClick={() =>
-                            alert("Delete functionality not implemented yet")
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setModalDocument(doc);
+                          setModalActiveTab("question");
+                          setModalVisible(true);
+                        }}
+                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                      >
+                        View
+                      </button>
+                      {/* Inside the map for each document */}
+                      <button
+                        onClick={() => {
+                          if (doc.sections && doc.sections.length > 0) {
+                            // Navigate to the edit page. You could pass the document ID
+                            // as a route param or pass the entire doc in route state.
+                            navigate(`/edit-document/${doc.id}`, {
+                              state: {
+                                sections: doc.sections,
+                                docName: doc.name,
+                              },
+                            });
+                          } else {
+                            alert(
+                              "No sections found for this document. Cannot edit."
+                            );
                           }
-                          className="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <span className="px-4 py-2 bg-blue-50 text-gray-600 rounded transition-colors">
-                          Paper generation in progress.
-                        </span>
-                      </div>
-                    )}
+                        }}
+                        className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-100 transition-colors"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          alert("Delete functionality not implemented yet")
+                        }
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

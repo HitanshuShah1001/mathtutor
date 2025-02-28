@@ -3,7 +3,7 @@ import { useParams, useLocation } from "react-router-dom";
 import { Trash, Image as ImageIcon } from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
-import { deleteRequest, postRequest } from "../utils/ApiCall";
+import { postRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
 import { BASE_URL_API } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";

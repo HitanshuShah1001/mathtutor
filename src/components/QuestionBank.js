@@ -34,6 +34,9 @@ const QuestionBank = () => {
     type: "",
     difficulty: "",
   });
+  // New state for the search term
+  const [searchTerm, setSearchTerm] = useState("");
+
   // State for the Add/Edit Question modal
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -139,7 +142,11 @@ const QuestionBank = () => {
   const handleNewQuestionChange = (e, field, index = null) => {
     if (field === "questionText") {
       setNewQuestion((prev) => ({ ...prev, questionText: e.target.value }));
-    } else if (field === "marks" || field === "difficulty" || field === "type") {
+    } else if (
+      field === "marks" ||
+      field === "difficulty" ||
+      field === "type"
+    ) {
       setNewQuestion((prev) => ({ ...prev, [field]: e.target.value }));
     } else if (field === "option" && index !== null) {
       setNewQuestion((prev) => {
@@ -234,7 +241,9 @@ const QuestionBank = () => {
       alert("Please select at least one question to delete.");
       return;
     }
-    if (!window.confirm("Are you sure you want to delete the selected questions?")) {
+    if (
+      !window.confirm("Are you sure you want to delete the selected questions?")
+    ) {
       return;
     }
     try {
@@ -288,6 +297,23 @@ const QuestionBank = () => {
     }
   };
 
+  // -----------------------------------------------------
+  // FILTER QUESTIONS BASED ON SEARCH TERM
+  // -----------------------------------------------------
+  const filteredQuestions = questions.filter((q) => {
+    if (!searchTerm.trim()) return true;
+    const lowerSearch = searchTerm.toLowerCase();
+    const textMatch =
+      (q.questionText && q.questionText.toLowerCase().includes(lowerSearch)) ||
+      (q.type && q.type.toLowerCase().includes(lowerSearch));
+    const optionMatch =
+      q.options &&
+      q.options.some(
+        (opt) => opt.option && opt.option.toLowerCase().includes(lowerSearch)
+      );
+    return textMatch || optionMatch;
+  });
+
   return (
     <div className="p-6 relative">
       <div
@@ -296,6 +322,17 @@ const QuestionBank = () => {
         }`}
         style={{ zIndex: 50 }}
       >
+        {/* ---------------- Search Bar ---------------- */}
+        <div className="flex gap-4 mb-4">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by type, question text or option"
+            className="w-full border rounded p-2"
+          />
+        </div>
+
         {/* ---------------- Filter Section ---------------- */}
         <div className="flex gap-4 mb-6">
           <div className="flex flex-col">
@@ -332,9 +369,7 @@ const QuestionBank = () => {
             <label className="mb-1 text-sm font-medium">Difficulty</label>
             <select
               value={filters.difficulty}
-              onChange={(e) =>
-                handleFilterChange("difficulty", e.target.value)
-              }
+              onChange={(e) => handleFilterChange("difficulty", e.target.value)}
               className="border rounded p-2"
             >
               <option value="">All</option>
@@ -400,7 +435,7 @@ const QuestionBank = () => {
         <div className="text-center py-4">Loading questions...</div>
       ) : (
         <div className="space-y-4">
-          {questions?.map((question) => (
+          {filteredQuestions?.map((question) => (
             <div key={question.id} className="border rounded p-4">
               <div className="flex items-start gap-4">
                 <input
@@ -443,8 +478,8 @@ const QuestionBank = () => {
                     </div>
                   )}
                   <div className="mt-2 text-sm text-gray-600">
-                    Marks: {question.marks} | Type: {question.type} | Difficulty:{" "}
-                    {question.difficulty}
+                    Marks: {question.marks} | Type: {question.type} |
+                    Difficulty: {question.difficulty}
                   </div>
                 </div>
               </div>
@@ -457,9 +492,9 @@ const QuestionBank = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative">
             {/* Modal Header */}
-            <h3 className="text-lg font-semibold mb-4">{
-              isEditing ? "Edit Question" : "Add New Question"
-            }</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {isEditing ? "Edit Question" : "Add New Question"}
+            </h3>
 
             {/* Question Type */}
             <div className="mb-4">
@@ -541,9 +576,7 @@ const QuestionBank = () => {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) =>
-                          handleOptionImageUpload(e, index)
-                        }
+                        onChange={(e) => handleOptionImageUpload(e, index)}
                       />
                       {option.imageUrl && (
                         <img
@@ -579,9 +612,7 @@ const QuestionBank = () => {
                 <label className="block mb-1 font-medium">Difficulty</label>
                 <select
                   value={newQuestion.difficulty}
-                  onChange={(e) =>
-                    handleNewQuestionChange(e, "difficulty")
-                  }
+                  onChange={(e) => handleNewQuestionChange(e, "difficulty")}
                   className="w-full border rounded p-2"
                 >
                   <option value="">Select Difficulty</option>
