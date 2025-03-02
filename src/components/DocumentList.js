@@ -9,6 +9,20 @@ import { postRequest } from "../utils/ApiCall";
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
 
+// Extracted CSS class constants
+const primaryButtonClass =
+  "px-4 py-2 bg-[#000] text-white font-semibold rounded-lg hover:bg-[#000] transition-colors";
+const commonButtonClass =
+  "px-4 py-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000] transition-colors";
+const modalButtonClass =
+  "p-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000]";
+const downloadButtonClass =
+  "inline-flex items-center px-3 py-2 bg-[#000] text-white font-semibold rounded-md hover:bg-[#000] transition-colors";
+const selectClass =
+  "appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-black font-semibold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
+const dropdownIconClass =
+  "absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none";
+
 export const DocumentSidebar = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,19 +50,16 @@ export const DocumentSidebar = () => {
         requestBody
       );
 
-      // If the API sends a message indicating invalid token, handle it
       if (data.message) {
         if (
           data.message === "Invalid or expired access token" ||
           data.message === "Access token is required"
         ) {
-          console.log("in here");
           navigate("/login");
           removeDataFromLocalStorage();
         }
       }
 
-      // Safely set the documents from the new structure
       if (data.success && data.questionPapers) {
         setDocuments(data.questionPapers);
       } else {
@@ -71,7 +82,7 @@ export const DocumentSidebar = () => {
     navigate("/question-paper-generation");
   };
 
-  // Dropdown Filters + "Question Bank" Chip
+  // Dropdown filters component with extracted select and icon styles
   const FilterDropdowns = () => (
     <div className="mb-6 flex items-center gap-4">
       <div className="relative">
@@ -83,7 +94,7 @@ export const DocumentSidebar = () => {
               grade: e.target.value ? Number(e.target.value) : null,
             }))
           }
-          className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className={selectClass}
         >
           <option value="">All Grades</option>
           {GRADES.map((grade) => (
@@ -92,7 +103,7 @@ export const DocumentSidebar = () => {
             </option>
           ))}
         </select>
-        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+        <ChevronDown className={dropdownIconClass} />
       </div>
 
       <div className="relative">
@@ -104,7 +115,7 @@ export const DocumentSidebar = () => {
               subject: e.target.value || null,
             }))
           }
-          className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className={selectClass}
         >
           <option value="">All Subjects</option>
           {SUBJECTS.map((subject) => (
@@ -113,12 +124,12 @@ export const DocumentSidebar = () => {
             </option>
           ))}
         </select>
-        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+        <ChevronDown className={dropdownIconClass} />
       </div>
 
       <button
         onClick={() => navigate("/question-bank")}
-        className="py-2 px-4 top-1/2 rounded-lg bg-green-100 text-green-700 text-m font-medium hover:bg-green-200 transition-colors"
+        className={`top-1/2 ${primaryButtonClass}`}
         style={{ height: "41px" }}
       >
         Question Bank
@@ -131,22 +142,18 @@ export const DocumentSidebar = () => {
     for (let index = 0; index < links?.length; index++) {
       const link = links[index];
       try {
-        // Open a new window synchronously
         const printWindow = window.open("", "_blank");
         if (!printWindow) {
           alert("Popup blocked. Please allow pop-ups for this site.");
           return;
         }
-        // Fetch the HTML content
         const response = await fetch(link);
         const htmlContent = await response.text();
 
-        // Write the HTML content into the new window
         printWindow.document.open();
         printWindow.document.write(htmlContent);
         printWindow.document.close();
 
-        // Wait until the window loads and possibly MathJax is typeset
         await new Promise((resolve) => {
           printWindow.onload = () => {
             if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
@@ -163,7 +170,6 @@ export const DocumentSidebar = () => {
                   resolve();
                 });
             } else {
-              // Fallback if MathJax isn't present
               setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
@@ -186,7 +192,7 @@ export const DocumentSidebar = () => {
           <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
           <button
             onClick={handleCreatePaper}
-            className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className={`mt-4 sm:mt-0 inline-flex items-center ${primaryButtonClass}`}
           >
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
@@ -229,8 +235,6 @@ export const DocumentSidebar = () => {
                       </p>
                     </div>
 
-                    {/* Check if paper is fully generated or not */}
-
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -238,16 +242,13 @@ export const DocumentSidebar = () => {
                           setModalActiveTab("question");
                           setModalVisible(true);
                         }}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                        className={commonButtonClass}
                       >
                         View
                       </button>
-                      {/* Inside the map for each document */}
                       <button
                         onClick={() => {
                           if (doc.sections && doc.sections.length > 0) {
-                            // Navigate to the edit page. You could pass the document ID
-                            // as a route param or pass the entire doc in route state.
                             navigate(`/edit-document/${doc.id}`, {
                               state: {
                                 sections: doc.sections,
@@ -260,16 +261,15 @@ export const DocumentSidebar = () => {
                             );
                           }
                         }}
-                        className="px-4 py-2 bg-yellow-50 text-yellow-600 rounded hover:bg-yellow-100 transition-colors"
+                        className={commonButtonClass}
                       >
                         Edit
                       </button>
-
                       <button
                         onClick={() =>
                           alert("Delete functionality not implemented yet")
                         }
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                        className={commonButtonClass}
                       >
                         Delete
                       </button>
@@ -288,30 +288,22 @@ export const DocumentSidebar = () => {
           <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
             <button
               onClick={() => setModalVisible(false)}
-              className="absolute top-4 right-4 p-2 bg-gray-200 rounded hover:bg-gray-300"
+              className={`absolute top-4 right-4 ${modalButtonClass}`}
             >
               Close
             </button>
             <div className="p-4">
-              {/* Tabs */}
+              {/* Modal Tabs */}
               <div className="flex gap-4 mb-4">
                 <button
                   onClick={() => setModalActiveTab("question")}
-                  className={`px-4 py-2 rounded ${
-                    modalActiveTab === "question"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-gray-50 text-gray-600"
-                  }`}
+                  className={commonButtonClass}
                 >
                   Question Paper
                 </button>
                 <button
                   onClick={() => setModalActiveTab("solution")}
-                  className={`px-4 py-2 rounded ${
-                    modalActiveTab === "solution"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-gray-50 text-gray-600"
-                  }`}
+                  className={commonButtonClass}
                 >
                   Answer Sheet
                 </button>
@@ -322,7 +314,7 @@ export const DocumentSidebar = () => {
                       onClick={() =>
                         downloadAllSetPDFs(modalDocument.questionPapersLinks)
                       }
-                      className="inline-flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors"
+                      className={downloadButtonClass}
                     >
                       <DownloadIcon className="w-4 h-4 mr-2" />
                       Download All Sets
