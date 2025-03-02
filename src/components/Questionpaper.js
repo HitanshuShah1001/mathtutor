@@ -1,18 +1,41 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback } from "react";
 import { ChatHeader } from "../subcomponents/ChatHeader";
-import { styles } from "../Questionpaperstyles";
 import { allTopics } from "../constants/allTopics";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
-import { getRequest, postRequest, postRequestWithoutStringified, putRequest } from "../utils/ApiCall";
-import { Blueprintmodal, modalStyles } from "./BlueprintModal";
-
-// NEW IMPORT
+import {
+  getRequest,
+  postRequest,
+  postRequestWithoutStringified,
+  putRequest,
+} from "../utils/ApiCall";
+import { Blueprintmodal } from "./BlueprintModal";
 import CustomAlert from "../subcomponents/CustomAlert";
 import {
   generateQuestionsArray,
   reorderQuestionsByType,
 } from "../utils/generateJsonToPassToReceiveJson";
+
+// Extracted Tailwind CSS class constants for consistency
+const containerClass = "p-4 fade-in";
+const cardClass = "bg-white rounded-lg shadow p-4 fade-in";
+const cardTitleClass = "text-2xl font-semibold mb-4 text-gray-800";
+const formGroupClass = "mb-4";
+const labelClass = "block text-gray-800 font-medium mb-1";
+const inputClass =
+  "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
+const selectClass =
+  "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
+const actionButtonClass =
+  "px-4 py-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000] transition-colors";
+const btnHoverClass = "hover:opacity-90 transition-opacity";
+const chipClass =
+  "inline-flex items-center bg-gray-200 text-gray-800 rounded-full px-3 py-1 mr-2 mb-2";
+const chipRemoveButtonClass = "ml-2 text-red-600 font-bold";
+const gridThreeClass = "grid grid-cols-1 md:grid-cols-3 gap-4";
+const blueprintItemClass =
+  "p-4 border border-gray-200 rounded-lg shadow-sm mb-4 fade-in";
+const blueprintHeaderClass = "flex justify-between items-center";
 
 const GenerateQuestionPaper = () => {
   const [standard, setStandard] = useState("");
@@ -20,16 +43,16 @@ const GenerateQuestionPaper = () => {
   const [topics, setTopics] = useState([]);
   const [customTopic, setCustomTopic] = useState("");
   const [marks, setMarks] = useState("");
-  const [numberOfSets, setNumberOfSets] = useState(1); // New state for number of sets
+  const [numberOfSets, setNumberOfSets] = useState(1);
   const [title, setTitle] = useState("");
   const [academyName, setAcademyName] = useState("Knowledge High School");
   const [timeDuration, setTimeDuration] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // State to track loading
+  const [isLoading, setIsLoading] = useState(false);
   const [topicsConfig, setTopicsConfig] = useState({});
   const [configuredMarks, setConfiguredMarks] = useState(0);
 
-  // New States for Modal and Blueprints
+  // Blueprint modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [blueprints, setBlueprints] = useState([]);
   const [isLoadingBlueprints, setIsLoadingBlueprints] = useState(false);
@@ -44,8 +67,6 @@ const GenerateQuestionPaper = () => {
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
       setTopics(topicList);
-
-      // Only reset if you haven't loaded a blueprint.
       if (!hasLoadedBlueprint) {
         setTopicsConfig({});
       }
@@ -82,20 +103,19 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleAddCustomTopic = () => {
-    if (customTopic.trim() && !topicsConfig[customTopic.trim()]) {
-      addTopic(customTopic.trim());
+    const trimmed = customTopic.trim();
+    if (trimmed && !topicsConfig[trimmed]) {
+      addTopic(trimmed);
       setCustomTopic("");
     }
   };
 
   const handleRemoveTopic = (topicToRemove) => {
     let prevMarks = configuredMarks;
+    const config = topicsConfig[topicToRemove];
     prevMarks -=
-      (topicsConfig[topicToRemove].easyMCQs +
-        topicsConfig[topicToRemove].mediumMCQs +
-        topicsConfig[topicToRemove].hardMCQs) *
-      topicsConfig[topicToRemove].mcqMarks;
-    topicsConfig[topicToRemove].descriptiveQuestionConfig.forEach((desc) => {
+      (config.easyMCQs + config.mediumMCQs + config.hardMCQs) * config.mcqMarks;
+    config.descriptiveQuestionConfig.forEach((desc) => {
       prevMarks -= parseInt(desc.marks) * parseInt(desc.noOfQuestions);
     });
     setConfiguredMarks(prevMarks);
@@ -107,15 +127,13 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleTopicChange = (topic, field, value) => {
-    let prevConfig = topicsConfig[topic][field] ?? 0;
-    if (prevConfig < value) {
-      const DIFFERENCEINMARKS = value - prevConfig;
-      let newConfiguredMarks = configuredMarks + DIFFERENCEINMARKS;
-      setConfiguredMarks(newConfiguredMarks);
+    const prevValue = topicsConfig[topic][field] ?? 0;
+    if (prevValue < value) {
+      const diff = value - prevValue;
+      setConfiguredMarks(configuredMarks + diff);
     } else {
-      const DIFFERENCEINMARKS = prevConfig - value;
-      let newConfiguredMarks = configuredMarks - DIFFERENCEINMARKS;
-      setConfiguredMarks(newConfiguredMarks);
+      const diff = prevValue - value;
+      setConfiguredMarks(configuredMarks - diff);
     }
     setTopicsConfig((prev) => {
       const updated = { ...prev[topic], [field]: value };
@@ -123,15 +141,14 @@ const GenerateQuestionPaper = () => {
     });
   };
 
-  // NEW: Handler to remove a single descriptive config entry
   const handleRemoveDescriptiveQuestion = (topic, index) => {
-    let config = topicsConfig[topic].descriptiveQuestionConfig;
-    let marksVal = config[index].marks;
-    let noOfQuestions = config[index].noOfQuestions;
+    const config = topicsConfig[topic].descriptiveQuestionConfig;
+    const marksVal = config[index].marks;
+    const noOfQuestions = config[index].noOfQuestions;
     if (marksVal !== "" && noOfQuestions !== "") {
-      let newUpdatedMarks =
-        configuredMarks - parseInt(marksVal) * parseInt(noOfQuestions);
-      setConfiguredMarks(newUpdatedMarks);
+      setConfiguredMarks(
+        configuredMarks - parseInt(marksVal) * parseInt(noOfQuestions)
+      );
     }
     setTopicsConfig((prev) => {
       const updatedArray = [...prev[topic].descriptiveQuestionConfig];
@@ -146,10 +163,8 @@ const GenerateQuestionPaper = () => {
     });
   };
 
-  // Whether the user is exceeding total marks
   const isMarksExceeded = configuredMarks > parseInt(marks);
 
-  // Convert blueprint shape
   function convertToBluePrintCompatibleFormat() {
     let blueprint = {
       name: title,
@@ -158,20 +173,16 @@ const GenerateQuestionPaper = () => {
       totalMarks: parseInt(marks),
     };
     let breakdown = [];
-    for (let key of Object.keys(topicsConfig)) {
-      let obj = {};
-      obj = { topic: key, ...topicsConfig[key] };
-      breakdown.push(obj);
-    }
+    Object.keys(topicsConfig).forEach((key) => {
+      breakdown.push({ topic: key, ...topicsConfig[key] });
+    });
     blueprint.breakdown = breakdown;
     return blueprint;
   }
 
   const saveBlueprint = async () => {
-    let blueprint = convertToBluePrintCompatibleFormat();
-    const res = await putRequest(`${BASE_URL_API}/blueprint/create`, {
-      blueprint,
-    });
+    const blueprint = convertToBluePrintCompatibleFormat();
+    const res = await putRequest(`${BASE_URL_API}/blueprint/create`, { blueprint });
     if (!res.success) {
       alert(res.message ?? "Some Error Occurred");
     } else {
@@ -180,7 +191,7 @@ const GenerateQuestionPaper = () => {
   };
 
   const updateBlueprint = async () => {
-    let blueprint = convertToBluePrintCompatibleFormat();
+    const blueprint = convertToBluePrintCompatibleFormat();
     const res = await putRequest(`${BASE_URL_API}/blueprint/update`, {
       id: bluePrintId,
       blueprint,
@@ -192,35 +203,26 @@ const GenerateQuestionPaper = () => {
     }
   };
 
-  // UseCallback for RenderTopicSelection
   const RenderTopicSelection = useCallback(() => {
-    let renderContent = marks
-      ? `${configuredMarks} / ${marks}`
-      : configuredMarks;
+    const renderContent = marks ? `${configuredMarks} / ${marks}` : configuredMarks;
     return (
-      <div style={styles.formGroup} className="fade-in">
-        <div style={styles.marksTracker}>
+      <div className={formGroupClass}>
+        <div className="flex items-center mb-2">
           <span
-            style={{
-              color: configuredMarks > parseInt(marks) ? "#999" : "#000",
-              fontWeight: "bold",
-            }}
+            className={`font-bold ${
+              configuredMarks > parseInt(marks) ? "text-gray-400" : "text-black"
+            }`}
           >
             Configured Marks: {renderContent}
           </span>
-
           {configuredMarks > parseInt(marks) && (
-            <span
-              style={{ color: "#999", fontSize: "0.9em", marginLeft: "8px" }}
-            >
-              (Exceeds total marks!)
-            </span>
+            <span className="text-gray-400 text-sm ml-2">(Exceeds total marks!)</span>
           )}
         </div>
-        <label style={styles.label}>Select Topics</label>
-        <div style={styles.topicSelectionContainer}>
+        <label className={labelClass}>Select Topics</label>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
           <select
-            style={styles.select}
+            className={selectClass}
             onChange={(e) => {
               if (e.target.value) handleAddTopicFromDropdown(e.target.value);
             }}
@@ -232,28 +234,25 @@ const GenerateQuestionPaper = () => {
               </option>
             ))}
           </select>
-
-          <div style={styles.customTopicContainer}>
+          <div className="flex">
             <input
-              style={styles.inputInline}
+              className={inputClass}
               value={customTopic}
               onChange={(e) => setCustomTopic(e.target.value)}
               placeholder="Or add custom topic"
             />
-            <button style={styles.addButton} onClick={handleAddCustomTopic}>
+            <button className={`${actionButtonClass} ml-2`} onClick={handleAddCustomTopic}>
               +
             </button>
           </div>
         </div>
-
-        {/* Selected Topics Chips */}
         {Object.keys(topicsConfig).length > 0 && (
-          <div style={styles.selectedTopicsChips}>
+          <div className="mt-2 flex flex-wrap">
             {Object.keys(topicsConfig).map((topic) => (
-              <div key={topic} style={styles.topicChip}>
+              <div key={topic} className={chipClass}>
                 {topic}
                 <button
-                  style={styles.chipRemoveButton}
+                  className={chipRemoveButtonClass}
                   onClick={() => handleRemoveTopic(topic)}
                 >
                   ×
@@ -266,20 +265,14 @@ const GenerateQuestionPaper = () => {
     );
   }, [topicsConfig, topics, customTopic, marks, configuredMarks]);
 
-  // NEW: Function to fetch blueprints
   const fetchBlueprints = async () => {
     setIsLoadingBlueprints(true);
     setBlueprintError("");
-
     try {
-      const url = new URL(`${BASE_URL_API}/blueprint/getPaginatedBlueprints`);
-      url.searchParams.append("limit", 100);
-
       const data = await getRequest(
         `${BASE_URL_API}/blueprint/getPaginatedBlueprints`,
-        { limit: 10000 } // Query parameters
+        { limit: 10000 }
       );
-      console.log(data, "data");
       if (data.success) {
         setBlueprints(data.blueprints);
         setHasNextPage(data.hasNextPage);
@@ -295,13 +288,11 @@ const GenerateQuestionPaper = () => {
     }
   };
 
-  // NEW: Handler to open modal and fetch blueprints
   const handleOpenModal = () => {
     setIsModalOpen(true);
     fetchBlueprints();
   };
 
-  // NEW: Handler to load a blueprint into the form
   const handleLoadBlueprint = (blueprint) => {
     setBluePrintId(blueprint.id);
     setHasLoadedBlueprint(true);
@@ -309,8 +300,6 @@ const GenerateQuestionPaper = () => {
     setStandard(blueprint.grade.toString());
     setSubject(blueprint.subject);
     setMarks(blueprint.totalMarks.toString());
-
-    // Reset topicsConfig
     const newTopicsConfig = {};
     blueprint.breakdown.forEach((topic) => {
       newTopicsConfig[topic.topic] = {
@@ -318,19 +307,14 @@ const GenerateQuestionPaper = () => {
         mediumMCQs: topic.mediumMCQs,
         hardMCQs: topic.hardMCQs,
         mcqMarks: topic.mcqMarks,
-        descriptiveQuestionConfig: topic.descriptiveQuestionConfig.map(
-          (desc) => ({
-            marks: desc.marks.toString(),
-            difficulty: desc.difficulty,
-            noOfQuestions: desc.noOfQuestions.toString(),
-          })
-        ),
+        descriptiveQuestionConfig: topic.descriptiveQuestionConfig.map((desc) => ({
+          marks: desc.marks.toString(),
+          difficulty: desc.difficulty,
+          noOfQuestions: desc.noOfQuestions.toString(),
+        })),
       };
     });
     setTopicsConfig(newTopicsConfig);
-    setConfiguredMarks(0);
-
-    // Calculate configuredMarks
     let totalConfiguredMarks = 0;
     blueprint.breakdown.forEach((topic) => {
       totalConfiguredMarks +=
@@ -340,8 +324,6 @@ const GenerateQuestionPaper = () => {
       });
     });
     setConfiguredMarks(totalConfiguredMarks);
-
-    // Close modal
     setIsModalOpen(false);
   };
 
@@ -363,15 +345,12 @@ const GenerateQuestionPaper = () => {
       timeDuration,
       numberOfSets: numberOfSets ? parseInt(numberOfSets) : 1,
     });
-
     try {
       const response = await postRequestWithoutStringified(
         `${BASE_URL_API}/questionPaper/generate`,
-        body // query parameters
+        body
       );
       console.log(response, "respo");
-      // const data = await response.json();
-      // Handle the response if needed
     } catch (e) {
       console.error(e);
     } finally {
@@ -380,71 +359,54 @@ const GenerateQuestionPaper = () => {
   };
 
   return (
-    <div style={styles.pageContainer} className="fade-in">
-      {/* NEW: Add a small note about required fields (optional) */}
-
+    <div className={containerClass}>
       <CustomAlert
         isOpen={isAlertModalOpen}
         onClose={() => setIsAlertModalOpen(false)}
-        message={
-          "Thank you for initiating the question paper generation. You will be notified as soon as the process is complete."
-        }
+        message="Thank you for initiating the question paper generation. You will be notified as soon as the process is complete."
       />
-      <div style={{ marginBottom: "20px", textAlign: "right" }}>
+      <div className="mb-5 text-right">
         <button
-          style={styles.loadButton}
-          className="btn-hover"
+          className={`${actionButtonClass} btn-hover`}
           onClick={handleOpenModal}
         >
           Load from existing blueprint
         </button>
       </div>
+      <ChatHeader title="Generate Question Paper" />
 
-      <ChatHeader title={"Generate Question Paper"} />
-
-      {/* Modal for Blueprints */}
-      <Blueprintmodal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      >
-        <h2 style={{ marginBottom: "20px" }}>Select a Blueprint</h2>
+      <Blueprintmodal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <h2 className="mb-5 text-xl font-semibold">Select a Blueprint</h2>
         {isLoadingBlueprints ? (
-          <p style={{ color: "#000" }}>Loading blueprints...</p>
+          <p className="text-black">Loading blueprints...</p>
         ) : blueprintError ? (
-          <p style={{ color: "#666" }}>{blueprintError}</p>
+          <p className="text-gray-600">{blueprintError}</p>
         ) : blueprints.length === 0 ? (
-          <p style={{ color: "#666" }}>No blueprints found.</p>
+          <p className="text-gray-600">No blueprints found.</p>
         ) : (
           <div>
             {blueprints.map((bp) => (
-              <div
-                key={`${bp.id}${bp?.createdAt}/${bp.updatedAt}`}
-                style={modalStyles.blueprintItem}
-                className="fade-in"
-              >
-                <div style={modalStyles.blueprintHeader}>
+              <div key={bp.id} className={blueprintItemClass}>
+                <div className={blueprintHeaderClass}>
                   <div>
-                    <h3 style={{ color: "#000", marginBottom: "5px" }}>
-                      {bp.name}
-                    </h3>
-                    <p style={{ color: "#000", margin: "0" }}>
+                    <h3 className="text-black mb-1">{bp.name}</h3>
+                    <p className="text-black m-0">
                       Grade: {bp.grade} | Subject: {bp.subject} | Total Marks:{" "}
                       {bp.totalMarks}
                     </p>
-                    <p style={{ color: "#555", margin: "5px 0" }}>
+                    <p className="text-gray-600 my-1">
                       Created At:{" "}
-                      {new Date(bp?.createdAt).toLocaleDateString("en-GB")}
+                      {new Date(bp.createdAt).toLocaleDateString("en-GB")}
                     </p>
                     {bp.createdAt !== bp.updatedAt && (
-                      <p style={{ color: "#555", margin: "0" }}>
+                      <p className="text-gray-600 m-0">
                         Last Updated:{" "}
-                        {new Date(bp?.updatedAt).toLocaleDateString("en-GB")}
+                        {new Date(bp.updatedAt).toLocaleDateString("en-GB")}
                       </p>
                     )}
                   </div>
                   <button
-                    style={modalStyles.loadButton}
-                    className="btn-hover"
+                    className={`${actionButtonClass} btn-hover`}
                     onClick={() => handleLoadBlueprint(bp)}
                   >
                     Load
@@ -456,439 +418,357 @@ const GenerateQuestionPaper = () => {
         )}
       </Blueprintmodal>
 
-      <div style={styles.container}>
-        <div style={styles.formContainer}>
-          <div style={styles.columnLeft}>
-            <div style={styles.card} className="fade-in">
-              <h2 style={styles.cardTitle}>Exam Details</h2>
-
-              {/* Title (Required) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  Title <span style={{ color: "red" }}>*</span>
-                </label>
-                <input
-                  style={styles.input}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="12 Std. Question Paper"
-                />
-              </div>
-
-              {/* Academy Name (Optional) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Academy Name</label>
-                <input
-                  style={styles.input}
-                  value={academyName}
-                  onChange={(e) => setAcademyName(e.target.value)}
-                  placeholder="E.g., Springfield High"
-                />
-              </div>
-
-              {/* Standard (Required) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  Standard <span style={{ color: "red" }}>*</span>
-                </label>
-                <select
-                  style={styles.select}
-                  value={standard}
-                  onChange={(e) => {
-                    setHasLoadedBlueprint(false);
-                    setStandard(e.target.value);
-                  }}
-                >
-                  <option value="">Select Standard</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
-                    <option key={num} value={num}>
-                      {num}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Subject (Required) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  Subject <span style={{ color: "red" }}>*</span>
-                </label>
-                <select
-                  style={styles.select}
-                  value={subject}
-                  onChange={(e) => {
-                    setHasLoadedBlueprint(false);
-                    setSubject(e.target.value);
-                  }}
-                >
-                  <option value="">Select Subject</option>
-                  <option value="Science">Science</option>
-                  <option value="Maths">Maths</option>
-                </select>
-              </div>
-
-              {/* Total Marks (Required) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  Total Marks <span style={{ color: "red" }}>*</span>
-                </label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  value={marks}
-                  onChange={(e) => setMarks(e.target.value)}
-                  placeholder="e.g. 100"
-                />
-              </div>
-
-              {/* Time Duration (Required) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>
-                  Time Duration <span style={{ color: "red" }}>*</span>
-                </label>
-                <input
-                  style={styles.input}
-                  value={timeDuration}
-                  onChange={(e) => setTimeDuration(e.target.value)}
-                  placeholder="e.g. 2 Hours"
-                />
-              </div>
-
-              {/* Number of Sets (Optional) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Number of Sets</label>
-                <input
-                  type="number"
-                  style={styles.input}
-                  value={numberOfSets}
-                  onChange={(e) => setNumberOfSets(e.target.value)}
-                  placeholder="e.g. 3"
-                />
-              </div>
-
-              {/* Additional Instructions (Optional) */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Additional Instructions</label>
-                <input
-                  type="text"
-                  style={styles.input}
-                  value={anyotherQuery}
-                  onChange={(e) => setAnyOtherQuery(e.target.value)}
-                  placeholder="e.g. Mark problems as section A"
-                />
-              </div>
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="md:w-1/2">
+          <div className={cardClass}>
+            <h2 className={cardTitleClass}>Exam Details</h2>
+            <div className={formGroupClass}>
+              <label className={labelClass}>
+                Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputClass}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="12 Std. Question Paper"
+              />
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>Academy Name</label>
+              <input
+                className={inputClass}
+                value={academyName}
+                onChange={(e) => setAcademyName(e.target.value)}
+                placeholder="E.g., Springfield High"
+              />
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>
+                Standard <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={selectClass}
+                value={standard}
+                onChange={(e) => {
+                  setHasLoadedBlueprint(false);
+                  setStandard(e.target.value);
+                }}
+              >
+                <option value="">Select Standard</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                  <option key={num} value={num}>
+                    {num}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>
+                Subject <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={selectClass}
+                value={subject}
+                onChange={(e) => {
+                  setHasLoadedBlueprint(false);
+                  setSubject(e.target.value);
+                }}
+              >
+                <option value="">Select Subject</option>
+                <option value="Science">Science</option>
+                <option value="Maths">Maths</option>
+              </select>
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>
+                Total Marks <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                className={inputClass}
+                value={marks}
+                onChange={(e) => setMarks(e.target.value)}
+                placeholder="e.g. 100"
+              />
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>
+                Time Duration <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={inputClass}
+                value={timeDuration}
+                onChange={(e) => setTimeDuration(e.target.value)}
+                placeholder="e.g. 2 Hours"
+              />
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>Number of Sets</label>
+              <input
+                type="number"
+                className={inputClass}
+                value={numberOfSets}
+                onChange={(e) => setNumberOfSets(e.target.value)}
+                placeholder="e.g. 3"
+              />
+            </div>
+            <div className={formGroupClass}>
+              <label className={labelClass}>Additional Instructions</label>
+              <input
+                type="text"
+                className={inputClass}
+                value={anyotherQuery}
+                onChange={(e) => setAnyOtherQuery(e.target.value)}
+                placeholder="e.g. Mark problems as section A"
+              />
             </div>
           </div>
-
-          {marks && (
-            <div style={styles.columnRight}>
-              <div style={styles.card} className="fade-in">
-                <h2 style={styles.cardTitle}>Topic Configuration</h2>
-
-                {topics.length > 0 && <RenderTopicSelection />}
-
-                {Object.keys(topicsConfig).length > 0 && (
-                  <div style={styles.topicConfigDetails}>
-                    {Object.entries(topicsConfig).map(([topic, config]) => (
-                      <div
-                        key={topic}
-                        style={styles.topicConfigCard}
-                        className="fade-in"
-                      >
-                        <div style={styles.topicConfigHeader}>
-                          <h3 style={styles.topicConfigTitle}>{topic}</h3>
-                          <button
-                            style={styles.removeTopicButton}
-                            className="btn-hover"
-                            onClick={() => handleRemoveTopic(topic)}
-                          >
-                            Remove
-                          </button>
+        </div>
+        {marks && (
+          <div className="md:w-1/2">
+            <div className={cardClass}>
+              <h2 className={cardTitleClass}>Topic Configuration</h2>
+              {topics.length > 0 && <RenderTopicSelection />}
+              {Object.keys(topicsConfig).length > 0 && (
+                <div className="mt-4 space-y-4">
+                  {Object.entries(topicsConfig).map(([topic, config]) => (
+                    <div key={topic} className="p-4 border border-gray-200 rounded-lg shadow-sm fade-in">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-lg font-semibold text-gray-800">{topic}</h3>
+                        <button
+                          className={`${actionButtonClass} btn-hover`}
+                          onClick={() => handleRemoveTopic(topic)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className={gridThreeClass}>
+                        <div className="flex flex-col">
+                          <label className="text-sm text-gray-800 mb-1">Easy MCQs</label>
+                          <input
+                            className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                            value={config.easyMCQs}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "easyMCQs",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
                         </div>
-
-                        {/* MCQ Inputs */}
-                        <div style={styles.topicConfigGrid}>
-                          <div style={styles.formGroupInline}>
-                            <label style={styles.labelSmall}>Easy MCQs</label>
-                            <input
-                              style={styles.inputSmall}
-                              value={config.easyMCQs}
-                              onChange={(e) =>
-                                handleTopicChange(
-                                  topic,
-                                  "easyMCQs",
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                            />
-                          </div>
-                          <div style={styles.formGroupInline}>
-                            <label style={styles.labelSmall}>Medium MCQs</label>
-                            <input
-                              style={styles.inputSmall}
-                              value={config.mediumMCQs}
-                              onChange={(e) =>
-                                handleTopicChange(
-                                  topic,
-                                  "mediumMCQs",
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                            />
-                          </div>
-                          <div style={styles.formGroupInline}>
-                            <label style={styles.labelSmall}>Hard MCQs</label>
-                            <input
-                              style={styles.inputSmall}
-                              value={config.hardMCQs}
-                              onChange={(e) =>
-                                handleTopicChange(
-                                  topic,
-                                  "hardMCQs",
-                                  parseInt(e.target.value, 10) || 0
-                                )
-                              }
-                            />
-                          </div>
+                        <div className="flex flex-col">
+                          <label className="text-sm text-gray-800 mb-1">Medium MCQs</label>
+                          <input
+                            className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                            value={config.mediumMCQs}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "mediumMCQs",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
                         </div>
-
-                        {/* Descriptive Question Configs */}
-                        {config.descriptiveQuestionConfig &&
-                          config.descriptiveQuestionConfig.length > 0 && (
-                            <div style={styles.descriptiveConfigContainer}>
-                              <h4 style={styles.descriptiveConfigTitle}>
-                                Descriptive Questions
-                              </h4>
-                              {config.descriptiveQuestionConfig.map(
-                                (descConfig, index) => (
-                                  <div
-                                    key={index}
-                                    style={styles.descriptiveConfigRow}
-                                  >
-                                    <div style={styles.descriptiveFieldGroup}>
-                                      <label style={styles.labelSmall}>
-                                        Marks
-                                      </label>
-                                      <input
-                                        style={styles.inputSmall}
-                                        type="number"
-                                        min="0"
-                                        value={descConfig.marks}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setTopicsConfig((prev) => {
-                                            const updatedArray = [
-                                              ...prev[topic]
-                                                .descriptiveQuestionConfig,
-                                            ];
-                                            updatedArray[index] = {
-                                              ...updatedArray[index],
-                                              marks: val,
-                                            };
-                                            return {
-                                              ...prev,
-                                              [topic]: {
-                                                ...prev[topic],
-                                                descriptiveQuestionConfig:
-                                                  updatedArray,
-                                              },
-                                            };
-                                          });
-                                        }}
-                                      />
-                                    </div>
-
-                                    <div style={styles.descriptiveFieldGroup}>
-                                      <label style={styles.labelSmall}>
-                                        Difficulty
-                                      </label>
-                                      <select
-                                        style={styles.inputSmall}
-                                        value={descConfig.difficulty}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setTopicsConfig((prev) => {
-                                            const updatedArray = [
-                                              ...prev[topic]
-                                                .descriptiveQuestionConfig,
-                                            ];
-                                            updatedArray[index] = {
-                                              ...updatedArray[index],
-                                              difficulty: val,
-                                            };
-                                            return {
-                                              ...prev,
-                                              [topic]: {
-                                                ...prev[topic],
-                                                descriptiveQuestionConfig:
-                                                  updatedArray,
-                                              },
-                                            };
-                                          });
-                                        }}
-                                      >
-                                        <option value="">
-                                          Select Difficulty
-                                        </option>
-                                        <option value="easy">Easy</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="hard">Hard</option>
-                                      </select>
-                                    </div>
-
-                                    <div style={styles.descriptiveFieldGroup}>
-                                      <label style={styles.labelSmall}>
-                                        No. Of Questions
-                                      </label>
-                                      <input
-                                        style={styles.inputSmall}
-                                        value={descConfig.noOfQuestions}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          const newNoOfQuestions =
-                                            val !== "" ? parseInt(val) : 0;
-                                          if (descConfig?.marks) {
-                                            let oldQuestionTotal =
-                                              descConfig?.noOfQuestions === ""
-                                                ? 0
-                                                : parseInt(
-                                                    descConfig?.noOfQuestions
-                                                  );
-                                            let oldMarks =
-                                              parseInt(oldQuestionTotal) *
-                                              parseInt(descConfig.marks);
-                                            let newMarksForQuestion =
-                                              parseInt(descConfig.marks) *
-                                              newNoOfQuestions;
-                                            let newMarks =
-                                              configuredMarks -
-                                              oldMarks +
-                                              newMarksForQuestion;
-                                            setConfiguredMarks(newMarks);
-                                          }
-                                          setTopicsConfig((prev) => {
-                                            const updatedArray = [
-                                              ...prev[topic]
-                                                .descriptiveQuestionConfig,
-                                            ];
-                                            updatedArray[index] = {
-                                              ...updatedArray[index],
-                                              noOfQuestions: val,
-                                            };
-                                            return {
-                                              ...prev,
-                                              [topic]: {
-                                                ...prev[topic],
-                                                descriptiveQuestionConfig:
-                                                  updatedArray,
-                                              },
-                                            };
-                                          });
-                                        }}
-                                      />
-                                    </div>
-                                    <div
-                                      style={{
-                                        alignItems: "center",
-                                        flexDirection: "column",
-                                      }}
-                                    >
-                                      <button
-                                        style={styles.chipRemoveButton}
-                                        className="btn-hover"
-                                        onClick={() =>
-                                          handleRemoveDescriptiveQuestion(
-                                            topic,
-                                            index
-                                          )
-                                        }
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          )}
-
-                        <div style={styles.plusIconContainer}>
-                          <button
-                            style={styles.plusButton}
-                            className="btn-hover"
-                            onClick={() => {
-                              setTopicsConfig((prev) => {
-                                const newDescConfig = [
-                                  ...(prev[topic].descriptiveQuestionConfig ||
-                                    []),
-                                  {
-                                    marks: "",
-                                    difficulty: "",
-                                    noOfQuestions: "",
-                                  },
-                                ];
-                                return {
-                                  ...prev,
-                                  [topic]: {
-                                    ...prev[topic],
-                                    descriptiveQuestionConfig: newDescConfig,
-                                  },
-                                };
-                              });
-                            }}
-                          >
-                            +
-                          </button>
+                        <div className="flex flex-col">
+                          <label className="text-sm text-gray-800 mb-1">Hard MCQs</label>
+                          <input
+                            className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                            value={config.hardMCQs}
+                            onChange={(e) =>
+                              handleTopicChange(
+                                topic,
+                                "hardMCQs",
+                                parseInt(e.target.value, 10) || 0
+                              )
+                            }
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      {config.descriptiveQuestionConfig &&
+                        config.descriptiveQuestionConfig.length > 0 && (
+                          <div className="mt-4">
+                            <h4 className="text-md font-semibold mb-2">Descriptive Questions</h4>
+                            {config.descriptiveQuestionConfig.map((descConfig, index) => (
+                              <div
+                                key={index}
+                                className="flex flex-col md:flex-row gap-4 items-center mb-2"
+                              >
+                                <div className="flex flex-col">
+                                  <label className="text-sm text-gray-800 mb-1">Marks</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    value={descConfig.marks}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setTopicsConfig((prev) => {
+                                        const updatedArray = [
+                                          ...prev[topic].descriptiveQuestionConfig,
+                                        ];
+                                        updatedArray[index] = {
+                                          ...updatedArray[index],
+                                          marks: val,
+                                        };
+                                        return {
+                                          ...prev,
+                                          [topic]: {
+                                            ...prev[topic],
+                                            descriptiveQuestionConfig: updatedArray,
+                                          },
+                                        };
+                                      });
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="text-sm text-gray-800 mb-1">Difficulty</label>
+                                  <select
+                                    className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    value={descConfig.difficulty}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setTopicsConfig((prev) => {
+                                        const updatedArray = [
+                                          ...prev[topic].descriptiveQuestionConfig,
+                                        ];
+                                        updatedArray[index] = {
+                                          ...updatedArray[index],
+                                          difficulty: val,
+                                        };
+                                        return {
+                                          ...prev,
+                                          [topic]: {
+                                            ...prev[topic],
+                                            descriptiveQuestionConfig: updatedArray,
+                                          },
+                                        };
+                                      });
+                                    }}
+                                  >
+                                    <option value="">Select Difficulty</option>
+                                    <option value="easy">Easy</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="hard">Hard</option>
+                                  </select>
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="text-sm text-gray-800 mb-1">
+                                    No. Of Questions
+                                  </label>
+                                  <input
+                                    className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                    value={descConfig.noOfQuestions}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const newNoOfQuestions = val !== "" ? parseInt(val) : 0;
+                                      if (descConfig?.marks) {
+                                        const oldQuestionTotal =
+                                          descConfig?.noOfQuestions === ""
+                                            ? 0
+                                            : parseInt(descConfig?.noOfQuestions);
+                                        const oldMarks =
+                                          oldQuestionTotal * parseInt(descConfig.marks);
+                                        const newMarksForQuestion =
+                                          parseInt(descConfig.marks) * newNoOfQuestions;
+                                        const newMarks =
+                                          configuredMarks - oldMarks + newMarksForQuestion;
+                                        setConfiguredMarks(newMarks);
+                                      }
+                                      setTopicsConfig((prev) => {
+                                        const updatedArray = [
+                                          ...prev[topic].descriptiveQuestionConfig,
+                                        ];
+                                        updatedArray[index] = {
+                                          ...updatedArray[index],
+                                          noOfQuestions: val,
+                                        };
+                                        return {
+                                          ...prev,
+                                          [topic]: {
+                                            ...prev[topic],
+                                            descriptiveQuestionConfig: updatedArray,
+                                          },
+                                        };
+                                      });
+                                    }}
+                                  />
+                                </div>
+                                <button
+                                  className={`${chipRemoveButtonClass} btn-hover`}
+                                  onClick={() =>
+                                    handleRemoveDescriptiveQuestion(topic, index)
+                                  }
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      <div className="mt-2">
+                        <button
+                          className={`${actionButtonClass} btn-hover`}
+                          onClick={() => {
+                            setTopicsConfig((prev) => {
+                              const newDescConfig = [
+                                ...(prev[topic].descriptiveQuestionConfig || []),
+                                { marks: "", difficulty: "", noOfQuestions: "" },
+                              ];
+                              return { ...prev, [topic]: { ...prev[topic], descriptiveQuestionConfig: newDescConfig } };
+                            });
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        <div style={styles.actionContainer}>
-          <button
-            style={styles.generateButton}
-            className="btn-hover"
-            onClick={handleGenerateQuestionPaper}
-            disabled={
-              !standard ||
-              !subject ||
-              isLoading ||
-              isMarksExceeded ||
-              !title ||
-              !marks ||
-              !timeDuration ||
-              configuredMarks !== parseInt(marks)
-            }
-          >
-            {isMarksExceeded
-              ? "Total marks exceeded"
-              : isLoading
-              ? "Generating..."
-              : "Generate Question Paper"}
-          </button>
-
-          <button
-            style={styles.blueprintButton}
-            className="btn-hover"
-            onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
-            disabled={
-              !standard ||
-              !subject ||
-              isLoading ||
-              isMarksExceeded ||
-              !title ||
-              !marks ||
-              configuredMarks !== parseInt(marks)
-            }
-          >
-            {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
-          </button>
-        </div>
+      <div className="mt-6 flex gap-4">
+        <button
+          className={`${actionButtonClass} btn-hover`}
+          onClick={handleGenerateQuestionPaper}
+          disabled={
+            !standard ||
+            !subject ||
+            isLoading ||
+            isMarksExceeded ||
+            !title ||
+            !marks ||
+            !timeDuration ||
+            configuredMarks !== parseInt(marks)
+          }
+        >
+          {isMarksExceeded
+            ? "Total marks exceeded"
+            : isLoading
+            ? "Generating..."
+            : "Generate Question Paper"}
+        </button>
+        <button
+          className={`${actionButtonClass} btn-hover`}
+          onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
+          disabled={
+            !standard ||
+            !subject ||
+            isLoading ||
+            isMarksExceeded ||
+            !title ||
+            !marks ||
+            configuredMarks !== parseInt(marks)
+          }
+        >
+          {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
+        </button>
       </div>
     </div>
   );
