@@ -5,15 +5,29 @@ import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import { postRequest, deleteRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
 
-const marks = Array.from({ length: 10 }, (_, i) => i + 1);
+const marksOptions = Array.from({ length: 10 }, (_, i) => i + 1);
 const types = ["MCQ", "Descriptive"];
 const difficulties = ["EASY", "MEDIUM", "HARD"];
 
+// Extracted styling constants
+const inputClass =
+  "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
+const selectClass = inputClass;
+// New button style: black background, white text, semibold font
+const blackButtonClass =
+  "inline-flex items-center px-4 py-2 bg-[#000] text-white font-semibold rounded-lg hover:bg-[#000] transition-colors duration-200";
+const headerClass =
+  "sticky top-0 bg-white p-2 transition-opacity duration-300 border rounded z-50";
+const modalContainerClass =
+  "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+const modalContentClass =
+  "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
+
+// Renders text with math expressions by replacing an invisible marker with "$"
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
-  // Replace the invisible marker with "$" for parsing
-  const processedText = text?.replace(new RegExp(MATH_MARKER, "g"), "$");
-  const parts = processedText?.split("$");
+  // const processedText = text?.replace(new RegExp(MATH_MARKER, "g"), "$");
+  const parts = text?.split("$");
   return parts?.map((part, index) =>
     index % 2 === 1 ? (
       <InlineMath key={index} math={part} />
@@ -34,10 +48,9 @@ const QuestionBank = () => {
     type: "",
     difficulty: "",
   });
-  // New state for the search term
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State for the Add/Edit Question modal
+  // Modal & form states for Add/Edit Question
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
@@ -53,12 +66,11 @@ const QuestionBank = () => {
       { key: "D", option: "", imageUrl: "" },
     ],
   });
+
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 0);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -71,10 +83,7 @@ const QuestionBank = () => {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      const accesskey = localStorage.getItem(ACCESS_KEY);
-      const queryParams = new URLSearchParams({
-        limit: "10000",
-      });
+      const queryParams = new URLSearchParams({ limit: "10000" });
       const payload = {
         ...(filters.marks && { marks: filters.marks }),
         ...(filters.type && { type: filters.type }),
@@ -102,10 +111,7 @@ const QuestionBank = () => {
   };
 
   const handleFilterChange = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: value,
-    }));
+    setFilters((prev) => ({ ...prev, [filterType]: value }));
   };
 
   const handleGenerateQuestionPaper = () => {
@@ -113,16 +119,12 @@ const QuestionBank = () => {
     console.log("Selected questions:", selectedQuestions);
   };
 
-  // -----------------------------------------------------
-  // HANDLING THE NEW QUESTION / EDIT FORM (Add / Upsert)
-  // -----------------------------------------------------
+  // HANDLING MATH IN QUESTION TEXT & OPTIONS
   const MATH_MARKER = "\u200B";
-
   const handleMathKeyDown = (e, field, index = null) => {
-    if ((e.metaKey || e.shiftKey) && e.key === "$") {
+    if ((e.metaKey)) {
       e.preventDefault();
-      const input = e.target;
-      const { selectionStart, selectionEnd, value } = input;
+      const { selectionStart, selectionEnd, value } = e.target;
       const newValue =
         value.slice(0, selectionStart) +
         MATH_MARKER +
@@ -157,9 +159,7 @@ const QuestionBank = () => {
     }
   };
 
-  // -----------------------------------------------------
   // IMAGE UPLOAD HANDLERS
-  // -----------------------------------------------------
   const handleQuestionImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -190,9 +190,6 @@ const QuestionBank = () => {
     }
   };
 
-  // -----------------------------------------------------
-  // SUBMIT NEW/EDIT QUESTION USING API WRAPPERS
-  // -----------------------------------------------------
   const handleNewQuestionSubmit = async () => {
     try {
       let payload = {
@@ -232,9 +229,6 @@ const QuestionBank = () => {
     }
   };
 
-  // -----------------------------------------------------
-  // DELETE SELECTED QUESTIONS USING API WRAPPER
-  // -----------------------------------------------------
   const handleDeleteQuestions = async () => {
     const selectedIds = Object.keys(selected).filter((id) => selected[id]);
     if (selectedIds.length === 0) {
@@ -259,9 +253,6 @@ const QuestionBank = () => {
     }
   };
 
-  // -----------------------------------------------------
-  // EDIT QUESTION HANDLING
-  // -----------------------------------------------------
   const handleEditQuestion = () => {
     const selectedIds = Object.keys(selected).filter((id) => selected[id]);
     if (selectedIds.length === 1) {
@@ -297,9 +288,6 @@ const QuestionBank = () => {
     }
   };
 
-  // -----------------------------------------------------
-  // FILTER QUESTIONS BASED ON SEARCH TERM
-  // -----------------------------------------------------
   const filteredQuestions = questions.filter((q) => {
     if (!searchTerm.trim()) return true;
     const lowerSearch = searchTerm.toLowerCase();
@@ -316,34 +304,30 @@ const QuestionBank = () => {
 
   return (
     <div className="p-6 relative">
-      <div
-        className={`sticky top-0 bg-white p-1 transition-opacity duration-300 border rounded ${
-          isScrolled ? "opacity-100" : "opacity-90"
-        }`}
-        style={{ zIndex: 50 }}
-      >
-        {/* ---------------- Search Bar ---------------- */}
+      {/* Sticky Header */}
+      <div className={headerClass}>
+        {/* Search Bar */}
         <div className="flex gap-4 mb-4">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by type, question text or option"
-            className="w-full border rounded p-2"
+            className={inputClass}
           />
         </div>
 
-        {/* ---------------- Filter Section ---------------- */}
+        {/* Filter Section */}
         <div className="flex gap-4 mb-6">
           <div className="flex flex-col">
             <label className="mb-1 text-sm font-medium">Marks</label>
             <select
               value={filters.marks}
               onChange={(e) => handleFilterChange("marks", e.target.value)}
-              className="border rounded p-2"
+              className={selectClass}
             >
               <option value="">All</option>
-              {marks.map((mark) => (
+              {marksOptions.map((mark) => (
                 <option key={mark} value={mark}>
                   {mark}
                 </option>
@@ -355,7 +339,7 @@ const QuestionBank = () => {
             <select
               value={filters.type}
               onChange={(e) => handleFilterChange("type", e.target.value)}
-              className="border rounded p-2"
+              className={selectClass}
             >
               <option value="">All</option>
               {types.map((type) => (
@@ -370,7 +354,7 @@ const QuestionBank = () => {
             <select
               value={filters.difficulty}
               onChange={(e) => handleFilterChange("difficulty", e.target.value)}
-              className="border rounded p-2"
+              className={selectClass}
             >
               <option value="">All</option>
               {difficulties.map((diff) => (
@@ -382,11 +366,11 @@ const QuestionBank = () => {
           </div>
         </div>
 
-        {/* ---------------- Action Buttons ---------------- */}
+        {/* Action Buttons */}
         <div className="flex gap-4 mb-6">
           <button
             onClick={handleGenerateQuestionPaper}
-            className="inline-flex items-center px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors duration-200"
+            className={blackButtonClass}
           >
             Generate Question Paper
           </button>
@@ -408,34 +392,32 @@ const QuestionBank = () => {
               });
               setShowAddQuestionModal(true);
             }}
-            className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
+            className={blackButtonClass}
           >
             Add Question
           </button>
           {Object.keys(selected).filter((id) => selected[id]).length === 1 && (
-            <button
-              onClick={handleEditQuestion}
-              className="inline-flex items-center px-3 py-2 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition-colors duration-200"
-            >
+            <button onClick={handleEditQuestion} className={blackButtonClass}>
               Edit Question
             </button>
           )}
           {selected && Object.keys(selected).some((id) => selected[id]) && (
             <button
               onClick={handleDeleteQuestions}
-              className="inline-flex items-center px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors duration-200"
+              className={blackButtonClass}
             >
               Delete
             </button>
           )}
         </div>
       </div>
-      {/* ---------------- Questions List ---------------- */}
+
+      {/* Questions List */}
       {loading ? (
         <div className="text-center py-4">Loading questions...</div>
       ) : (
         <div className="space-y-4">
-          {filteredQuestions?.map((question) => (
+          {filteredQuestions.map((question) => (
             <div key={question.id} className="border rounded p-4">
               <div className="flex items-start gap-4">
                 <input
@@ -448,7 +430,7 @@ const QuestionBank = () => {
                   <div className="mb-2">
                     {renderTextWithMath(question.questionText)}
                   </div>
-                  {question?.imageUrl && (
+                  {question.imageUrl && (
                     <img
                       src={question.imageUrl}
                       alt="Question"
@@ -457,24 +439,25 @@ const QuestionBank = () => {
                   )}
                   {question.type === "MCQ" && (
                     <div className="ml-4 space-y-2 mt-2">
-                      {question?.options?.map((option) => (
-                        <div
-                          key={option.key}
-                          className="flex flex-col sm:flex-row items-center gap-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">{option.key}:</span>
-                            {renderTextWithMath(option.option)}
+                      {question.options &&
+                        question.options.map((option) => (
+                          <div
+                            key={option.key}
+                            className="flex flex-col sm:flex-row items-center gap-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">{option.key}:</span>
+                              {renderTextWithMath(option.option)}
+                            </div>
+                            {option.imageUrl && (
+                              <img
+                                src={option.imageUrl}
+                                alt={`Option ${option.key}`}
+                                className="rounded w-24 h-24"
+                              />
+                            )}
                           </div>
-                          {option.imageUrl && (
-                            <img
-                              src={option.imageUrl}
-                              alt={`Option ${option.key}`}
-                              className="rounded w-24 h-24"
-                            />
-                          )}
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                   <div className="mt-2 text-sm text-gray-600">
@@ -489,9 +472,8 @@ const QuestionBank = () => {
       )}
 
       {showAddQuestionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative">
-            {/* Modal Header */}
+        <div className={modalContainerClass}>
+          <div className={modalContentClass}>
             <h3 className="text-lg font-semibold mb-4">
               {isEditing ? "Edit Question" : "Add New Question"}
             </h3>
@@ -502,7 +484,7 @@ const QuestionBank = () => {
               <select
                 value={newQuestion.type}
                 onChange={(e) => handleNewQuestionChange(e, "type")}
-                className="w-full border rounded p-2"
+                className={selectClass}
               >
                 {types.map((type) => (
                   <option key={type} value={type}>
@@ -519,7 +501,7 @@ const QuestionBank = () => {
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
                 onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
-                className="w-full border rounded p-2"
+                className={inputClass}
                 placeholder="Enter question text. Use Shift + $ to add math equations."
                 rows="4"
               />
@@ -537,6 +519,7 @@ const QuestionBank = () => {
                 type="file"
                 accept="image/*"
                 onChange={handleQuestionImageUpload}
+                className="block"
               />
               {newQuestion.imageUrl && (
                 <img
@@ -563,7 +546,7 @@ const QuestionBank = () => {
                         handleNewQuestionChange(e, "option", index)
                       }
                       onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
-                      className="w-full border rounded p-2 mb-1"
+                      className={`${inputClass} mb-1`}
                       placeholder={`Enter option ${option.key} text. Use Shift + $ for math.`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
@@ -577,6 +560,7 @@ const QuestionBank = () => {
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleOptionImageUpload(e, index)}
+                        className="block"
                       />
                       {option.imageUrl && (
                         <img
@@ -598,10 +582,10 @@ const QuestionBank = () => {
                 <select
                   value={newQuestion.marks}
                   onChange={(e) => handleNewQuestionChange(e, "marks")}
-                  className="w-full border rounded p-2"
+                  className={selectClass}
                 >
                   <option value="">Select Marks</option>
-                  {marks.map((mark) => (
+                  {marksOptions.map((mark) => (
                     <option key={mark} value={mark}>
                       {mark}
                     </option>
@@ -613,7 +597,7 @@ const QuestionBank = () => {
                 <select
                   value={newQuestion.difficulty}
                   onChange={(e) => handleNewQuestionChange(e, "difficulty")}
-                  className="w-full border rounded p-2"
+                  className={selectClass}
                 >
                   <option value="">Select Difficulty</option>
                   {difficulties.map((diff) => (
@@ -626,7 +610,7 @@ const QuestionBank = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex justify-end gap-4 bottom-0 bg-white p-4 z-10">
+            <div className="flex justify-end gap-4 bg-white p-4">
               <button
                 onClick={() => {
                   setShowAddQuestionModal(false);
@@ -645,13 +629,13 @@ const QuestionBank = () => {
                     ],
                   });
                 }}
-                className="inline-flex items-center px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600 transition-colors duration-200"
+                className={blackButtonClass}
               >
                 Cancel
               </button>
               <button
                 onClick={handleNewQuestionSubmit}
-                className="inline-flex items-center px-3 py-2 bg-teal-500 text-white text-sm rounded-lg hover:bg-teal-600 transition-colors duration-200"
+                className={blackButtonClass}
               >
                 {isEditing ? "Update Question" : "Save Question"}
               </button>
