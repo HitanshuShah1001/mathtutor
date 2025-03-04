@@ -1,25 +1,40 @@
 // apiUtils.js
 
+import { ACCESS_KEY } from "../constants/constants";
+import { removeDataFromLocalStorage } from "./LocalStorageOps";
+
+// Define your localStorage key for the access token.
+
+/**
+ * Helper function to build headers.
+ * - Always retrieves the token from localStorage and appends it as the Authorization header.
+ * - Optionally adds the "Content-Type": "application/json" header for requests sending JSON data.
+ * - Merges in any additional headers (ignoring any "Authorization" key from the caller).
+ */
+const buildHeaders = () => {
+  let myHeaders = new Headers();
+
+  // Always add the token from localStorage as the Authorization header.
+  const token = localStorage.getItem(ACCESS_KEY);
+  console.log(token);
+  if (token) {
+    console.log("in here");
+    myHeaders.append("Authorization", token);
+  }
+
+  // For POST/PUT requests, ensure the Content-Type header is set.
+  myHeaders.append("Content-Type", "application/json");
+  return Object.fromEntries(myHeaders.entries());
+};
+
 // Function to make GET requests
+export const getRequest = async (url, params = {}) => {
+  const myHeaders = buildHeaders();
 
-export const getRequest = async (url, headers = {}, params = {}) => {
-  const myHeaders = new Headers();
-
-  // Append Authorization if present
-  if (headers.Authorization) {
-    myHeaders.append("Authorization", headers.Authorization);
-  }
-
-  // Append other headers
-  for (const [key, value] of Object.entries(headers)) {
-    if (key !== "Authorization") {
-      myHeaders.append(key, value);
-    }
-  }
-
-  // Add query parameters to URL if any
+  // Append query parameters to the URL if any
   const queryParams = new URLSearchParams(params).toString();
   const finalUrl = queryParams ? `${url}?${queryParams}` : url;
+
   const requestOptions = {
     method: "GET",
     headers: myHeaders,
@@ -28,7 +43,6 @@ export const getRequest = async (url, headers = {}, params = {}) => {
 
   try {
     const response = await fetch(finalUrl, requestOptions);
-
     const result = await response.json();
     return result;
   } catch (error) {
@@ -37,21 +51,9 @@ export const getRequest = async (url, headers = {}, params = {}) => {
 };
 
 // Function to make POST requests
-export const postRequest = async (url, headers = {}, body = {}) => {
-  const myHeaders = new Headers();
-
-  // Append Authorization if present
-  if (headers.Authorization) {
-    myHeaders.append("Authorization", headers.Authorization);
-    myHeaders.append("Content-Type", "application/json");
-  }
-
-  // Append other headers
-  for (const [key, value] of Object.entries(headers)) {
-    if (key !== "Authorization") {
-      myHeaders.append(key, value);
-    }
-  }
+export const postRequest = async (url, body = {}) => {
+  // Pass 'true' to include the Content-Type header.
+  const myHeaders = buildHeaders();
 
   const requestOptions = {
     method: "POST",
@@ -62,8 +64,29 @@ export const postRequest = async (url, headers = {}, body = {}) => {
 
   try {
     const response = await fetch(url, requestOptions);
-    console.log(response, "repsonse received");
+    if (response.status === 401) {
+      removeDataFromLocalStorage();
+    }
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("POST request failed:", error);
+  }
+};
 
+export const postRequestWithoutStringified = async (url, body = {}) => {
+  // Pass 'true' to include the Content-Type header.
+  const myHeaders = buildHeaders();
+
+  const requestOptions = {
+    method: "POST",
+    headers: myHeaders,
+    body,
+    redirect: "follow",
+  };
+
+  try {
+    const response = await fetch(url, requestOptions);
     const result = await response.json();
     return result;
   } catch (error) {
@@ -72,20 +95,9 @@ export const postRequest = async (url, headers = {}, body = {}) => {
 };
 
 // Function to make PUT requests
-export const putRequest = async (url, headers = {}, body = {}) => {
-  const myHeaders = new Headers();
-  
-  // Append Authorization if present
-  if (headers.Authorization) {
-    myHeaders.append("Authorization", headers.Authorization);
-  }
-
-  // Append other headers
-  for (const [key, value] of Object.entries(headers)) {
-    if (key !== "Authorization") {
-      myHeaders.append(key, value);
-    }
-  }
+export const putRequest = async (url, body = {}) => {
+  // Pass 'true' to include the Content-Type header.
+  const myHeaders = buildHeaders();
 
   const requestOptions = {
     method: "PUT",
@@ -96,7 +108,6 @@ export const putRequest = async (url, headers = {}, body = {}) => {
 
   try {
     const response = await fetch(url, requestOptions);
-
     const result = await response.json();
     return result;
   } catch (error) {
@@ -105,34 +116,19 @@ export const putRequest = async (url, headers = {}, body = {}) => {
 };
 
 // Function to make DELETE requests
-export const deleteRequest = async (url, headers = {}, params = {}) => {
-  const myHeaders = new Headers();
-
-  // Append Authorization if present
-  if (headers.Authorization) {
-    myHeaders.append("Authorization", headers.Authorization);
-  }
-
-  // Append other headers
-  for (const [key, value] of Object.entries(headers)) {
-    if (key !== "Authorization") {
-      myHeaders.append(key, value);
-    }
-  }
-
-  // Add query parameters to URL if any
-  const queryParams = new URLSearchParams(params).toString();
-  const finalUrl = queryParams ? `${url}?${queryParams}` : url;
-
+export const deleteRequest = async (url, body = {}) => {
+  const myHeaders = buildHeaders();
+  console.log(body, "body");
   const requestOptions = {
     method: "DELETE",
-    headers: myHeaders,
-    redirect: "follow",
+    headers: {
+      ...myHeaders,
+    },
+    body: JSON.stringify(body),
   };
 
   try {
-    const response = await fetch(finalUrl, requestOptions);
-
+    const response = await fetch(url, requestOptions);
     const result = await response.json();
     return result;
   } catch (error) {

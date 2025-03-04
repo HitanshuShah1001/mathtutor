@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Download, Printer } from "lucide-react";
 
-const DocumentViewer = ({ documentUrl, title }) => {
+const DocumentViewer = ({ documentUrl, name }) => {
   const [loading, setLoading] = useState(true);
   const uniqueDocumentUrl = `${documentUrl}?t=${Date.now()}`;
   const handlePrint = () => {
@@ -12,27 +12,39 @@ const DocumentViewer = ({ documentUrl, title }) => {
   };
   const handleDownloadPDF = async () => {
     try {
+      // Fetch the complete HTML content (which should include <head> and the MathJax script)
       const response = await fetch(documentUrl);
-      const blob = await response.blob();
-      const htmlContent = await blob.text();
-      console.log(htmlContent, "html content",documentUrl);
-      const element = document.createElement("div");
-      element.innerHTML = htmlContent;
-
-      const style = document.createElement("style");
-      style.textContent = `
-          body { font-family: Arial, sans-serif; }
-          @page { margin: 1cm; }
-        `;
-
+      const htmlContent = await response.text();
+      console.log(htmlContent, "html content that was received");
+      // Open a new window and write the full HTML content into it.
       const printWindow = window.open("", "_blank");
-      printWindow.document.head.appendChild(style);
-      printWindow.document.body.appendChild(element);
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
 
-      setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 250);
+      // When the new window finishes loading, wait for MathJax to typeset the math.
+      printWindow.onload = () => {
+        if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
+          // Wait until MathJax finishes rendering all math
+          printWindow.MathJax.typesetPromise()
+            .then(() => {
+              printWindow.print();
+              printWindow.close();
+            })
+            .catch((err) => {
+              console.error("Error during MathJax typesetting:", err);
+              // Fallback: attempt to print even if typesetting fails
+              printWindow.print();
+              printWindow.close();
+            });
+        } else {
+          // Fallback if MathJax is not available: wait a bit longer.
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 500);
+        }
+      };
     } catch (error) {
       console.error("Error downloading PDF:", error);
     }
@@ -41,7 +53,7 @@ const DocumentViewer = ({ documentUrl, title }) => {
   return (
     <div className="flex flex-col h-[calc(100vh-13rem)] bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between items-center p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        <h3 className="text-lg font-semibold text-gray-800">{name}</h3>
         <div className="flex gap-2">
           <button
             onClick={handleDownloadPDF}
@@ -65,7 +77,7 @@ const DocumentViewer = ({ documentUrl, title }) => {
           src={uniqueDocumentUrl}
           className="w-full h-full border-0"
           onLoad={() => setLoading(false)}
-          title={title}
+          title={name}
         />
 
         {loading && (

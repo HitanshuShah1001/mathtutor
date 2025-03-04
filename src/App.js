@@ -13,10 +13,12 @@ import { MathJaxContext } from "better-react-mathjax";
 import VerifyOtp from "./components/VerifyOtp";
 import { getDataFromLocalStorage } from "./utils/LocalStorageOps";
 import { UpdateUserDetails } from "./components/UpdateUserDetails";
-import GenerateQuestionPaper from "./components/Questionpaper";
 import { ResultAnalyser } from "./components/ResultVisualiser";
 import { SelectStandard } from "./components/SelectStandardAndGrade";
 import { DocumentSidebar } from "./components/DocumentList";
+import GenerateQuestionPaper from "./components/Questionpaper";
+import QuestionBank from "./components/QuestionBank";
+import QuestionPaperEditPage from "./components/Questionpapereditpage";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -61,8 +63,20 @@ function App() {
               }
             />
             <Route
+              path="/question-bank"
+              element={
+                <ProtectedRoute>
+                  <QuestionBank />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/select-standard-and-file"
               element={<SelectStandard />}
+            />
+            <Route
+              path="/edit-document/:docId"
+              element={<QuestionPaperEditPage />}
             />
             <Route
               path="/login"

@@ -92,3 +92,11 @@ export function reorderQuestionsByType(questions) {
 
   return [...mcqs, ...descriptive];
 }
+
+
+
+// Example usage:
+// const inputData = [
+//   { name: 'Alice', topics: ['Algebra', 'Geometry'] },
+//   { name: 'Bob', topics: ['Chemistry', 'Physics'] }
+// ];
