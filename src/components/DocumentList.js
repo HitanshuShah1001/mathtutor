@@ -38,6 +38,19 @@ export const DocumentSidebar = () => {
 
   const navigate = useNavigate();
 
+  const getHtmlLink = async (questionPaperId) => {
+    const url = `${BASE_URL_API}/questionpaper/generateHtml`;
+    const body = { questionPaperId };
+
+    try {
+      const result = await postRequest(url, body);
+      return result?.questionPaper;
+    } catch (error) {
+      console.error("Error generating HTML:", error);
+      throw error;
+    }
+  };
+
   const fetchDocuments = async () => {
     setLoading(true);
     try {
@@ -237,34 +250,41 @@ export const DocumentSidebar = () => {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => {
-                          setModalDocument(doc);
+                        onClick={async () => {
+                          console.log(doc.type, "doc and its type");
+                          const docWithQuestionAndSolutionLink =
+                            await getHtmlLink(doc.id);
+                          setModalDocument(docWithQuestionAndSolutionLink);
                           setModalActiveTab("question");
                           setModalVisible(true);
+                          // setModalDocument(doc);
                         }}
                         className={commonButtonClass}
                       >
                         View
                       </button>
-                      <button
-                        onClick={() => {
-                          if (doc.sections && doc.sections.length > 0) {
-                            navigate(`/edit-document/${doc.id}`, {
-                              state: {
-                                sections: doc.sections,
-                                docName: doc.name,
-                              },
-                            });
-                          } else {
-                            alert(
-                              "No sections found for this document. Cannot edit."
-                            );
-                          }
-                        }}
-                        className={commonButtonClass}
-                      >
-                        Edit
-                      </button>
+                      {doc.type === "archive" && (
+                        <button
+                          onClick={() => {
+                            if (doc.sections && doc.sections.length > 0) {
+                              navigate(`/edit-document/${doc.id}`, {
+                                state: {
+                                  sections: doc.sections,
+                                  docName: doc.name,
+                                },
+                              });
+                            } else {
+                              alert(
+                                "No sections found for this document. Cannot edit."
+                              );
+                            }
+                          }}
+                          className={commonButtonClass}
+                        >
+                          Edit
+                        </button>
+                      )}
+
                       <button
                         onClick={() =>
                           alert("Delete functionality not implemented yet")
@@ -301,12 +321,14 @@ export const DocumentSidebar = () => {
                 >
                   Question Paper
                 </button>
-                <button
-                  onClick={() => setModalActiveTab("solution")}
-                  className={commonButtonClass}
-                >
-                  Answer Sheet
-                </button>
+                {modalDocument?.solutionLink && (
+                  <button
+                    onClick={() => setModalActiveTab("solution")}
+                    className={commonButtonClass}
+                  >
+                    Answer Sheet
+                  </button>
+                )}
 
                 {modalActiveTab === "question" &&
                   modalDocument?.questionPapersLinks?.length > 0 && (
