@@ -263,7 +263,7 @@ export const DocumentSidebar = () => {
                       >
                         View
                       </button>
-                      {doc.type === "archive" && (
+                      {doc.type !== "archive" && (
                         <button
                           onClick={() => {
                             if (doc.sections && doc.sections.length > 0) {
