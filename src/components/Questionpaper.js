@@ -5,7 +5,6 @@ import { allTopics } from "../constants/allTopics";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import {
   getRequest,
-  postRequest,
   postRequestWithoutStringified,
   putRequest,
 } from "../utils/ApiCall";
@@ -28,7 +27,6 @@ const selectClass =
   "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
 const actionButtonClass =
   "px-4 py-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000] transition-colors";
-const btnHoverClass = "hover:opacity-90 transition-opacity";
 const chipClass =
   "inline-flex items-center bg-gray-200 text-gray-800 rounded-full px-3 py-1 mr-2 mb-2";
 const chipRemoveButtonClass = "ml-2 text-red-600 font-bold";

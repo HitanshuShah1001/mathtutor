@@ -18,9 +18,9 @@ const blackButtonClass =
   "inline-flex items-center px-4 py-2 bg-[#000] text-white font-semibold rounded-lg hover:bg-[#000] transition-colors duration-200";
 const headerClass =
   "sticky top-0 bg-white p-2 transition-opacity duration-300 border rounded z-50";
-const modalContainerClass =
+export const modalContainerClass =
   "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
-const modalContentClass =
+export const modalContentClass =
   "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
 
 // Renders text with math expressions by replacing an invisible marker with "$"
