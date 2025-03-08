@@ -11,7 +11,7 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 const QuestionPaperEditPage = () => {
   const { docId } = useParams();
   const location = useLocation();
-
+  console.log(location)
   const [sections, setSections] = useState([]);
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
@@ -66,10 +66,10 @@ const QuestionPaperEditPage = () => {
   };
 
   const getFilteredSections = () => {
-    const lowerSearch = searchTerm.toLowerCase();
+    const lowerSearch = searchTerm?.toLowerCase();
     const filtered = sections.map((section) => {
       const filteredQuestions = section.questions.filter((q) =>
-        q.questionText.toLowerCase().includes(lowerSearch)
+        q.questionText?.toLowerCase().includes(lowerSearch)
       );
       return { ...section, questions: filteredQuestions };
     });
@@ -225,7 +225,7 @@ const QuestionPaperEditPage = () => {
       // Build payload for upserting the question.
       let payload = {
         ...updatedQuestion,
-        difficulty: updatedQuestion.difficulty.toLowerCase(),
+        difficulty: updatedQuestion.difficulty?.toLowerCase(),
         questionPaperId: docId, // Attach the question paper id.
       };
 

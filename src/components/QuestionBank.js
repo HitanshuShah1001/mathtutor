@@ -88,7 +88,7 @@ const QuestionBank = () => {
         ...(filters.marks && { marks: filters.marks }),
         ...(filters.type && { type: filters.type }),
         ...(filters.difficulty && {
-          difficulty: filters.difficulty.toLowerCase(),
+          difficulty: filters.difficulty?.toLowerCase(),
         }),
       };
       const response = await postRequest(
@@ -194,7 +194,7 @@ const QuestionBank = () => {
     try {
       let payload = {
         ...newQuestion,
-        difficulty: newQuestion.difficulty.toLowerCase(),
+        difficulty: newQuestion.difficulty?.toLowerCase(),
       };
       if (isEditing) {
         payload.id = newQuestion.id;
@@ -290,14 +290,14 @@ const QuestionBank = () => {
 
   const filteredQuestions = questions.filter((q) => {
     if (!searchTerm.trim()) return true;
-    const lowerSearch = searchTerm.toLowerCase();
+    const lowerSearch = searchTerm?.toLowerCase();
     const textMatch =
-      (q.questionText && q.questionText.toLowerCase().includes(lowerSearch)) ||
-      (q.type && q.type.toLowerCase().includes(lowerSearch));
+      (q.questionText && q.questionText?.toLowerCase().includes(lowerSearch)) ||
+      (q.type && q.type?.toLowerCase().includes(lowerSearch));
     const optionMatch =
       q.options &&
       q.options.some(
-        (opt) => opt.option && opt.option.toLowerCase().includes(lowerSearch)
+        (opt) => opt.option && opt.option?.toLowerCase().includes(lowerSearch)
       );
     return textMatch || optionMatch;
   });
