@@ -14,7 +14,7 @@ export const ChatHeader = ({ title }) => {
   return (
     <div
       className="flex justify-between items-center p-4 border-b border-gray-200"
-      style={{ backgroundColor: "#f4f4f4" }}
+      style={{ backgroundColor: "white" }}
     >
       <h2 className="text-xl font-semibold text-gray-800">
         {selectedChat ? selectedChat.title : title ?? "New chat"}
@@ -29,15 +29,10 @@ export const ChatHeader = ({ title }) => {
             >
               Question Papers
             </Link>
-            <Link
-              to="/select-standard-and-file"
-              className="text-blue-500 hover:underline"
-            >
-              Analyse Reports
-            </Link>
           </>
         ) : (
-          <><Link
+          <>
+            <Link
               to="/select-standard-and-file"
               className="text-blue-500 hover:underline"
             >
@@ -47,8 +42,9 @@ export const ChatHeader = ({ title }) => {
               to="/question-paper-generation"
               className="text-blue-500 hover:underline"
             >
-                Question Paper Generation
-              </Link></>
+              Question Paper Generation
+            </Link>
+          </>
         )}
         <ProfileMenu />
       </div>

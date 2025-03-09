@@ -5,7 +5,6 @@ import { allTopics } from "../constants/allTopics";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
 import {
   getRequest,
-  postRequest,
   postRequestWithoutStringified,
   putRequest,
 } from "../utils/ApiCall";
@@ -28,7 +27,6 @@ const selectClass =
   "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
 const actionButtonClass =
   "px-4 py-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000] transition-colors";
-const btnHoverClass = "hover:opacity-90 transition-opacity";
 const chipClass =
   "inline-flex items-center bg-gray-200 text-gray-800 rounded-full px-3 py-1 mr-2 mb-2";
 const chipRemoveButtonClass = "ml-2 text-red-600 font-bold";
@@ -182,7 +180,9 @@ const GenerateQuestionPaper = () => {
 
   const saveBlueprint = async () => {
     const blueprint = convertToBluePrintCompatibleFormat();
-    const res = await putRequest(`${BASE_URL_API}/blueprint/create`, { blueprint });
+    const res = await putRequest(`${BASE_URL_API}/blueprint/create`, {
+      blueprint,
+    });
     if (!res.success) {
       alert(res.message ?? "Some Error Occurred");
     } else {
@@ -204,7 +204,9 @@ const GenerateQuestionPaper = () => {
   };
 
   const RenderTopicSelection = useCallback(() => {
-    const renderContent = marks ? `${configuredMarks} / ${marks}` : configuredMarks;
+    const renderContent = marks
+      ? `${configuredMarks} / ${marks}`
+      : configuredMarks;
     return (
       <div className={formGroupClass}>
         <div className="flex items-center mb-2">
@@ -216,7 +218,9 @@ const GenerateQuestionPaper = () => {
             Configured Marks: {renderContent}
           </span>
           {configuredMarks > parseInt(marks) && (
-            <span className="text-gray-400 text-sm ml-2">(Exceeds total marks!)</span>
+            <span className="text-gray-400 text-sm ml-2">
+              (Exceeds total marks!)
+            </span>
           )}
         </div>
         <label className={labelClass}>Select Topics</label>
@@ -241,7 +245,10 @@ const GenerateQuestionPaper = () => {
               onChange={(e) => setCustomTopic(e.target.value)}
               placeholder="Or add custom topic"
             />
-            <button className={`${actionButtonClass} ml-2`} onClick={handleAddCustomTopic}>
+            <button
+              className={`${actionButtonClass} ml-2`}
+              onClick={handleAddCustomTopic}
+            >
               +
             </button>
           </div>
@@ -307,11 +314,13 @@ const GenerateQuestionPaper = () => {
         mediumMCQs: topic.mediumMCQs,
         hardMCQs: topic.hardMCQs,
         mcqMarks: topic.mcqMarks,
-        descriptiveQuestionConfig: topic.descriptiveQuestionConfig.map((desc) => ({
-          marks: desc.marks.toString(),
-          difficulty: desc.difficulty,
-          noOfQuestions: desc.noOfQuestions.toString(),
-        })),
+        descriptiveQuestionConfig: topic.descriptiveQuestionConfig.map(
+          (desc) => ({
+            marks: desc.marks.toString(),
+            difficulty: desc.difficulty,
+            noOfQuestions: desc.noOfQuestions.toString(),
+          })
+        ),
       };
     });
     setTopicsConfig(newTopicsConfig);
@@ -365,17 +374,16 @@ const GenerateQuestionPaper = () => {
         onClose={() => setIsAlertModalOpen(false)}
         message="Thank you for initiating the question paper generation. You will be notified as soon as the process is complete."
       />
-      <div className="mb-5 text-right">
-        <button
-          className={`${actionButtonClass} btn-hover`}
-          onClick={handleOpenModal}
-        >
-          Load from existing blueprint
-        </button>
-      </div>
-      <ChatHeader title="Generate Question Paper" />
 
-      <Blueprintmodal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+      {/* Wrap the ChatHeader in a white background and pass prop to hide analyse reports */}
+      <div className="bg-white">
+        <ChatHeader title="Generate Question Paper" hideAnalyseReports />
+      </div>
+
+      <Blueprintmodal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      >
         <h2 className="mb-5 text-xl font-semibold">Select a Blueprint</h2>
         {isLoadingBlueprints ? (
           <p className="text-black">Loading blueprints...</p>
@@ -532,9 +540,14 @@ const GenerateQuestionPaper = () => {
               {Object.keys(topicsConfig).length > 0 && (
                 <div className="mt-4 space-y-4">
                   {Object.entries(topicsConfig).map(([topic, config]) => (
-                    <div key={topic} className="p-4 border border-gray-200 rounded-lg shadow-sm fade-in">
+                    <div
+                      key={topic}
+                      className="p-4 border border-gray-200 rounded-lg shadow-sm fade-in"
+                    >
                       <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-semibold text-gray-800">{topic}</h3>
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          {topic}
+                        </h3>
                         <button
                           className={`${actionButtonClass} btn-hover`}
                           onClick={() => handleRemoveTopic(topic)}
@@ -544,7 +557,9 @@ const GenerateQuestionPaper = () => {
                       </div>
                       <div className={gridThreeClass}>
                         <div className="flex flex-col">
-                          <label className="text-sm text-gray-800 mb-1">Easy MCQs</label>
+                          <label className="text-sm text-gray-800 mb-1">
+                            Easy MCQs
+                          </label>
                           <input
                             className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                             value={config.easyMCQs}
@@ -558,7 +573,9 @@ const GenerateQuestionPaper = () => {
                           />
                         </div>
                         <div className="flex flex-col">
-                          <label className="text-sm text-gray-800 mb-1">Medium MCQs</label>
+                          <label className="text-sm text-gray-800 mb-1">
+                            Medium MCQs
+                          </label>
                           <input
                             className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                             value={config.mediumMCQs}
@@ -572,7 +589,9 @@ const GenerateQuestionPaper = () => {
                           />
                         </div>
                         <div className="flex flex-col">
-                          <label className="text-sm text-gray-800 mb-1">Hard MCQs</label>
+                          <label className="text-sm text-gray-800 mb-1">
+                            Hard MCQs
+                          </label>
                           <input
                             className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                             value={config.hardMCQs}
@@ -589,123 +608,149 @@ const GenerateQuestionPaper = () => {
                       {config.descriptiveQuestionConfig &&
                         config.descriptiveQuestionConfig.length > 0 && (
                           <div className="mt-4">
-                            <h4 className="text-md font-semibold mb-2">Descriptive Questions</h4>
-                            {config.descriptiveQuestionConfig.map((descConfig, index) => (
-                              <div
-                                key={index}
-                                className="flex flex-col md:flex-row gap-4 items-center mb-2"
-                              >
-                                <div className="flex flex-col">
-                                  <label className="text-sm text-gray-800 mb-1">Marks</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    value={descConfig.marks}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setTopicsConfig((prev) => {
-                                        const updatedArray = [
-                                          ...prev[topic].descriptiveQuestionConfig,
-                                        ];
-                                        updatedArray[index] = {
-                                          ...updatedArray[index],
-                                          marks: val,
-                                        };
-                                        return {
-                                          ...prev,
-                                          [topic]: {
-                                            ...prev[topic],
-                                            descriptiveQuestionConfig: updatedArray,
-                                          },
-                                        };
-                                      });
-                                    }}
-                                  />
-                                </div>
-                                <div className="flex flex-col">
-                                  <label className="text-sm text-gray-800 mb-1">Difficulty</label>
-                                  <select
-                                    className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    value={descConfig.difficulty}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setTopicsConfig((prev) => {
-                                        const updatedArray = [
-                                          ...prev[topic].descriptiveQuestionConfig,
-                                        ];
-                                        updatedArray[index] = {
-                                          ...updatedArray[index],
-                                          difficulty: val,
-                                        };
-                                        return {
-                                          ...prev,
-                                          [topic]: {
-                                            ...prev[topic],
-                                            descriptiveQuestionConfig: updatedArray,
-                                          },
-                                        };
-                                      });
-                                    }}
-                                  >
-                                    <option value="">Select Difficulty</option>
-                                    <option value="easy">Easy</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="hard">Hard</option>
-                                  </select>
-                                </div>
-                                <div className="flex flex-col">
-                                  <label className="text-sm text-gray-800 mb-1">
-                                    No. Of Questions
-                                  </label>
-                                  <input
-                                    className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
-                                    value={descConfig.noOfQuestions}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      const newNoOfQuestions = val !== "" ? parseInt(val) : 0;
-                                      if (descConfig?.marks) {
-                                        const oldQuestionTotal =
-                                          descConfig?.noOfQuestions === ""
-                                            ? 0
-                                            : parseInt(descConfig?.noOfQuestions);
-                                        const oldMarks =
-                                          oldQuestionTotal * parseInt(descConfig.marks);
-                                        const newMarksForQuestion =
-                                          parseInt(descConfig.marks) * newNoOfQuestions;
-                                        const newMarks =
-                                          configuredMarks - oldMarks + newMarksForQuestion;
-                                        setConfiguredMarks(newMarks);
-                                      }
-                                      setTopicsConfig((prev) => {
-                                        const updatedArray = [
-                                          ...prev[topic].descriptiveQuestionConfig,
-                                        ];
-                                        updatedArray[index] = {
-                                          ...updatedArray[index],
-                                          noOfQuestions: val,
-                                        };
-                                        return {
-                                          ...prev,
-                                          [topic]: {
-                                            ...prev[topic],
-                                            descriptiveQuestionConfig: updatedArray,
-                                          },
-                                        };
-                                      });
-                                    }}
-                                  />
-                                </div>
-                                <button
-                                  className={`${chipRemoveButtonClass} btn-hover`}
-                                  onClick={() =>
-                                    handleRemoveDescriptiveQuestion(topic, index)
-                                  }
+                            <h4 className="text-md font-semibold mb-2">
+                              Descriptive Questions
+                            </h4>
+                            {config.descriptiveQuestionConfig.map(
+                              (descConfig, index) => (
+                                <div
+                                  key={index}
+                                  className="flex flex-col md:flex-row gap-4 items-center mb-2"
                                 >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
+                                  <div className="flex flex-col">
+                                    <label className="text-sm text-gray-800 mb-1">
+                                      Marks
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                      value={descConfig.marks}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setTopicsConfig((prev) => {
+                                          const updatedArray = [
+                                            ...prev[topic]
+                                              .descriptiveQuestionConfig,
+                                          ];
+                                          updatedArray[index] = {
+                                            ...updatedArray[index],
+                                            marks: val,
+                                          };
+                                          return {
+                                            ...prev,
+                                            [topic]: {
+                                              ...prev[topic],
+                                              descriptiveQuestionConfig:
+                                                updatedArray,
+                                            },
+                                          };
+                                        });
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <label className="text-sm text-gray-800 mb-1">
+                                      Difficulty
+                                    </label>
+                                    <select
+                                      className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                      value={descConfig.difficulty}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setTopicsConfig((prev) => {
+                                          const updatedArray = [
+                                            ...prev[topic]
+                                              .descriptiveQuestionConfig,
+                                          ];
+                                          updatedArray[index] = {
+                                            ...updatedArray[index],
+                                            difficulty: val,
+                                          };
+                                          return {
+                                            ...prev,
+                                            [topic]: {
+                                              ...prev[topic],
+                                              descriptiveQuestionConfig:
+                                                updatedArray,
+                                            },
+                                          };
+                                        });
+                                      }}
+                                    >
+                                      <option value="">
+                                        Select Difficulty
+                                      </option>
+                                      <option value="easy">Easy</option>
+                                      <option value="medium">Medium</option>
+                                      <option value="hard">Hard</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <label className="text-sm text-gray-800 mb-1">
+                                      No. Of Questions
+                                    </label>
+                                    <input
+                                      className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+                                      value={descConfig.noOfQuestions}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        const newNoOfQuestions =
+                                          val !== "" ? parseInt(val) : 0;
+                                        if (descConfig?.marks) {
+                                          const oldQuestionTotal =
+                                            descConfig?.noOfQuestions === ""
+                                              ? 0
+                                              : parseInt(
+                                                  descConfig?.noOfQuestions
+                                                );
+                                          const oldMarks =
+                                            oldQuestionTotal *
+                                            parseInt(descConfig.marks);
+                                          const newMarksForQuestion =
+                                            parseInt(descConfig.marks) *
+                                            newNoOfQuestions;
+                                          const newMarks =
+                                            configuredMarks -
+                                            oldMarks +
+                                            newMarksForQuestion;
+                                          setConfiguredMarks(newMarks);
+                                        }
+                                        setTopicsConfig((prev) => {
+                                          const updatedArray = [
+                                            ...prev[topic]
+                                              .descriptiveQuestionConfig,
+                                          ];
+                                          updatedArray[index] = {
+                                            ...updatedArray[index],
+                                            noOfQuestions: val,
+                                          };
+                                          return {
+                                            ...prev,
+                                            [topic]: {
+                                              ...prev[topic],
+                                              descriptiveQuestionConfig:
+                                                updatedArray,
+                                            },
+                                          };
+                                        });
+                                      }}
+                                    />
+                                  </div>
+                                  <button
+                                    className={`${chipRemoveButtonClass} btn-hover`}
+                                    onClick={() =>
+                                      handleRemoveDescriptiveQuestion(
+                                        topic,
+                                        index
+                                      )
+                                    }
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              )
+                            )}
                           </div>
                         )}
                       <div className="mt-2">
@@ -714,10 +759,21 @@ const GenerateQuestionPaper = () => {
                           onClick={() => {
                             setTopicsConfig((prev) => {
                               const newDescConfig = [
-                                ...(prev[topic].descriptiveQuestionConfig || []),
-                                { marks: "", difficulty: "", noOfQuestions: "" },
+                                ...(prev[topic].descriptiveQuestionConfig ||
+                                  []),
+                                {
+                                  marks: "",
+                                  difficulty: "",
+                                  noOfQuestions: "",
+                                },
                               ];
-                              return { ...prev, [topic]: { ...prev[topic], descriptiveQuestionConfig: newDescConfig } };
+                              return {
+                                ...prev,
+                                [topic]: {
+                                  ...prev[topic],
+                                  descriptiveQuestionConfig: newDescConfig,
+                                },
+                              };
                             });
                           }}
                         >
@@ -733,6 +789,7 @@ const GenerateQuestionPaper = () => {
         )}
       </div>
 
+      {/* Bottom action buttons arranged horizontally */}
       <div className="mt-6 flex gap-4">
         <button
           className={`${actionButtonClass} btn-hover`}
@@ -768,6 +825,12 @@ const GenerateQuestionPaper = () => {
           }
         >
           {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
+        </button>
+        <button
+          className={`${actionButtonClass} btn-hover`}
+          onClick={handleOpenModal}
+        >
+          Load from existing blueprint
         </button>
       </div>
     </div>

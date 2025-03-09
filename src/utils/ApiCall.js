@@ -18,7 +18,6 @@ const buildHeaders = () => {
   const token = localStorage.getItem(ACCESS_KEY);
   console.log(token);
   if (token) {
-    console.log("in here");
     myHeaders.append("Authorization", token);
   }
 
