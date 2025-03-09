@@ -197,6 +197,14 @@ export const DocumentSidebar = () => {
     }
   };
 
+  const getDocumentName = ({ name }) => {
+    const names = name.split("_");
+    let capitalisedWords = names.map(
+      (name) => name.charAt(0).toUpperCase() + name.slice(1)
+    );
+    return capitalisedWords.join(" ");
+  };
+
   return (
     <>
       <div className="p-4">
@@ -237,7 +245,7 @@ export const DocumentSidebar = () => {
                   >
                     <div>
                       <h3 className="text-lg font-medium text-gray-800">
-                        {doc.name}
+                        {getDocumentName({ name: doc.name })}
                       </h3>
                       <p className="text-sm text-gray-500">
                         {doc.subject} • Grade {doc.grade}
