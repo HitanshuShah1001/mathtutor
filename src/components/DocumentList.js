@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { postRequest } from "../utils/ApiCall";
+import { deleteRequest, postRequest } from "../utils/ApiCall";
 
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
@@ -205,6 +205,10 @@ export const DocumentSidebar = () => {
     return capitalisedWords.join(" ");
   };
 
+  const getCapitalSubjectName = ({ subject }) => {
+    return subject.charAt(0).toUpperCase() + subject.slice(1);
+  };
+
   return (
     <>
       <div className="p-4">
@@ -248,7 +252,8 @@ export const DocumentSidebar = () => {
                         {getDocumentName({ name: doc.name })}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {doc.subject} • Grade {doc.grade}
+                        {getCapitalSubjectName({ subject: doc.subject })} •
+                        Grade {doc.grade}
                       </p>
                       <p className="text-sm text-gray-500">
                         Created on{" "}
@@ -294,9 +299,17 @@ export const DocumentSidebar = () => {
                       )}
 
                       <button
-                        onClick={() =>
-                          alert("Delete functionality not implemented yet")
-                        }
+                        onClick={async () => {
+                          try {
+                            const response = await deleteRequest(
+                              `${BASE_URL_API}/questionPaper/${doc.id}`
+                            );
+                            fetchDocuments();
+                            // Optionally, add logic to update the UI after deletion.
+                          } catch (error) {
+                            console.error("Error deleting paper:", error);
+                          }
+                        }}
                         className={commonButtonClass}
                       >
                         Delete

@@ -117,7 +117,7 @@ export const putRequest = async (url, body = {}) => {
 // Function to make DELETE requests
 export const deleteRequest = async (url, body = {}) => {
   const myHeaders = buildHeaders();
-  console.log(body, "body");
+
   const requestOptions = {
     method: "DELETE",
     headers: {

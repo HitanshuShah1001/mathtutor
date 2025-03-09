@@ -590,7 +590,8 @@ const QuestionPaperEditPage = () => {
       </DragDropContext>
 
       {/* RIGHT PANEL: Edit question form */}
-      <div className="w-2/3 p-4 overflow-y-auto">
+      <div className="w-2/3 p-4 overflow-hidden" style={{ position: 'relative' }}>
+
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
