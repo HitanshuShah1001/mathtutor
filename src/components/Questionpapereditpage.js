@@ -508,7 +508,7 @@ const QuestionPaperEditPage = () => {
   // RENDER
   // ----------------------------------------
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden fixed inset-0"> {/* Add overflow-hi
       {/* LEFT PANEL: List sections + drag-and-drop */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="w-1/3 border-r p-4 overflow-y-auto">
