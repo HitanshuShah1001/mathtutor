@@ -9,6 +9,7 @@ import { uploadToS3 } from "../utils/s3utils";
 import { BASE_URL_API } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
+import { v4 as uuidv4 } from "uuid";
 
 const QuestionPaperEditPage = () => {
   const { docId } = useParams();
@@ -40,6 +41,11 @@ const QuestionPaperEditPage = () => {
       { key: "D", option: "", imageUrl: "" },
     ],
   });
+
+  // NEW: state for optional question selections (only non-MCQ questions)
+  const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
+    []
+  );
 
   // ----------------------------------------
   // FETCH/REFRESH QUESTION PAPER
@@ -120,6 +126,55 @@ const QuestionPaperEditPage = () => {
 
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
+
+  // NEW: Toggle selection for optional marking
+  const toggleOptionalSelection = (questionId, e) => {
+    e.stopPropagation();
+    setSelectedOptionalQuestions((prev) => {
+      if (prev.includes(questionId)) {
+        return prev.filter((id) => id !== questionId);
+      } else {
+        if (prev.length < 2) {
+          return [...prev, questionId];
+        }
+        return prev;
+      }
+    });
+  };
+
+  // NEW: Mark selected questions as optional
+  const handleMarkAsOptional = async () => {
+    if (selectedOptionalQuestions.length !== 2) return;
+    const optionalGroupId = uuidv4(); // unique group id
+
+    const updatedSections = sections.map((section) => {
+      const updatedQuestions = section.questions.map((q) => {
+        if (selectedOptionalQuestions.includes(q.id)) {
+          return { ...q, optionalGroupId };
+        }
+        return q;
+      });
+      return { ...section, questions: updatedQuestions };
+    });
+    setSections(updatedSections);
+
+    const payload = {
+      id: docId,
+      sections: updatedSections,
+    };
+
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (response.success) {
+      alert("Questions marked as optional successfully!");
+      setSelectedOptionalQuestions([]);
+      await fetchQuestionPaperDetails();
+    } else {
+      alert("Failed to mark questions as optional.");
+    }
+  };
 
   // ----------------------------------------
   // EDIT: changes for question fields
@@ -508,7 +563,7 @@ const QuestionPaperEditPage = () => {
   // RENDER
   // ----------------------------------------
   return (
-    <div className="flex h-screen overflow-hidden fixed inset-0"> {/* Add overflow-hi
+    <div className="flex h-screen overflow-hidden fixed inset-0">
       {/* LEFT PANEL: List sections + drag-and-drop */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="w-1/3 border-r p-4 overflow-y-auto">
@@ -522,6 +577,18 @@ const QuestionPaperEditPage = () => {
               className="w-full p-2 border rounded"
             />
           </div>
+          {/* NEW: Show mark as optional button when exactly two non-MCQ questions are selected */}
+          {selectedOptionalQuestions.length === 2 && (
+            <div className="mb-4">
+              <button
+                onClick={handleMarkAsOptional}
+                className="px-4 py-2 rounded shadow-md"
+                style={{ backgroundColor: "black", color: "white" }}
+              >
+                Mark as Optional
+              </button>
+            </div>
+          )}
 
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
@@ -560,10 +627,34 @@ const QuestionPaperEditPage = () => {
                                   : "bg-white hover:bg-gray-100"
                               }`}
                             >
-                              <div>
+                              <div className="flex items-center gap-2">
+                                {/* NEW: Checkbox for non-MCQ questions */}
+                                {question.type !== "MCQ" && (
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedOptionalQuestions.includes(
+                                      question.id
+                                    )}
+                                    onChange={(e) =>
+                                      toggleOptionalSelection(question.id, e)
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                    disabled={
+                                      !selectedOptionalQuestions.includes(
+                                        question.id
+                                      ) && selectedOptionalQuestions.length >= 2
+                                    }
+                                  />
+                                )}
                                 {renderTruncatedTextWithMath(
                                   question.questionText,
                                   60
+                                )}
+                                {/* NEW: Display badge if question is marked optional */}
+                                {question.optionalGroupId && (
+                                  <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                    Optional
+                                  </span>
                                 )}
                               </div>
                               <button
@@ -588,20 +679,28 @@ const QuestionPaperEditPage = () => {
           ))}
         </div>
       </DragDropContext>
-
       {/* RIGHT PANEL: Edit question form */}
-      <div className="w-2/3 p-4 overflow-hidden" style={{ position: 'relative' }}>
-
+      <div
+        className="w-2/3 p-4 overflow-hidden"
+        style={{ position: "relative" }}
+      >
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
+              {/* NEW: Indicate that the question is optional if applicable */}
+              {editedQuestion?.optionalGroupId && (
+                <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
+                  Optional
+                </span>
+              )}
               {isModified && (
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-blue-500 text-white rounded shadow-md"
+                  className="px-4 py-2 text-white rounded shadow-md"
+                  style={{ backgroundColor: "black" }}
                 >
                   Save
                 </button>
@@ -853,7 +952,6 @@ const QuestionPaperEditPage = () => {
           </div>
         )}
       </div>
-
       {/* -----------------------
           ADD QUESTION MODAL
       ----------------------- */}
