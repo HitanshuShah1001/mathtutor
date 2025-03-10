@@ -129,6 +129,7 @@ const QuestionPaperEditPage = () => {
 
   // NEW: Toggle selection for optional marking
   const toggleOptionalSelection = (questionId, e) => {
+    console.log(questionId);
     e.stopPropagation();
     setSelectedOptionalQuestions((prev) => {
       if (prev.includes(questionId)) {
@@ -141,6 +142,8 @@ const QuestionPaperEditPage = () => {
       }
     });
   };
+
+  console.log(selectedOptionalQuestions);
 
   // NEW: Mark selected questions as optional
   const handleMarkAsOptional = async () => {
@@ -627,7 +630,7 @@ const QuestionPaperEditPage = () => {
                                   : "bg-white hover:bg-gray-100"
                               }`}
                             >
-                              <div className="flex items-center gap-2">
+                              <div className="items-center gap-2">
                                 {/* NEW: Checkbox for non-MCQ questions */}
                                 {question.type !== "MCQ" && (
                                   <input
@@ -639,11 +642,7 @@ const QuestionPaperEditPage = () => {
                                       toggleOptionalSelection(question.id, e)
                                     }
                                     onClick={(e) => e.stopPropagation()}
-                                    disabled={
-                                      !selectedOptionalQuestions.includes(
-                                        question.id
-                                      ) && selectedOptionalQuestions.length >= 2
-                                    }
+                                    style={{marginRight:4}}
                                   />
                                 )}
                                 {renderTruncatedTextWithMath(
