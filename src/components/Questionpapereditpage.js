@@ -23,11 +23,8 @@ const QuestionPaperEditPage = () => {
   // For adding a new question
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
-
-  // We will store which section the user clicked the plus sign for
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
 
-  // State to hold the brand-new question form:
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
@@ -47,6 +44,44 @@ const QuestionPaperEditPage = () => {
     []
   );
 
+  // -------------------------
+  // Panel resizing state
+  // -------------------------
+  const [leftPanelWidth, setLeftPanelWidth] = useState(33); // default ~33%
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+
+      // Calculate new width in percentage
+      let newWidth = (e.clientX / window.innerWidth) * 100;
+      // Clamp between 15% and 60%
+      if (newWidth < 15) newWidth = 15;
+      if (newWidth > 60) newWidth = 60;
+      setLeftPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) setIsResizing(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const handleMouseDown = () => {
+    setIsResizing(true);
+  };
+  // -------------------------
+  // END: Panel resizing logic
+  // -------------------------
+
   // ----------------------------------------
   // FETCH/REFRESH QUESTION PAPER
   // ----------------------------------------
@@ -56,7 +91,6 @@ const QuestionPaperEditPage = () => {
         `${BASE_URL_API}/questionPaper/${docId}`
       );
       if (response.success) {
-        // Adjust based on actual response shape
         setSections(response.questionPaper.sections || []);
       } else {
         console.error("Failed to fetch question paper details:", response);
@@ -129,12 +163,12 @@ const QuestionPaperEditPage = () => {
 
   // NEW: Toggle selection for optional marking
   const toggleOptionalSelection = (questionId, e) => {
-    console.log(questionId);
     e.stopPropagation();
     setSelectedOptionalQuestions((prev) => {
       if (prev.includes(questionId)) {
         return prev.filter((id) => id !== questionId);
       } else {
+        // restrict selection to 2
         if (prev.length < 2) {
           return [...prev, questionId];
         }
@@ -142,8 +176,6 @@ const QuestionPaperEditPage = () => {
       }
     });
   };
-
-  console.log(selectedOptionalQuestions);
 
   // NEW: Mark selected questions as optional
   const handleMarkAsOptional = async () => {
@@ -400,22 +432,19 @@ const QuestionPaperEditPage = () => {
 
       await fetchQuestionPaperDetails();
     } else {
-      // Cross-section moves if needed
+      // handle cross-section moves if needed
     }
   };
 
   // ----------------------------------------
   // ADD NEW QUESTION
-  // (modified to pass the section name)
   // ----------------------------------------
   const handleAddQuestionForSection = (sectionName) => {
-    // store which section user clicked for
     setSectionForNewQuestion(sectionName);
-
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
 
-    // reset the new question form
+    // reset form
     setNewQuestion({
       type: "MCQ",
       questionText: "",
@@ -451,7 +480,7 @@ const QuestionPaperEditPage = () => {
   };
 
   const handleMathKeyDown = (e, field, index) => {
-    // same SHIFT+$ logic if you want
+    // Optional: custom logic to insert $ or handle SHIFT+$ for math
   };
 
   const handleQuestionImageUpload = (e) => {
@@ -476,10 +505,8 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // example: a naive approach to compute a trivial orderIndex.
-  // If you do more complex logic, place it here.
-  const calculateOrderIndex = (q, allSections) => {
-    // For demonstration, just return 1. Or do your logic.
+  const calculateOrderIndex = () => {
+    // Very naive example; you can customize logic as needed.
     return 1;
   };
 
@@ -511,12 +538,10 @@ const QuestionPaperEditPage = () => {
         })
       );
 
-      const orderIndex = calculateOrderIndex(newQuestion, sections);
-
-      // We'll pass sectionForNewQuestion to the backend as well
+      const orderIndex = calculateOrderIndex();
       const payload = {
         ...newQuestion,
-        section: sectionForNewQuestion, // we can pass it if needed
+        section: sectionForNewQuestion, // used if needed on the backend
         imageUrl: updatedImageUrl,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         questionPaperId: docId,
@@ -562,14 +587,14 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ----------------------------------------
-  // RENDER
-  // ----------------------------------------
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
-      {/* LEFT PANEL: List sections + drag-and-drop */}
+      {/* LEFT PANEL (Resizable) + DRAG&DROP */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="w-1/3 border-r p-4 overflow-y-auto">
+        <div
+          className="border-r p-4 overflow-y-auto"
+          style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
+        >
           {/* Search input */}
           <div className="mb-4">
             <input
@@ -580,7 +605,7 @@ const QuestionPaperEditPage = () => {
               className="w-full p-2 border rounded"
             />
           </div>
-          {/* NEW: Show mark as optional button when exactly two non-MCQ questions are selected */}
+          {/* Mark as optional if exactly 2 selected (non-MCQ) */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -631,7 +656,7 @@ const QuestionPaperEditPage = () => {
                               }`}
                             >
                               <div className="items-center gap-2">
-                                {/* NEW: Checkbox for non-MCQ questions */}
+                                {/* Checkbox for non-MCQ questions */}
                                 {question.type !== "MCQ" && (
                                   <input
                                     type="checkbox"
@@ -642,14 +667,14 @@ const QuestionPaperEditPage = () => {
                                       toggleOptionalSelection(question.id, e)
                                     }
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{marginRight:4}}
+                                    style={{ marginRight: 4 }}
                                   />
                                 )}
                                 {renderTruncatedTextWithMath(
                                   question.questionText,
                                   60
                                 )}
-                                {/* NEW: Display badge if question is marked optional */}
+                                {/* Show "Optional" badge if question is in optional group */}
                                 {question.optionalGroupId && (
                                   <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
                                     Optional
@@ -678,10 +703,18 @@ const QuestionPaperEditPage = () => {
           ))}
         </div>
       </DragDropContext>
-      {/* RIGHT PANEL: Edit question form */}
+
+      {/* Resize handle */}
       <div
-        className="w-2/3 p-4 overflow-hidden"
-        style={{ position: "relative" }}
+        onMouseDown={handleMouseDown}
+        style={{ width: "5px", cursor: "col-resize" }}
+        className="bg-gray-300"
+      />
+
+      {/* RIGHT PANEL */}
+      <div
+        className="p-4 overflow-hidden"
+        style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
       >
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
@@ -689,7 +722,7 @@ const QuestionPaperEditPage = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              {/* NEW: Indicate that the question is optional if applicable */}
+              {/* If question is optional */}
               {editedQuestion?.optionalGroupId && (
                 <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
                   Optional
@@ -951,6 +984,7 @@ const QuestionPaperEditPage = () => {
           </div>
         )}
       </div>
+
       {/* -----------------------
           ADD QUESTION MODAL
       ----------------------- */}
@@ -961,7 +995,6 @@ const QuestionPaperEditPage = () => {
               {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
             </h3>
 
-            {/* Section we are adding to: */}
             {sectionForNewQuestion && (
               <div className="text-gray-700 mb-2">
                 <strong>Section:</strong> {sectionForNewQuestion}

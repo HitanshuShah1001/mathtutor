@@ -276,27 +276,26 @@ export const DocumentSidebar = () => {
                       >
                         View
                       </button>
-                      {doc.type !== "archive" && (
-                        <button
-                          onClick={() => {
-                            if (doc.sections && doc.sections.length > 0) {
-                              navigate(`/edit-document/${doc.id}`, {
-                                state: {
-                                  sections: doc.sections,
-                                  docName: doc.name,
-                                },
-                              });
-                            } else {
-                              alert(
-                                "No sections found for this document. Cannot edit."
-                              );
-                            }
-                          }}
-                          className={commonButtonClass}
-                        >
-                          Edit
-                        </button>
-                      )}
+
+                      <button
+                        onClick={() => {
+                          if (doc.sections && doc.sections.length > 0) {
+                            navigate(`/edit-document/${doc.id}`, {
+                              state: {
+                                sections: doc.sections,
+                                docName: doc.name,
+                              },
+                            });
+                          } else {
+                            alert(
+                              "No sections found for this document. Cannot edit."
+                            );
+                          }
+                        }}
+                        className={commonButtonClass}
+                      >
+                        Edit
+                      </button>
 
                       <button
                         onClick={async () => {
