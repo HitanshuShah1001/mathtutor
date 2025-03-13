@@ -1,4 +1,33 @@
-import React, { useState, useEffect } from "react";
+/**
+ * QUESTION BANK COMPONENT WITH INFINITE SCROLL PAGINATION
+ *
+ * 1) API Response:
+ *    {
+ *      "success": true,
+ *      "questions": [...],
+ *      "hasNextPage": true,
+ *      "nextCursor": "2025-03-12T22:20:57.076Z"
+ *    }
+ *
+ * 2) We'll store and pass `cursor` in subsequent calls. The initial call will
+ *    omit `cursor` or pass it as undefined, but once we get a `nextCursor`
+ *    from the response, we use it to fetch more data.
+ *
+ * 3) Infinite Scroll Approach:
+ *    - Listen to the window scroll event. Whenever the user nears the bottom,
+ *      we request more data if `hasNextPage` is `true`.
+ *    - Show a small loading indicator at the bottom while we fetch the next batch.
+ *
+ * 4) We'll handle:
+ *    - A "master" `loading` boolean for the first data fetch or filter changes.
+ *    - An `infiniteLoading` boolean specifically for loading more data.
+ *    - A `cursor` state that updates with each response, and a `hasNextPage` state.
+ *    - Reset logic when filters change (meaning we re-fetch from page 1).
+ *
+ * 5) Code is fully commented to illustrate how each piece fits together.
+ */
+
+import React, { useState, useEffect, useCallback } from "react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
@@ -26,7 +55,6 @@ export const modalContentClass =
 // Renders text with math expressions by replacing an invisible marker with "$"
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
-  // const processedText = text?.replace(new RegExp(MATH_MARKER, "g"), "$");
   const parts = text?.split("$");
   return parts?.map((part, index) =>
     index % 2 === 1 ? (
@@ -40,15 +68,25 @@ const renderTextWithMath = (text) => {
 };
 
 const QuestionBank = () => {
+  // State to store fetched questions
   const [questions, setQuestions] = useState([]);
+  // Tracks which questions are selected for "Generate Paper" or "Delete"
   const [selected, setSelected] = useState({});
+  // 'loading' covers the initial data load or when filters change
   const [loading, setLoading] = useState(false);
+  // 'infiniteLoading' is specifically for fetching more data (pagination)
+  const [infiniteLoading, setInfiniteLoading] = useState(false);
+  // Filter states
   const [filters, setFilters] = useState({
     marks: "",
     type: "",
     difficulty: "",
   });
+  // For searching within question text/options
   const [searchTerm, setSearchTerm] = useState("");
+  // Pagination states
+  const [cursor, setCursor] = useState(undefined);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
   // Modal & form states for Add/Edit Question
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
@@ -67,42 +105,117 @@ const QuestionBank = () => {
     ],
   });
 
+  // Sticky header state
   const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 0);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  // Listen to window scroll for the sticky header style + infinite scroll
+
+  const handleInfiniteScroll = useCallback(() => {
+    // If no more data or we are already fetching new data, do nothing
+    if (!hasNextPage || infiniteLoading || loading) return;
+
+    // Check if user scrolled near bottom (e.g., 300 px threshold)
+    const scrollThreshold = 300;
+    const scrolledToBottom =
+      window.innerHeight + window.scrollY >=
+      document.body.offsetHeight - scrollThreshold;
+
+    if (scrolledToBottom) {
+      // fetch next page
+      fetchQuestions(false);
+    }
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
 
   useEffect(() => {
-    fetchQuestions();
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+      handleInfiniteScroll();
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleInfiniteScroll]);
+
+  // Whenever any filter changes, we reset the questions array, the cursor, etc.
+  // Then fetch fresh data from page 1 (cursor=undefined).
+  useEffect(() => {
+    setQuestions([]);
+    setCursor(undefined);
+    setHasNextPage(true);
+    setSelected({});
+    fetchQuestions(true); // Force fresh load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const fetchQuestions = async () => {
-    setLoading(true);
+  /**
+   *  fetchQuestions
+   *  -------------
+   *  isInitialLoad = true means we are re-loading from scratch (e.g., after filter changes).
+   *  If isInitialLoad = false, we are fetching the "next page" in infinite scroll scenario.
+   */
+  const fetchQuestions = async (isInitialLoad = false) => {
+    // Decide which loading spinner to show
+    console.log('fetching questions')
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setInfiniteLoading(true);
+    }
+
     try {
-      const queryParams = new URLSearchParams({ limit: "10000" });
+      // Build query string. By default, limit=10
+      const queryParams = new URLSearchParams({ limit: "100" });
+
+      // The request body includes filters and possibly the cursor
       const payload = {
         ...(filters.marks && { marks: filters.marks }),
         ...(filters.type && { type: filters.type }),
         ...(filters.difficulty && {
           difficulty: filters.difficulty?.toLowerCase(),
         }),
+        // If we have a cursor from the previous request, include it
+        ...(cursor && { cursor }),
       };
+
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
         payload
       );
-      console.log(response, "response");
-      setQuestions(response.questions);
+
+      console.log("API RESPONSE => ", response);
+
+      // If this is the first load or filter change, override the questions array
+      if (isInitialLoad) {
+        setQuestions(response.questions || []);
+      } else {
+        // Otherwise, append new questions to the existing array
+        setQuestions((prev) => [...prev, ...(response.questions || [])]);
+      }
+
+      // Update pagination states
+      setHasNextPage(response.hasNextPage);
+      setCursor(response.nextCursor);
     } catch (error) {
       console.error("Error fetching questions:", error);
     }
-    setLoading(false);
+
+    // Reset the relevant loading states
+    if (isInitialLoad) {
+      setLoading(false);
+    } else {
+      setInfiniteLoading(false);
+    }
   };
 
+  /**
+   * handleInfiniteScroll
+   * --------------------
+   *  Called on scroll. If the user is near the bottom and hasNextPage is true,
+   *  we load the next page. We also check that we aren't already in the middle
+   *  of an API call.
+   */
+  
+
+  // Toggle selection of a question
   const toggleSelection = (questionId) => {
     setSelected((prev) => ({
       ...prev,
@@ -119,10 +232,10 @@ const QuestionBank = () => {
     console.log("Selected questions:", selectedQuestions);
   };
 
-  // HANDLING MATH IN QUESTION TEXT & OPTIONS
+  // MATH EDITING UTILS
   const MATH_MARKER = "\u200B";
   const handleMathKeyDown = (e, field, index = null) => {
-    if ((e.metaKey)) {
+    if (e.metaKey) {
       e.preventDefault();
       const { selectionStart, selectionEnd, value } = e.target;
       const newValue =
@@ -209,6 +322,7 @@ const QuestionBank = () => {
       console.log("Question upserted:", response);
       setShowAddQuestionModal(false);
       setIsEditing(false);
+      // Reset the newQuestion state
       setNewQuestion({
         type: "MCQ",
         questionText: "",
@@ -222,8 +336,12 @@ const QuestionBank = () => {
           { key: "D", option: "", imageUrl: "" },
         ],
       });
-      fetchQuestions();
+      // Refresh questions from scratch after upserting (in case we updated filters, etc.)
+      setQuestions([]);
+      setCursor(undefined);
+      setHasNextPage(true);
       setSelected({});
+      fetchQuestions(true); // Force re-fetch from beginning
     } catch (error) {
       console.error("Error upserting question:", error);
     }
@@ -246,8 +364,12 @@ const QuestionBank = () => {
           deleteRequest(`${BASE_URL_API}/question/delete`, { id })
         )
       );
-      fetchQuestions();
+      // Reset local states & refetch
+      setQuestions([]);
+      setCursor(undefined);
+      setHasNextPage(true);
       setSelected({});
+      fetchQuestions(true);
     } catch (error) {
       console.error("Error deleting questions:", error);
     }
@@ -288,6 +410,7 @@ const QuestionBank = () => {
     }
   };
 
+  // Filtered list if there's a search term
   const filteredQuestions = questions.filter((q) => {
     if (!searchTerm.trim()) return true;
     const lowerSearch = searchTerm?.toLowerCase();
@@ -413,7 +536,7 @@ const QuestionBank = () => {
       </div>
 
       {/* Questions List */}
-      {loading ? (
+      {loading && questions.length === 0 ? (
         <div className="text-center py-4">Loading questions...</div>
       ) : (
         <div className="space-y-4">
@@ -468,9 +591,23 @@ const QuestionBank = () => {
               </div>
             </div>
           ))}
+
+          {/* Show "No more data" or a small loader for infinite scroll */}
+          {hasNextPage ? (
+            infiniteLoading && (
+              <div className="text-center py-2 text-gray-500">
+                Loading more questions...
+              </div>
+            )
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              No more questions to load
+            </div>
+          )}
         </div>
       )}
 
+      {/* ADD/EDIT QUESTION MODAL */}
       {showAddQuestionModal && (
         <div className={modalContainerClass}>
           <div className={modalContentClass}>
