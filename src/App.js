@@ -19,6 +19,7 @@ import { DocumentSidebar } from "./components/DocumentList";
 import GenerateQuestionPaper from "./components/Questionpaper";
 import QuestionBank from "./components/QuestionBank";
 import QuestionPaperEditPage from "./components/Questionpapereditpage";
+import { CustomPaperCreatePage } from "./components/CustomQuestionPaperGeneration";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
@@ -67,6 +68,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <QuestionBank />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/custom-question-paper-generation"
+              element={
+                <ProtectedRoute>
+                  <CustomPaperCreatePage />
                 </ProtectedRoute>
               }
             />
