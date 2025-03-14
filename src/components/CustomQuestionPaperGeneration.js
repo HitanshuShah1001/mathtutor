@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Trash, Image as ImageIcon, Plus } from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
@@ -11,7 +11,6 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 
 // EXAMPLE: a placeholder QuestionBankModal – you can swap in your real component
-// The user can select multiple questions, then calls onImport( selectedQuestionIds ).
 function QuestionBankModal({ onClose, onImport }) {
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   // For demonstration: we mock some question bank data
@@ -63,24 +62,22 @@ function QuestionBankModal({ onClose, onImport }) {
 }
 
 /**
- * COMPONENT: QuestionPaperEditPage
- * --------------------------------
- * Displays an editable question paper with sections and questions.
- * Features:
- *  - Panel with sections on the left:
- *      - question numbering from 1...n within each section
- *      - reorder questions with drag-and-drop
- *      - button to import from question bank
- *  - Right panel for editing the currently selected question
- *  - Create new question (MCQ or Descriptive) in any section
- *  - Import multiple questions from question bank
- *  - Save, delete, reorder
+ * COMPONENT: CustomPaperCreatePage
+ *
+ * This component allows the user to create or edit a custom question paper.
+ * The left panel displays sections and questions (with numbering per section).
+ * The user can add a new section via a button.
+ * When adding a new section, a modal appears where the section name is prefilled
+ * with the next alphabetical letter (but can be changed) and, upon confirmation,
+ * the section is added and the new question modal is opened for that section.
+ * Users can also add, edit, delete, reorder, or import questions from the question bank.
  */
 export const CustomPaperCreatePage = () => {
   const location = useLocation();
-  // The state object is available on location.state
+  // Retrieve questionPaperId passed via navigate state
   const { questionPaperId } = location.state || {};
 
+  // State to hold paper details (sections array)
   /**
    * The question-paper object from the backend might look like:
    * {
@@ -96,19 +93,15 @@ export const CustomPaperCreatePage = () => {
    */
   // We'll store the data in 'sections'
   const [sections, setSections] = useState([]);
-
-  // For selecting & editing a question:
+  // States for question editing
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
   const [questionImageFile, setQuestionImageFile] = useState(null);
-
-  // For searching questions in left panel
+  // Search state for left panel
   const [searchTerm, setSearchTerm] = useState("");
-
-  // For adding a new question:
+  // Modal for adding a new question (for a section)
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
-  // For the new question form
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
@@ -122,52 +115,52 @@ export const CustomPaperCreatePage = () => {
       { key: "D", option: "", imageUrl: "" },
     ],
   });
-
-  // For optional marking logic
+  // For optional question selection
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
   );
-
-  // For panel resizing
+  // Panel resizing state
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
-
-  // For "Import from Question Bank" modal
+  // Modal for importing questions from question bank
   const [showBankModal, setShowBankModal] = useState({
     visible: false,
-    sectionName: null, // the section we will import into
+    sectionName: null,
   });
+  // NEW: Modal for adding a new section
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
 
-  // =============== MOUSE EVENTS FOR RESIZING PANELS ===============
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!isResizing) return;
-      let newWidth = (e.clientX / window.innerWidth) * 100;
-      if (newWidth < 15) newWidth = 15;
-      if (newWidth > 60) newWidth = 60;
-      setLeftPanelWidth(newWidth);
-    };
-    const handleMouseUp = () => isResizing && setIsResizing(false);
+  const navigate = useNavigate();
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isResizing]);
+  // ======================= Helper Functions =======================
 
-  const handleMouseDown = () => setIsResizing(true);
+  // Computes the next alphabetical letter based on current sections.
+  // If sections exist, takes the max letter (by char code) and returns next letter.
+  // If no sections exist, returns "A".
+  const getNextSectionLetter = () => {
+    if (!sections || sections.length === 0) return "A";
+    const letters = sections
+      .map((sec) => sec.name.trim().toUpperCase())
+      .filter((name) => /^[A-Z]$/.test(name));
+    if (letters.length === 0) return "A";
+    const maxLetter = letters.reduce((prev, curr) =>
+      curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
+    );
+    const nextCharCode = maxLetter.charCodeAt(0) + 1;
+    if (nextCharCode > "Z".charCodeAt(0)) return "A"; // loop around if needed
+    return String.fromCharCode(nextCharCode);
+  };
 
-  // =============== FETCH QUESTION PAPER DATA ===============
+  // ======================= API CALLS =======================
+
+  // Fetch question paper details (sections and questions)
   const fetchQuestionPaperDetails = async () => {
     try {
       const response = await getRequest(
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response?.success) {
-        // The response might have "sections"
-        // Example: response.questionPaper.sections
         setSections(response.questionPaper.sections || []);
       } else {
         console.error("Failed to fetch question paper details:", response);
@@ -224,7 +217,28 @@ export const CustomPaperCreatePage = () => {
     );
   };
 
-  // =============== SEARCH-BASED FILTERING ===============
+  // ======================= MOUSE EVENTS FOR PANEL RESIZING =======================
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+      let newWidth = (e.clientX / window.innerWidth) * 100;
+      if (newWidth < 15) newWidth = 15;
+      if (newWidth > 60) newWidth = 60;
+      setLeftPanelWidth(newWidth);
+    };
+    const handleMouseUp = () => {
+      if (isResizing) setIsResizing(false);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+  const handleMouseDown = () => setIsResizing(true);
+
+  // ======================= LEFT PANEL FILTERING =======================
   const getFilteredSections = () => {
     const lowerSearch = searchTerm?.toLowerCase();
     const filtered = sections.map((section) => {
@@ -238,7 +252,6 @@ export const CustomPaperCreatePage = () => {
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
-  // =============== OPTIONAL GROUP ===============
   const toggleOptionalSelection = (questionId, e) => {
     e.stopPropagation();
     setSelectedOptionalQuestions((prev) =>
@@ -247,12 +260,9 @@ export const CustomPaperCreatePage = () => {
         : [...prev, questionId]
     );
   };
-
   const handleMarkAsOptional = async () => {
-    // Only proceed if exactly 2 questions are selected
     if (selectedOptionalQuestions.length !== 2) return;
-    const optionalGroupId = uuidv4(); // unique grouping
-
+    const optionalGroupId = uuidv4();
     const updatedSections = sections.map((section) => {
       const updatedQuestions = section.questions.map((q) =>
         selectedOptionalQuestions.includes(q.id) ? { ...q, optionalGroupId } : q
@@ -260,8 +270,6 @@ export const CustomPaperCreatePage = () => {
       return { ...section, questions: updatedQuestions };
     });
     setSections(updatedSections);
-
-    // We can store the entire question-paper object
     const payload = {
       id: questionPaperId,
       sections: updatedSections,
@@ -279,7 +287,7 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // =============== EDITING FIELD HANDLERS ===============
+  // ======================= EDITING HANDLERS =======================
   const handleQuestionTextChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, questionText: e.target.value }));
   };
@@ -300,7 +308,7 @@ export const CustomPaperCreatePage = () => {
     });
   };
 
-  // =============== IMAGE CHANGES ===============
+  // ======================= IMAGE HANDLERS (EDIT) =======================
   const handleQuestionImageChange = (e) => {
     const file = e.target.files[0];
     if (file) setQuestionImageFile(file);
@@ -337,7 +345,7 @@ export const CustomPaperCreatePage = () => {
     });
   };
 
-  // =============== SAVE (EDITED) QUESTION ===============
+  // ======================= SAVE (EDITED) QUESTION =======================
   const handleSave = async () => {
     try {
       let updatedImageUrl = editedQuestion.imageUrl || "";
@@ -347,7 +355,6 @@ export const CustomPaperCreatePage = () => {
         }`;
         updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
       }
-      // handle options with potential imageFile
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOpt = { ...opt };
@@ -368,13 +375,10 @@ export const CustomPaperCreatePage = () => {
         options: updatedOptions,
         difficulty: editedQuestion.difficulty?.toLowerCase(),
       };
-
-      // Reuse your "question/upsert" approach from the snippet:
-      // Then refresh the question paper
       const response = await postRequest(`${BASE_URL_API}/question/upsert`, {
         ...finalQuestion,
         questionPaperId: parseInt(questionPaperId),
-        id: finalQuestion.id, // for editing
+        id: finalQuestion.id,
       });
       if (response && response.success) {
         alert("Question updated successfully!");
@@ -391,13 +395,11 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // =============== DELETE QUESTION ===============
+  // ======================= DELETE QUESTION =======================
   const handleDeleteQuestion = async (questionId) => {
     if (!window.confirm("Are you sure you want to delete this question?"))
       return;
     try {
-      // We assume you already have an endpoint or snippet to remove question from the paper
-      // e.g. /questionPaper/removeQuestion
       const res = await postRequest(
         `${BASE_URL_API}/questionPaper/removeQuestion`,
         {
@@ -421,26 +423,19 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // =============== DRAG AND DROP REORDERING ===============
+  // ======================= DRAG AND DROP REORDERING =======================
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
-
-    // Only handle reordering within the same section for simplicity
     if (source.droppableId === destination.droppableId) {
       const sectionIndex = parseInt(source.droppableId, 10);
       const section = sections[sectionIndex];
       const newQuestions = Array.from(section.questions);
       const [removed] = newQuestions.splice(source.index, 1);
       newQuestions.splice(destination.index, 0, removed);
-
       const updatedSections = [...sections];
       updatedSections[sectionIndex] = { ...section, questions: newQuestions };
       setSections(updatedSections);
-
-      // If you want to persist order changes, do so here
-      // e.g. questionPaper/update or questionPaper/addQuestions with new orderIndices
-      // For demonstration, just do questionPaper/update:
       const payload = {
         id: questionPaperId,
         sections: updatedSections,
@@ -456,12 +451,10 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // =============== CREATE NEW QUESTION ===============
+  // ======================= ADD NEW QUESTION (Existing Flow) =======================
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
     setShowAddQuestionModal(true);
-
-    // Reset new question form
     setNewQuestion({
       type: "MCQ",
       questionText: "",
@@ -531,123 +524,52 @@ export const CustomPaperCreatePage = () => {
    * 1) Upsert the question => get questionId
    * 2) Call /questionPaper/addQuestions with that questionId, specifying orderIndex & section
    */
-  const handleNewQuestionSubmit = async () => {
-    try {
-      // 1) Upsert the question to create or get questionId
-      let uploadedQuestionImageUrl = newQuestion.imageUrl || "";
-      if (newQuestion.imageFile) {
-        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-          newQuestion.imageFile.name
-        }`;
-        uploadedQuestionImageUrl = await uploadToS3(
-          newQuestion.imageFile,
-          generatedLink
-        );
-      }
 
-      // Possibly upload each option image if MCQ
-      const updatedOptions = await Promise.all(
-        (newQuestion.options || []).map(async (opt) => {
-          const updatedOpt = { ...opt };
-          if (opt.imageFile) {
-            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
-            }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
-            updatedOpt.imageUrl = uploadedUrl;
-            delete updatedOpt.imageFile;
-          }
-          return updatedOpt;
-        })
-      );
-
-      // We'll first create the question in the DB (like your snippet uses /question/upsert)
-      let createQuestionBody = {
-        ...newQuestion,
-        imageUrl: uploadedQuestionImageUrl,
-        options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
-        difficulty: newQuestion.difficulty?.toLowerCase(),
-      };
-
-      const createRes = await postRequest(
-        `${BASE_URL_API}/question/upsert`,
-        createQuestionBody
-      );
-      if (!createRes?.success || !createRes?.id) {
-        alert("Failed to create question. Aborting...");
-        return;
-      }
-
-      // 2) Now add the newly created question to the question paper with the correct "section" & "orderIndex"
-      const newQuestionId = createRes.id; // backend should return 'id' or questionId
-      const orderIndex = calculateNextOrderIndex(sectionForNewQuestion);
-
-      // The addQuestions endpoint expects an array of questionDetails
-      const addReqBody = {
-        questionPaperId: parseInt(questionPaperId),
-        questionDetails: [
-          {
-            questionId: newQuestionId,
-            orderIndex,
-            section: sectionForNewQuestion,
-          },
-        ],
-      };
-
-      const addRes = await postRequest(
-        `${BASE_URL_API}/questionPaper/addQuestions`,
-        addReqBody
-      );
-      if (addRes?.success) {
-        alert("New question added successfully!");
-      } else {
-        alert("Failed to add question to paper.");
-      }
-
-      // Refresh
-      await fetchQuestionPaperDetails();
-      // Close modal
-      setShowAddQuestionModal(false);
-      setSectionForNewQuestion(null);
-      // Reset
-      setNewQuestion({
-        type: "MCQ",
-        questionText: "",
-        imageUrl: "",
-        marks: "",
-        difficulty: "",
-        options: [
-          { key: "A", option: "", imageUrl: "" },
-          { key: "B", option: "", imageUrl: "" },
-          { key: "C", option: "", imageUrl: "" },
-          { key: "D", option: "", imageUrl: "" },
-        ],
-      });
-    } catch (error) {
-      console.error("Error adding new question:", error);
-      alert("Error adding question.");
+  // ======================= NEW SECTION CREATION =======================
+  const handleAddSection = async () => {
+    // Validate that newSectionName is non-empty
+    if (!newSectionName.trim()) {
+      alert("Please enter a valid section name.");
+      return;
     }
+    // Create a new section object
+    const newSection = { name: newSectionName.trim(), questions: [] };
+    // Update the sections array locally
+    const updatedSections = [...sections, newSection];
+    setSections(updatedSections);
+    // Optionally, call the update API to persist the new section
+    const payload = { id: questionPaperId, sections: updatedSections };
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (!response?.success) {
+      alert("Failed to add new section. Please try again.");
+      return;
+    }
+    // Close the new section modal
+    setShowAddSectionModal(false);
+    setNewSectionName("");
+    // Automatically open the Add New Question modal for the new section
+    setSectionForNewQuestion(newSection.name);
+    setShowAddQuestionModal(true);
   };
 
-  // =============== IMPORT FROM QUESTION BANK ===============
+  // ======================= IMPORT FROM QUESTION BANK =======================
   const handleImportQuestions = async (selectedIds) => {
     if (!selectedIds || selectedIds.length === 0) {
       setShowBankModal({ visible: false, sectionName: null });
       return;
     }
-    // For each question, we need an orderIndex
     const foundSection = sections.find(
       (sec) => sec.name === showBankModal.sectionName
     );
     const baseIndex = foundSection ? foundSection.questions.length : 0;
-
     const questionDetails = selectedIds.map((qId, i) => ({
       questionId: qId,
       orderIndex: baseIndex + i + 1,
       section: showBankModal.sectionName,
     }));
-
-    // We call the /questionPaper/addQuestions endpoint
     try {
       const body = {
         questionPaperId: parseInt(questionPaperId),
@@ -667,8 +589,93 @@ export const CustomPaperCreatePage = () => {
       console.error("Error importing questions:", err);
       alert("Error importing questions.");
     }
-
     setShowBankModal({ visible: false, sectionName: null });
+  };
+
+  // ======================= NEW QUESTION SUBMISSION (Existing Flow) =======================
+  const handleNewQuestionSubmit = async () => {
+    try {
+      let uploadedQuestionImageUrl = newQuestion.imageUrl || "";
+      if (newQuestion.imageFile) {
+        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+          newQuestion.imageFile.name
+        }`;
+        uploadedQuestionImageUrl = await uploadToS3(
+          newQuestion.imageFile,
+          generatedLink
+        );
+      }
+      const updatedOptions = await Promise.all(
+        (newQuestion.options || []).map(async (opt) => {
+          const updatedOpt = { ...opt };
+          if (opt.imageFile) {
+            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+              opt.imageFile.name
+            }`;
+            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+            updatedOpt.imageUrl = uploadedUrl;
+            delete updatedOpt.imageFile;
+          }
+          return updatedOpt;
+        })
+      );
+      let createQuestionBody = {
+        ...newQuestion,
+        imageUrl: uploadedQuestionImageUrl,
+        options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
+        difficulty: newQuestion.difficulty?.toLowerCase(),
+      };
+      const createRes = await postRequest(
+        `${BASE_URL_API}/question/upsert`,
+        createQuestionBody
+      );
+      console.log(createRes, "create res");
+      const newQuestionId = createRes.id;
+      const orderIndex = (() => {
+        const foundSection = sections.find(
+          (sec) => sec.name === sectionForNewQuestion
+        );
+        return foundSection ? foundSection.questions.length + 1 : 1;
+      })();
+      const addReqBody = {
+        questionPaperId: parseInt(questionPaperId),
+        questionDetails: [
+          {
+            questionId: newQuestionId,
+            orderIndex,
+            section: sectionForNewQuestion,
+          },
+        ],
+      };
+      const addRes = await postRequest(
+        `${BASE_URL_API}/questionPaper/addQuestions`,
+        addReqBody
+      );
+      if (addRes?.success) {
+        alert("New question added successfully!");
+      } else {
+        alert("Failed to add question to paper.");
+      }
+      await fetchQuestionPaperDetails();
+      setShowAddQuestionModal(false);
+      setSectionForNewQuestion(null);
+      setNewQuestion({
+        type: "MCQ",
+        questionText: "",
+        imageUrl: "",
+        marks: "",
+        difficulty: "",
+        options: [
+          { key: "A", option: "", imageUrl: "" },
+          { key: "B", option: "", imageUrl: "" },
+          { key: "C", option: "", imageUrl: "" },
+          { key: "D", option: "", imageUrl: "" },
+        ],
+      });
+    } catch (error) {
+      console.error("Error adding new question:", error);
+      alert("Error adding question.");
+    }
   };
 
   return (
@@ -679,8 +686,8 @@ export const CustomPaperCreatePage = () => {
           className="border-r p-4 overflow-y-auto"
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
-          {/* Search box */}
-          <div className="mb-4">
+          {/* Top Controls: Search box and "Add New Section" button */}
+          <div className="mb-4 flex flex-col gap-2">
             <input
               type="text"
               value={searchTerm}
@@ -688,9 +695,19 @@ export const CustomPaperCreatePage = () => {
               placeholder="Search questions..."
               className="w-full p-2 border rounded"
             />
+            <button
+              onClick={() => {
+                // Set default new section name based on current sections
+                setNewSectionName(getNextSectionLetter());
+                setShowAddSectionModal(true);
+              }}
+              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-black transition-colors"
+            >
+              Add New Section
+            </button>
           </div>
 
-          {/* If exactly 2 non-MCQ selected => show Mark as optional */}
+          {/* If exactly 2 non-MCQ selected => show Mark as Optional */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -705,11 +722,10 @@ export const CustomPaperCreatePage = () => {
 
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading */}
+              {/* Section Heading with Import and Add Question buttons */}
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
                 <div className="flex items-center gap-2">
-                  {/* Button: Add new question to this section */}
                   <button
                     onClick={() => handleAddQuestionForSection(section.name)}
                     className="p-2 rounded bg-black text-white flex items-center justify-center"
@@ -717,7 +733,6 @@ export const CustomPaperCreatePage = () => {
                   >
                     <Plus size={16} className="text-white" />
                   </button>
-                  {/* Button: Import from question bank to this section */}
                   <button
                     onClick={() =>
                       setShowBankModal({
@@ -737,7 +752,6 @@ export const CustomPaperCreatePage = () => {
                   <div ref={provided.innerRef} {...provided.droppableProps}>
                     {section.questions.map((question, index) => {
                       const isSelected = editedQuestion?.id === question.id;
-                      // numbering = index+1
                       const questionNumber = index + 1;
                       return (
                         <Draggable
@@ -758,11 +772,9 @@ export const CustomPaperCreatePage = () => {
                               }`}
                             >
                               <div className="flex items-center gap-2">
-                                {/* numbering */}
                                 <span className="text-xs font-bold text-gray-700">
                                   {questionNumber}.
                                 </span>
-                                {/* For non-MCQ, optional checkbox */}
                                 {question.type !== "MCQ" && (
                                   <input
                                     type="checkbox"
@@ -781,14 +793,12 @@ export const CustomPaperCreatePage = () => {
                                     60
                                   )}
                                 </span>
-                                {/* If optional */}
                                 {question.optionalGroupId && (
                                   <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
                                     Optional
                                   </span>
                                 )}
                               </div>
-                              {/* Delete button */}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -845,11 +855,8 @@ export const CustomPaperCreatePage = () => {
                 </button>
               )}
             </div>
-
-            {/* MAIN FIELDS */}
             <div className="flex flex-col md:flex-row md:items-start gap-4">
               <div className="md:w-1/2">
-                {/* TYPE, DIFFICULTY, MARKS */}
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
@@ -880,8 +887,6 @@ export const CustomPaperCreatePage = () => {
                     />
                   </div>
                 </div>
-
-                {/* QUESTION TEXT */}
                 <div className="mt-4">
                   <label className="font-semibold mb-2 block">
                     Edit Question Text:
@@ -892,8 +897,6 @@ export const CustomPaperCreatePage = () => {
                     onChange={handleQuestionTextChange}
                   />
                 </div>
-
-                {/* QUESTION IMAGE */}
                 <div className="mt-4 flex items-center gap-2">
                   <span className="font-semibold">Question Image:</span>
                   {editedQuestion.imageUrl || questionImageFile ? (
@@ -969,8 +972,6 @@ export const CustomPaperCreatePage = () => {
                   )}
                 </div>
               </div>
-
-              {/* MATH PREVIEW (only if questionText has $) */}
               {isEditingMath && (
                 <div className="md:w-1/2 border-l pl-4">
                   <h3 className="font-semibold mb-2">Math Preview</h3>
@@ -980,8 +981,6 @@ export const CustomPaperCreatePage = () => {
                 </div>
               )}
             </div>
-
-            {/* MCQ OPTIONS */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
@@ -997,7 +996,6 @@ export const CustomPaperCreatePage = () => {
                             handleOptionChange(idx, e.target.value)
                           }
                         />
-                        {/* Option image handling */}
                         {opt.imageUrl || opt.imageFile ? (
                           <div className="flex items-center gap-2 ml-2">
                             <img
@@ -1081,7 +1079,6 @@ export const CustomPaperCreatePage = () => {
                           </>
                         )}
                       </div>
-                      {/* Option math preview */}
                       {opt.option && opt.option.includes("$") && (
                         <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
                           {renderTextWithMath(opt.option)}
@@ -1096,7 +1093,67 @@ export const CustomPaperCreatePage = () => {
         )}
       </div>
 
-      {/* ================= ADD NEW QUESTION MODAL ================= */}
+      {/* ===================== RESIZE HANDLE ===================== */}
+      <div
+        onMouseDown={handleMouseDown}
+        style={{ width: "5px", cursor: "col-resize" }}
+        className="bg-gray-300"
+      />
+
+      {/* ===================== NEW SECTION CREATION MODAL ===================== */}
+      {showAddSectionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
+            <button
+              onClick={() => setShowAddSectionModal(false)}
+              className="absolute top-2 right-2 text-black font-bold"
+            >
+              X
+            </button>
+            <h2 className="text-lg font-semibold mb-4 text-black">
+              Add New Section
+            </h2>
+            <div className="mb-4">
+              <label className="block text-black mb-1 font-medium">
+                Section Name
+              </label>
+              <input
+                type="text"
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="Enter section name"
+              />
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowAddSectionModal(false)}
+                className="px-3 py-1 border border-black rounded bg-white text-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSection}
+                className="px-3 py-1 border border-black rounded bg-black text-white"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== IMPORT FROM QUESTION BANK MODAL ===================== */}
+      {showBankModal.visible && (
+        <QuestionBankModal
+          onClose={() =>
+            setShowBankModal({ visible: false, sectionName: null })
+          }
+          onImport={handleImportQuestions}
+        />
+      )}
+
+      {/* ===================== ADD NEW QUESTION MODAL ===================== */}
       {showAddQuestionModal && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white w-[600px] max-h-[80vh] overflow-auto rounded p-4 relative">
@@ -1112,8 +1169,6 @@ export const CustomPaperCreatePage = () => {
             <h3 className="text-lg font-semibold mb-4 text-black">
               Add New Question (Section {sectionForNewQuestion})
             </h3>
-
-            {/* Question Type */}
             <div className="mb-4">
               <label className="block mb-1 font-medium text-black">
                 Question Type
@@ -1127,8 +1182,6 @@ export const CustomPaperCreatePage = () => {
                 <option value="Descriptive">Descriptive</option>
               </select>
             </div>
-
-            {/* Question Text */}
             <div className="mb-4">
               <label className="block mb-1 font-medium text-black">
                 Question Text
@@ -1145,10 +1198,10 @@ export const CustomPaperCreatePage = () => {
                 Preview: {renderTextWithMath(newQuestion.questionText)}
               </div>
             </div>
-
-            {/* Optional question image */}
             <div className="mb-4 text-black">
-              <label className="block mb-1 font-medium">Question Image</label>
+              <label className="block mb-1 font-medium">
+                Question Image (optional)
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -1162,8 +1215,6 @@ export const CustomPaperCreatePage = () => {
                 />
               )}
             </div>
-
-            {/* MCQ options if type=MCQ */}
             {newQuestion.type === "MCQ" && (
               <div className="mb-4 text-black">
                 <label className="block mb-1 font-medium">Options</label>
@@ -1180,13 +1231,14 @@ export const CustomPaperCreatePage = () => {
                       }
                       onKeyDown={(e) => handleMathKeyDown(e, "option", idx)}
                       className="border rounded px-2 py-1 w-full mb-1"
+                      placeholder={`Option ${opt.key} text`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
                       Preview: {renderTextWithMath(opt.option)}
                     </div>
                     <div className="mt-2">
                       <label className="block text-sm font-medium">
-                        Option {opt.key} Image
+                        Option {opt.key} Image (optional)
                       </label>
                       <input
                         type="file"
@@ -1206,8 +1258,6 @@ export const CustomPaperCreatePage = () => {
                 ))}
               </div>
             )}
-
-            {/* Marks + Difficulty */}
             <div className="flex gap-4 mb-4 text-black">
               <div className="flex-1">
                 <label className="block mb-1 font-medium">Marks</label>
@@ -1232,8 +1282,6 @@ export const CustomPaperCreatePage = () => {
                 </select>
               </div>
             </div>
-
-            {/* Actions */}
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => {
@@ -1267,3 +1315,5 @@ export const CustomPaperCreatePage = () => {
     </div>
   );
 };
+
+export default CustomPaperCreatePage;
