@@ -879,6 +879,26 @@ export const CustomPaperCreatePage = () => {
     setShowBankModal({ visible: false, sectionName: null });
   };
 
+  const handleDeleteSection = async ({ sectionName }) => {
+    const updatedSections = sections.filter(
+      (section) => section.name !== sectionName
+    );
+    setSections(updatedSections);
+    const payload = {
+      id: questionPaperId,
+      sections: updatedSections,
+    };
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (response.success) {
+      await fetchQuestionPaperDetails();
+    } else {
+      alert("Failed to mark questions as optional.");
+    }
+  };
+
   // ======================= NEW QUESTION SUBMISSION (Existing Flow) =======================
   const handleNewQuestionSubmit = async () => {
     try {
@@ -1002,10 +1022,22 @@ export const CustomPaperCreatePage = () => {
                         sectionName: section.name,
                       })
                     }
-                    className="p-2 rounded bg-black text-white text-sm"
+                    className="p-2 rounded bg-black text-white flex items-center justify-center text-sm"
+                    style={{ height: "32px" }}
                   >
                     Import
                   </button>
+                  {/* {sections.length >= 2 && (
+                    <button
+                      onClick={() =>
+                        handleDeleteSection({ sectionName: section.name })
+                      }
+                      className="p-2 rounded bg-red-500 text-white flex items-center justify-center"
+                      title="Delete this section"
+                    >
+                      <Trash size={16} className="text-white" />
+                    </button>
+                  )} */}
                 </div>
               </div>
 
