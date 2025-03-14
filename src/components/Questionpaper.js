@@ -19,7 +19,7 @@ import {
 const containerClass = "p-4 fade-in";
 const cardClass = "bg-white rounded-lg shadow p-4 fade-in";
 const cardTitleClass = "text-2xl font-semibold mb-4 text-gray-800";
-const formGroupClass = "mb-4";
+const formGroupClass = "mb-2";
 const labelClass = "block text-gray-800 font-medium mb-1";
 const inputClass =
   "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
@@ -28,7 +28,7 @@ const selectClass =
 const actionButtonClass =
   "px-4 py-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000] transition-colors";
 const chipClass =
-  "inline-flex items-center bg-gray-200 text-gray-800 rounded-full px-3 py-1 mr-2 mb-2";
+  "inline-flex items-center bg-gray-200 text-gray-800 px-3 py-1 mr-2 mb-2";
 const chipRemoveButtonClass = "ml-2 text-red-600 font-bold";
 const gridThreeClass = "grid grid-cols-1 md:grid-cols-3 gap-4";
 const blueprintItemClass =
@@ -61,6 +61,11 @@ const GenerateQuestionPaper = () => {
   const [bluePrintId, setBluePrintId] = useState(null);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
+  // Calculate total configured marks whenever topicsConfig changes
+  useEffect(() => {
+    calculateTotalConfiguredMarks();
+  }, [topicsConfig]);
+
   useEffect(() => {
     if (standard && subject) {
       const topicList = allTopics[subject][standard] || [];
@@ -75,6 +80,32 @@ const GenerateQuestionPaper = () => {
       }
     }
   }, [subject, standard, hasLoadedBlueprint]);
+
+  // Function to calculate total configured marks
+  const calculateTotalConfiguredMarks = () => {
+    let totalMarks = 0;
+
+    Object.values(topicsConfig).forEach((config) => {
+      // Add MCQ marks
+      const mcqCount =
+        (config.easyMCQs || 0) +
+        (config.mediumMCQs || 0) +
+        (config.hardMCQs || 0);
+      totalMarks += mcqCount * (config.mcqMarks || 1);
+
+      // Add descriptive question marks
+      if (config.descriptiveQuestionConfig) {
+        config.descriptiveQuestionConfig.forEach((desc) => {
+          const questionMarks = parseInt(desc.marks) || 0;
+          const questionCount = parseInt(desc.noOfQuestions) || 0;
+          totalMarks += questionMarks * questionCount;
+        });
+      }
+    });
+
+    setConfiguredMarks(totalMarks);
+    return totalMarks;
+  };
 
   const addTopic = (topic) => {
     setTopicsConfig((prev) => {
@@ -109,14 +140,6 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleRemoveTopic = (topicToRemove) => {
-    let prevMarks = configuredMarks;
-    const config = topicsConfig[topicToRemove];
-    prevMarks -=
-      (config.easyMCQs + config.mediumMCQs + config.hardMCQs) * config.mcqMarks;
-    config.descriptiveQuestionConfig.forEach((desc) => {
-      prevMarks -= parseInt(desc.marks) * parseInt(desc.noOfQuestions);
-    });
-    setConfiguredMarks(prevMarks);
     setTopicsConfig((prev) => {
       const newConfig = { ...prev };
       delete newConfig[topicToRemove];
@@ -125,29 +148,30 @@ const GenerateQuestionPaper = () => {
   };
 
   const handleTopicChange = (topic, field, value) => {
-    const prevValue = topicsConfig[topic][field] ?? 0;
-    if (prevValue < value) {
-      const diff = value - prevValue;
-      setConfiguredMarks(configuredMarks + diff);
-    } else {
-      const diff = prevValue - value;
-      setConfiguredMarks(configuredMarks - diff);
-    }
     setTopicsConfig((prev) => {
       const updated = { ...prev[topic], [field]: value };
       return { ...prev, [topic]: updated };
     });
   };
 
+  const handleDescriptiveQuestionChange = (topic, index, field, value) => {
+    setTopicsConfig((prev) => {
+      const updatedArray = [...prev[topic].descriptiveQuestionConfig];
+      updatedArray[index] = {
+        ...updatedArray[index],
+        [field]: value,
+      };
+      return {
+        ...prev,
+        [topic]: {
+          ...prev[topic],
+          descriptiveQuestionConfig: updatedArray,
+        },
+      };
+    });
+  };
+
   const handleRemoveDescriptiveQuestion = (topic, index) => {
-    const config = topicsConfig[topic].descriptiveQuestionConfig;
-    const marksVal = config[index].marks;
-    const noOfQuestions = config[index].noOfQuestions;
-    if (marksVal !== "" && noOfQuestions !== "") {
-      setConfiguredMarks(
-        configuredMarks - parseInt(marksVal) * parseInt(noOfQuestions)
-      );
-    }
     setTopicsConfig((prev) => {
       const updatedArray = [...prev[topic].descriptiveQuestionConfig];
       updatedArray.splice(index, 1);
@@ -256,7 +280,7 @@ const GenerateQuestionPaper = () => {
         {Object.keys(topicsConfig).length > 0 && (
           <div className="mt-2 flex flex-wrap">
             {Object.keys(topicsConfig).map((topic) => (
-              <div key={topic} className={chipClass}>
+              <div key={topic} className={chipClass} style={{borderRadius:4}}>
                 {topic}
                 <button
                   className={chipRemoveButtonClass}
@@ -307,6 +331,7 @@ const GenerateQuestionPaper = () => {
     setStandard(blueprint.grade.toString());
     setSubject(blueprint.subject);
     setMarks(blueprint.totalMarks.toString());
+
     const newTopicsConfig = {};
     blueprint.breakdown.forEach((topic) => {
       newTopicsConfig[topic.topic] = {
@@ -323,16 +348,8 @@ const GenerateQuestionPaper = () => {
         ),
       };
     });
+
     setTopicsConfig(newTopicsConfig);
-    let totalConfiguredMarks = 0;
-    blueprint.breakdown.forEach((topic) => {
-      totalConfiguredMarks +=
-        (topic.easyMCQs + topic.mediumMCQs + topic.hardMCQs) * topic.mcqMarks;
-      topic.descriptiveQuestionConfig.forEach((desc) => {
-        totalConfiguredMarks += desc.marks * desc.noOfQuestions;
-      });
-    });
-    setConfiguredMarks(totalConfiguredMarks);
     setIsModalOpen(false);
   };
 
@@ -365,6 +382,26 @@ const GenerateQuestionPaper = () => {
     } finally {
       setIsAlertModalOpen(true);
     }
+  };
+
+  const handleAddDescriptiveQuestion = (topic) => {
+    setTopicsConfig((prev) => {
+      const newDescConfig = [
+        ...(prev[topic].descriptiveQuestionConfig || []),
+        {
+          marks: "",
+          difficulty: "",
+          noOfQuestions: "",
+        },
+      ];
+      return {
+        ...prev,
+        [topic]: {
+          ...prev[topic],
+          descriptiveQuestionConfig: newDescConfig,
+        },
+      };
+    });
   };
 
   return (
@@ -538,7 +575,7 @@ const GenerateQuestionPaper = () => {
               <h2 className={cardTitleClass}>Topic Configuration</h2>
               {topics.length > 0 && <RenderTopicSelection />}
               {Object.keys(topicsConfig).length > 0 && (
-                <div className="mt-4 space-y-4">
+                <div className="space-y-4">
                   {Object.entries(topicsConfig).map(([topic, config]) => (
                     <div
                       key={topic}
@@ -626,27 +663,14 @@ const GenerateQuestionPaper = () => {
                                       min="0"
                                       className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                                       value={descConfig.marks}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setTopicsConfig((prev) => {
-                                          const updatedArray = [
-                                            ...prev[topic]
-                                              .descriptiveQuestionConfig,
-                                          ];
-                                          updatedArray[index] = {
-                                            ...updatedArray[index],
-                                            marks: val,
-                                          };
-                                          return {
-                                            ...prev,
-                                            [topic]: {
-                                              ...prev[topic],
-                                              descriptiveQuestionConfig:
-                                                updatedArray,
-                                            },
-                                          };
-                                        });
-                                      }}
+                                      onChange={(e) =>
+                                        handleDescriptiveQuestionChange(
+                                          topic,
+                                          index,
+                                          "marks",
+                                          e.target.value
+                                        )
+                                      }
                                     />
                                   </div>
                                   <div className="flex flex-col">
@@ -656,27 +680,14 @@ const GenerateQuestionPaper = () => {
                                     <select
                                       className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                                       value={descConfig.difficulty}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        setTopicsConfig((prev) => {
-                                          const updatedArray = [
-                                            ...prev[topic]
-                                              .descriptiveQuestionConfig,
-                                          ];
-                                          updatedArray[index] = {
-                                            ...updatedArray[index],
-                                            difficulty: val,
-                                          };
-                                          return {
-                                            ...prev,
-                                            [topic]: {
-                                              ...prev[topic],
-                                              descriptiveQuestionConfig:
-                                                updatedArray,
-                                            },
-                                          };
-                                        });
-                                      }}
+                                      onChange={(e) =>
+                                        handleDescriptiveQuestionChange(
+                                          topic,
+                                          index,
+                                          "difficulty",
+                                          e.target.value
+                                        )
+                                      }
                                     >
                                       <option value="">
                                         Select Difficulty
@@ -693,48 +704,14 @@ const GenerateQuestionPaper = () => {
                                     <input
                                       className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
                                       value={descConfig.noOfQuestions}
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        const newNoOfQuestions =
-                                          val !== "" ? parseInt(val) : 0;
-                                        if (descConfig?.marks) {
-                                          const oldQuestionTotal =
-                                            descConfig?.noOfQuestions === ""
-                                              ? 0
-                                              : parseInt(
-                                                  descConfig?.noOfQuestions
-                                                );
-                                          const oldMarks =
-                                            oldQuestionTotal *
-                                            parseInt(descConfig.marks);
-                                          const newMarksForQuestion =
-                                            parseInt(descConfig.marks) *
-                                            newNoOfQuestions;
-                                          const newMarks =
-                                            configuredMarks -
-                                            oldMarks +
-                                            newMarksForQuestion;
-                                          setConfiguredMarks(newMarks);
-                                        }
-                                        setTopicsConfig((prev) => {
-                                          const updatedArray = [
-                                            ...prev[topic]
-                                              .descriptiveQuestionConfig,
-                                          ];
-                                          updatedArray[index] = {
-                                            ...updatedArray[index],
-                                            noOfQuestions: val,
-                                          };
-                                          return {
-                                            ...prev,
-                                            [topic]: {
-                                              ...prev[topic],
-                                              descriptiveQuestionConfig:
-                                                updatedArray,
-                                            },
-                                          };
-                                        });
-                                      }}
+                                      onChange={(e) =>
+                                        handleDescriptiveQuestionChange(
+                                          topic,
+                                          index,
+                                          "noOfQuestions",
+                                          e.target.value
+                                        )
+                                      }
                                     />
                                   </div>
                                   <button
@@ -756,26 +733,7 @@ const GenerateQuestionPaper = () => {
                       <div className="mt-2">
                         <button
                           className={`${actionButtonClass} btn-hover`}
-                          onClick={() => {
-                            setTopicsConfig((prev) => {
-                              const newDescConfig = [
-                                ...(prev[topic].descriptiveQuestionConfig ||
-                                  []),
-                                {
-                                  marks: "",
-                                  difficulty: "",
-                                  noOfQuestions: "",
-                                },
-                              ];
-                              return {
-                                ...prev,
-                                [topic]: {
-                                  ...prev[topic],
-                                  descriptiveQuestionConfig: newDescConfig,
-                                },
-                              };
-                            });
-                          }}
+                          onClick={() => handleAddDescriptiveQuestion(topic)}
                         >
                           +
                         </button>

@@ -9,6 +9,7 @@ import { uploadToS3 } from "../utils/s3utils";
 import { BASE_URL_API } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
+import { v4 as uuidv4 } from "uuid";
 
 const QuestionPaperEditPage = () => {
   const { docId } = useParams();
@@ -22,11 +23,8 @@ const QuestionPaperEditPage = () => {
   // For adding a new question
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
-
-  // We will store which section the user clicked the plus sign for
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
 
-  // State to hold the brand-new question form:
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
@@ -41,6 +39,49 @@ const QuestionPaperEditPage = () => {
     ],
   });
 
+  // NEW: state for optional question selections (only non-MCQ questions)
+  const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
+    []
+  );
+
+  // -------------------------
+  // Panel resizing state
+  // -------------------------
+  const [leftPanelWidth, setLeftPanelWidth] = useState(33); // default ~33%
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing) return;
+
+      // Calculate new width in percentage
+      let newWidth = (e.clientX / window.innerWidth) * 100;
+      // Clamp between 15% and 60%
+      if (newWidth < 15) newWidth = 15;
+      if (newWidth > 60) newWidth = 60;
+      setLeftPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) setIsResizing(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  const handleMouseDown = () => {
+    setIsResizing(true);
+  };
+  // -------------------------
+  // END: Panel resizing logic
+  // -------------------------
+
   // ----------------------------------------
   // FETCH/REFRESH QUESTION PAPER
   // ----------------------------------------
@@ -50,7 +91,6 @@ const QuestionPaperEditPage = () => {
         `${BASE_URL_API}/questionPaper/${docId}`
       );
       if (response.success) {
-        // Adjust based on actual response shape
         setSections(response.questionPaper.sections || []);
       } else {
         console.error("Failed to fetch question paper details:", response);
@@ -120,6 +160,56 @@ const QuestionPaperEditPage = () => {
 
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
+
+  // NEW: Toggle selection for optional marking
+  const toggleOptionalSelection = (questionId, e) => {
+    e.stopPropagation();
+    setSelectedOptionalQuestions((prev) => {
+      if (prev.includes(questionId)) {
+        return prev.filter((id) => id !== questionId);
+      } else {
+        // restrict selection to 2
+        if (prev.length < 2) {
+          return [...prev, questionId];
+        }
+        return prev;
+      }
+    });
+  };
+
+  // NEW: Mark selected questions as optional
+  const handleMarkAsOptional = async () => {
+    if (selectedOptionalQuestions.length !== 2) return;
+    const optionalGroupId = uuidv4(); // unique group id
+
+    const updatedSections = sections.map((section) => {
+      const updatedQuestions = section.questions.map((q) => {
+        if (selectedOptionalQuestions.includes(q.id)) {
+          return { ...q, optionalGroupId };
+        }
+        return q;
+      });
+      return { ...section, questions: updatedQuestions };
+    });
+    setSections(updatedSections);
+
+    const payload = {
+      id: docId,
+      sections: updatedSections,
+    };
+
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (response.success) {
+      alert("Questions marked as optional successfully!");
+      setSelectedOptionalQuestions([]);
+      await fetchQuestionPaperDetails();
+    } else {
+      alert("Failed to mark questions as optional.");
+    }
+  };
 
   // ----------------------------------------
   // EDIT: changes for question fields
@@ -342,22 +432,19 @@ const QuestionPaperEditPage = () => {
 
       await fetchQuestionPaperDetails();
     } else {
-      // Cross-section moves if needed
+      // handle cross-section moves if needed
     }
   };
 
   // ----------------------------------------
   // ADD NEW QUESTION
-  // (modified to pass the section name)
   // ----------------------------------------
   const handleAddQuestionForSection = (sectionName) => {
-    // store which section user clicked for
     setSectionForNewQuestion(sectionName);
-
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
 
-    // reset the new question form
+    // reset form
     setNewQuestion({
       type: "MCQ",
       questionText: "",
@@ -393,7 +480,7 @@ const QuestionPaperEditPage = () => {
   };
 
   const handleMathKeyDown = (e, field, index) => {
-    // same SHIFT+$ logic if you want
+    // Optional: custom logic to insert $ or handle SHIFT+$ for math
   };
 
   const handleQuestionImageUpload = (e) => {
@@ -418,10 +505,8 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // example: a naive approach to compute a trivial orderIndex.
-  // If you do more complex logic, place it here.
-  const calculateOrderIndex = (q, allSections) => {
-    // For demonstration, just return 1. Or do your logic.
+  const calculateOrderIndex = () => {
+    // Very naive example; you can customize logic as needed.
     return 1;
   };
 
@@ -453,12 +538,10 @@ const QuestionPaperEditPage = () => {
         })
       );
 
-      const orderIndex = calculateOrderIndex(newQuestion, sections);
-
-      // We'll pass sectionForNewQuestion to the backend as well
+      const orderIndex = calculateOrderIndex();
       const payload = {
         ...newQuestion,
-        section: sectionForNewQuestion, // we can pass it if needed
+        section: sectionForNewQuestion, // used if needed on the backend
         imageUrl: updatedImageUrl,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         questionPaperId: docId,
@@ -504,14 +587,14 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ----------------------------------------
-  // RENDER
-  // ----------------------------------------
   return (
-    <div className="flex h-screen">
-      {/* LEFT PANEL: List sections + drag-and-drop */}
+    <div className="flex h-screen overflow-hidden fixed inset-0">
+      {/* LEFT PANEL (Resizable) + DRAG&DROP */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="w-1/3 border-r p-4 overflow-y-auto">
+        <div
+          className="border-r p-4 overflow-y-auto"
+          style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
+        >
           {/* Search input */}
           <div className="mb-4">
             <input
@@ -522,19 +605,41 @@ const QuestionPaperEditPage = () => {
               className="w-full p-2 border rounded"
             />
           </div>
+          {/* Mark as optional if exactly 2 selected (non-MCQ) */}
+          {selectedOptionalQuestions.length === 2 && (
+            <div className="mb-4">
+              <button
+                onClick={handleMarkAsOptional}
+                className="px-4 py-2 rounded shadow-md"
+                style={{ backgroundColor: "black", color: "white" }}
+              >
+                Mark as Optional
+              </button>
+            </div>
+          )}
 
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading with plus button */}
+              {/* Section Heading with plus and import buttons */}
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
-                <button
-                  onClick={() => handleAddQuestionForSection(section.name)}
-                  className="p-2 rounded bg-black text-white flex items-center justify-center"
-                  title="Add a new question to this section"
-                >
-                  <Plus size={16} className="text-white" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleAddQuestionForSection(section.name)}
+                    className="p-2 rounded bg-black text-white flex items-center justify-center"
+                    title="Add a new question to this section"
+                  >
+                    <Plus size={16} className="text-white" />
+                  </button>
+                  <button
+                    onClick={() => {}}
+                    className="p-2 rounded text-white flex items-center justify-center"
+                    title="Import questions from question bank"
+                    style={{backgroundColor: "black"}}
+                  >
+                    Import questions from question bank
+                  </button>
+                </div>
               </div>
 
               <Droppable droppableId={`${sectionIndex}`}>
@@ -560,10 +665,30 @@ const QuestionPaperEditPage = () => {
                                   : "bg-white hover:bg-gray-100"
                               }`}
                             >
-                              <div>
+                              <div className="items-center gap-2">
+                                {/* Checkbox for non-MCQ questions */}
+                                {question.type !== "MCQ" && (
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedOptionalQuestions.includes(
+                                      question.id
+                                    )}
+                                    onChange={(e) =>
+                                      toggleOptionalSelection(question.id, e)
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ marginRight: 4 }}
+                                  />
+                                )}
                                 {renderTruncatedTextWithMath(
                                   question.questionText,
                                   60
+                                )}
+                                {/* Show "Optional" badge if question is in optional group */}
+                                {question.optionalGroupId && (
+                                  <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                    Optional
+                                  </span>
                                 )}
                               </div>
                               <button
@@ -589,18 +714,35 @@ const QuestionPaperEditPage = () => {
         </div>
       </DragDropContext>
 
-      {/* RIGHT PANEL: Edit question form */}
-      <div className="w-2/3 p-4 overflow-y-auto">
+      {/* Resize handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        style={{ width: "5px", cursor: "col-resize" }}
+        className="bg-gray-300"
+      />
+
+      {/* RIGHT PANEL */}
+      <div
+        className="p-4 overflow-hidden"
+        style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
+      >
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
+              {/* If question is optional */}
+              {editedQuestion?.optionalGroupId && (
+                <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
+                  Optional
+                </span>
+              )}
               {isModified && (
                 <button
                   onClick={handleSave}
-                  className="px-4 py-2 bg-blue-500 text-white rounded shadow-md"
+                  className="px-4 py-2 text-white rounded shadow-md"
+                  style={{ backgroundColor: "black" }}
                 >
                   Save
                 </button>
@@ -863,7 +1005,6 @@ const QuestionPaperEditPage = () => {
               {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
             </h3>
 
-            {/* Section we are adding to: */}
             {sectionForNewQuestion && (
               <div className="text-gray-700 mb-2">
                 <strong>Section:</strong> {sectionForNewQuestion}

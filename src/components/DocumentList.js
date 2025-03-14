@@ -4,12 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { BASE_URL_API } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { postRequest } from "../utils/ApiCall";
+import { deleteRequest, postRequest } from "../utils/ApiCall";
 
+/**
+ * Available Grades & Subjects for demonstration
+ */
 const GRADES = [7, 8, 9, 10];
 const SUBJECTS = ["Maths", "Science", "English", "History"];
 
-// Extracted CSS class constants
+/**
+ * Common CSS classes for styling
+ */
 const primaryButtonClass =
   "px-4 py-2 bg-[#000] text-white font-semibold rounded-lg hover:bg-[#000] transition-colors";
 const commonButtonClass =
@@ -31,13 +36,28 @@ export const DocumentSidebar = () => {
     subject: null,
   });
 
-  // Modal-related states
+  // Modal-related states for Document View
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDocument, setModalDocument] = useState(null);
   const [modalActiveTab, setModalActiveTab] = useState("question");
 
+  // Dialog for deciding AI vs Custom
+  const [showPaperDialog, setShowPaperDialog] = useState(false);
+
+  // SECOND MODAL: For creating a Custom Paper with name, grade, subject
+  const [showCustomCreateModal, setShowCustomCreateModal] = useState(false);
+
+  // States to hold user input for new custom question paper
+  const [customPaperName, setCustomPaperName] = useState("");
+  const [customPaperGrade, setCustomPaperGrade] = useState("");
+  const [customPaperSubject, setCustomPaperSubject] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
   const navigate = useNavigate();
 
+  /**
+   * Helper: fetch HTML link for a question paper
+   */
   const getHtmlLink = async (questionPaperId) => {
     const url = `${BASE_URL_API}/questionpaper/generateHtml`;
     const body = { questionPaperId };
@@ -51,6 +71,9 @@ export const DocumentSidebar = () => {
     }
   };
 
+  /**
+   * Fetch all documents (question papers) for the user
+   */
   const fetchDocuments = async () => {
     setLoading(true);
     try {
@@ -68,6 +91,7 @@ export const DocumentSidebar = () => {
           data.message === "Invalid or expired access token" ||
           data.message === "Access token is required"
         ) {
+          // Token invalid: remove local data, navigate to login
           navigate("/login");
           removeDataFromLocalStorage();
         }
@@ -86,16 +110,80 @@ export const DocumentSidebar = () => {
     }
   };
 
+  /**
+   * On initial mount or when filters change, fetch documents
+   */
   useEffect(() => {
     fetchDocuments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
+  /**
+   * Instead of direct navigation, open a simple dialog (AI or Custom)
+   */
   const handleCreatePaper = () => {
-    navigate("/question-paper-generation");
+    setShowPaperDialog(true);
   };
 
-  // Dropdown filters component with extracted select and icon styles
+  /**
+   * When user chooses "Custom Paper" from the first dialog:
+   * Close the AI vs Custom dialog, open the form modal for Name, Grade, Subject.
+   */
+  const handleCustomPaperClick = () => {
+    setShowPaperDialog(false);
+    setShowCustomCreateModal(true);
+  };
+
+  /**
+   * On confirm, validate required fields, call the API, then navigate
+   */
+  const handleConfirmCustomPaper = async () => {
+    // Validate
+    if (!customPaperName || !customPaperGrade || !customPaperSubject) {
+      setErrorMessage("All three fields are required.");
+      return;
+    }
+
+    // Clear error
+    setErrorMessage("");
+
+    try {
+      const body = {
+        name: customPaperName,
+        grade: Number(customPaperGrade),
+        subject: customPaperSubject,
+      };
+
+      // Suppose the backend endpoint for creating a paper is:
+      //    POST /questionPaper/create
+      // returning { success: boolean, questionPaperId: number }
+      // Adjust as needed for your actual endpoint
+      const url = `${BASE_URL_API}/questionPaper/create`;
+      const response = await postRequest(url, body);
+      console.log(response);
+      if (response.id) {
+        // Navigate to custom question paper route, passing the new ID
+        navigate("/custom-question-paper-generation", {
+          state: { questionPaperId: response.id },
+        });
+      } else {
+        setErrorMessage(response?.message || "Failed to create paper.");
+      }
+      // Close the form modal
+      setShowCustomCreateModal(false);
+      // Reset form fields
+      setCustomPaperName("");
+      setCustomPaperGrade("");
+      setCustomPaperSubject("");
+    } catch (error) {
+      console.error("Error creating custom paper:", error);
+      setErrorMessage("Something went wrong while creating the paper.");
+    }
+  };
+
+  /**
+   * Filter dropdowns for selecting grade & subject
+   */
   const FilterDropdowns = () => (
     <div className="mb-6 flex items-center gap-4">
       <div className="relative">
@@ -150,7 +238,9 @@ export const DocumentSidebar = () => {
     </div>
   );
 
-  // Helper function to download/print multiple PDFs (for all sets)
+  /**
+   * Helper function to download/print multiple PDFs for all sets in a question paper
+   */
   const downloadAllSetPDFs = async (links) => {
     for (let index = 0; index < links?.length; index++) {
       const link = links[index];
@@ -197,12 +287,22 @@ export const DocumentSidebar = () => {
     }
   };
 
+  /**
+   * Utility to transform doc name from "abc_xyz" => "Abc Xyz"
+   */
   const getDocumentName = ({ name }) => {
     const names = name.split("_");
     let capitalisedWords = names.map(
-      (name) => name.charAt(0).toUpperCase() + name.slice(1)
+      (n) => n.charAt(0).toUpperCase() + n.slice(1)
     );
     return capitalisedWords.join(" ");
+  };
+
+  /**
+   * Utility to capitalize subject
+   */
+  const getCapitalSubjectName = ({ subject }) => {
+    return subject.charAt(0).toUpperCase() + subject.slice(1);
   };
 
   return (
@@ -219,6 +319,7 @@ export const DocumentSidebar = () => {
             Create Question Paper
           </button>
         </div>
+
         <FilterDropdowns />
 
         {/* Document list */}
@@ -248,7 +349,8 @@ export const DocumentSidebar = () => {
                         {getDocumentName({ name: doc.name })}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {doc.subject} • Grade {doc.grade}
+                        {getCapitalSubjectName({ subject: doc.subject })} •
+                        Grade {doc.grade}
                       </p>
                       <p className="text-sm text-gray-500">
                         Created on{" "}
@@ -257,46 +359,53 @@ export const DocumentSidebar = () => {
                     </div>
 
                     <div className="flex gap-2">
+                      {/* View */}
                       <button
                         onClick={async () => {
-                          console.log(doc.type, "doc and its type");
                           const docWithQuestionAndSolutionLink =
                             await getHtmlLink(doc.id);
                           setModalDocument(docWithQuestionAndSolutionLink);
                           setModalActiveTab("question");
                           setModalVisible(true);
-                          // setModalDocument(doc);
                         }}
                         className={commonButtonClass}
                       >
                         View
                       </button>
-                      {doc.type !== "archive" && (
-                        <button
-                          onClick={() => {
-                            if (doc.sections && doc.sections.length > 0) {
-                              navigate(`/edit-document/${doc.id}`, {
-                                state: {
-                                  sections: doc.sections,
-                                  docName: doc.name,
-                                },
-                              });
-                            } else {
-                              alert(
-                                "No sections found for this document. Cannot edit."
-                              );
-                            }
-                          }}
-                          className={commonButtonClass}
-                        >
-                          Edit
-                        </button>
-                      )}
 
+                      {/* Edit */}
                       <button
-                        onClick={() =>
-                          alert("Delete functionality not implemented yet")
-                        }
+                        onClick={() => {
+                          if (doc.sections && doc.sections.length > 0) {
+                            navigate(`/edit-document/${doc.id}`, {
+                              state: {
+                                sections: doc.sections,
+                                docName: doc.name,
+                              },
+                            });
+                          } else {
+                            alert(
+                              "No sections found for this document. Cannot edit."
+                            );
+                          }
+                        }}
+                        className={commonButtonClass}
+                      >
+                        Edit
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        onClick={async () => {
+                          try {
+                            await deleteRequest(
+                              `${BASE_URL_API}/questionPaper/${doc.id}`
+                            );
+                            fetchDocuments();
+                          } catch (error) {
+                            console.error("Error deleting paper:", error);
+                          }
+                        }}
                         className={commonButtonClass}
                       >
                         Delete
@@ -365,6 +474,136 @@ export const DocumentSidebar = () => {
                     : "Answer Sheet"
                 }`}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1) AI vs Custom Paper Choice Dialog */}
+      {showPaperDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div
+            className="bg-white text-black w-[300px] p-6 rounded relative flex flex-col items-center border border-gray-200 shadow-md"
+            style={{ width: "30vw" }}
+          >
+            <button
+              onClick={() => setShowPaperDialog(false)}
+              className="absolute top-2 right-2 text-black font-bold"
+            >
+              X
+            </button>
+            <h2 className="mb-4 font-semibold text-lg">
+              Create Question Paper
+            </h2>
+            <p className="mb-6 text-center">
+              Choose the type of question paper you want to create:
+            </p>
+            <div className="flex flex-row gap-4 w-full justify-end">
+              {/* AI Option */}
+              <button
+                className={commonButtonClass}
+                onClick={() => {
+                  navigate("/question-paper-generation");
+                  setShowPaperDialog(false);
+                }}
+              >
+                AI-generated
+              </button>
+              {/* Custom Option */}
+              <button
+                className={commonButtonClass}
+                onClick={handleCustomPaperClick}
+              >
+                Custom Paper
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2) Custom Paper Creation Modal */}
+      {showCustomCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white border border-gray-200 shadow-lg rounded-lg w-[400px] p-6 relative">
+            <button
+              onClick={() => {
+                setShowCustomCreateModal(false);
+                setErrorMessage("");
+              }}
+              className="absolute top-2 right-2 text-black font-bold"
+            >
+              X
+            </button>
+
+            <h2 className="text-black text-lg font-semibold mb-4">
+              Create Custom Paper
+            </h2>
+            <div className="flex flex-col gap-3">
+              {errorMessage && (
+                <p className="text-red-600 text-sm">{errorMessage}</p>
+              )}
+
+              {/* Paper Name */}
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Paper Name
+                </label>
+                <input
+                  type="text"
+                  value={customPaperName}
+                  onChange={(e) => setCustomPaperName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Enter paper name"
+                />
+              </div>
+
+              {/* Grade Selection */}
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Grade
+                </label>
+                <select
+                  value={customPaperGrade}
+                  onChange={(e) => setCustomPaperGrade(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value="">-- Select Grade --</option>
+                  {GRADES.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subject Selection */}
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Subject
+                </label>
+                <select
+                  value={customPaperSubject}
+                  onChange={(e) => setCustomPaperSubject(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value="">-- Select Subject --</option>
+                  {SUBJECTS.map((sub) => (
+                    <option key={sub} value={sub}>
+                      {sub}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Confirm Button */}
+              <div className="flex justify-end mt-4">
+                <button
+                  className={commonButtonClass}
+                  onClick={handleConfirmCustomPaper}
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
           </div>
         </div>
