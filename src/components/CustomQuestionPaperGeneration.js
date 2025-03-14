@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { Trash, Image as ImageIcon, Plus } from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
@@ -10,15 +10,104 @@ import { BASE_URL_API } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 
-// EXAMPLE: a placeholder QuestionBankModal – you can swap in your real component
-function QuestionBankModal({ onClose, onImport }) {
+const QuestionBankModal = ({ onClose, onImport }) => {
+  const [questions, setQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
-  // For demonstration: we mock some question bank data
-  const questionBankData = [
-    { id: 8001, questionText: "Imported Q1 from question bank" },
-    { id: 8002, questionText: "Imported Q2 from question bank" },
-    { id: 8003, questionText: "Imported Q3 from question bank" },
-  ];
+  const [loading, setLoading] = useState(false);
+  const [infiniteLoading, setInfiniteLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    marks: "",
+    type: "",
+    difficulty: "",
+  });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [cursor, setCursor] = useState(undefined);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const scrollContainerRef = useRef(null);
+
+  // Helper to fetch questions
+  const fetchQuestions = async (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setLoading(true);
+      setQuestions([]);
+      setCursor(undefined);
+      setHasNextPage(true);
+    } else {
+      setInfiniteLoading(true);
+    }
+    try {
+      const queryParams = new URLSearchParams({ limit: "100" });
+      const payload = {
+        ...(filters.marks && { marks: filters.marks }),
+        ...(filters.type && { type: filters.type }),
+        ...(filters.difficulty && {
+          difficulty: filters.difficulty.toLowerCase(),
+        }),
+        ...(cursor && { cursor }),
+        ...(searchTerm && { search: searchTerm }),
+      };
+      const response = await postRequest(
+        `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
+        payload
+      );
+      if (isInitialLoad) {
+        setQuestions(response.questions || []);
+      } else {
+        setQuestions((prev) => [...prev, ...(response.questions || [])]);
+      }
+      setHasNextPage(response.hasNextPage);
+      setCursor(response.nextCursor);
+    } catch (error) {
+      console.error("Error fetching question bank:", error);
+    }
+    if (isInitialLoad) {
+      setLoading(false);
+    } else {
+      setInfiniteLoading(false);
+    }
+  };
+
+  // Infinite scroll logic
+  const handleInfiniteScroll = useCallback(() => {
+    if (!hasNextPage || infiniteLoading || loading) {
+      return;
+    }
+
+    const scrollContainer = scrollContainerRef.current;
+
+    if (!scrollContainer) {
+      return;
+    }
+
+    const scrollThreshold = 100;
+    const { clientHeight, scrollTop, scrollHeight } = scrollContainer;
+
+    const scrolledToBottom =
+      clientHeight + scrollTop >= scrollHeight - scrollThreshold;
+
+    if (scrolledToBottom) {
+      fetchQuestions(false);
+    }
+  }, [hasNextPage, infiniteLoading, loading, cursor, fetchQuestions]);
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+
+    if (scrollContainer) {
+      const handleScroll = () => {
+        handleInfiniteScroll();
+      };
+
+      scrollContainer.addEventListener("scroll", handleScroll);
+
+      return () => {
+        scrollContainer.removeEventListener("scroll", handleScroll);
+      };
+    }
+  }, [handleInfiniteScroll]);
+
+  useEffect(() => {
+    fetchQuestions(true);
+  }, [filters, searchTerm]);
 
   const toggleSelect = (id) => {
     setSelectedQuestions((prev) =>
@@ -26,40 +115,240 @@ function QuestionBankModal({ onClose, onImport }) {
     );
   };
 
+  // Render math text
+  const renderTextWithMath = (text) => {
+    if (!text) return null;
+    const parts = text.split("$");
+    return parts.map((part, index) =>
+      index % 2 === 1 ? (
+        <InlineMath key={index} math={part} />
+      ) : (
+        <span key={index}>{part}</span>
+      )
+    );
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-black font-bold"
-        >
-          X
-        </button>
-        <h2 className="text-lg font-semibold mb-2 text-black">
-          Select Questions to Import
-        </h2>
-        <div className="max-h-[250px] overflow-y-auto text-black">
-          {questionBankData.map((q) => (
-            <div key={q.id} className="flex items-center gap-2 mb-2">
-              <input
-                type="checkbox"
-                checked={selectedQuestions.includes(q.id)}
-                onChange={() => toggleSelect(q.id)}
-              />
-              <span>{q.questionText}</span>
-            </div>
-          ))}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+      <div
+        className="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col"
+        style={{ width: "80%", height: "80%" }}
+      >
+        {/* Header */}
+        <div className="p-4 border-b flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Question Bank</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <span className="text-xl font-bold">&times;</span>
+          </button>
         </div>
-        <button
-          onClick={() => onImport(selectedQuestions)}
-          className="bg-black text-white px-3 py-1 rounded mt-4"
-        >
-          Import Selected
-        </button>
+
+        {/* Filters */}
+        <div className="p-4 border-b">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Search
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search questions..."
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <select
+                value={filters.type}
+                onChange={(e) =>
+                  setFilters({ ...filters, type: e.target.value })
+                }
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Types</option>
+                <option value="MCQ">MCQ</option>
+                <option value="Descriptive">Descriptive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Difficulty
+              </label>
+              <select
+                value={filters.difficulty}
+                onChange={(e) =>
+                  setFilters({ ...filters, difficulty: e.target.value })
+                }
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Difficulties</option>
+                <option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HARD">Hard</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Marks
+              </label>
+              <input
+                type="number"
+                value={filters.marks}
+                onChange={(e) =>
+                  setFilters({ ...filters, marks: e.target.value })
+                }
+                placeholder="Filter by marks"
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Question List */}
+        <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef}>
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <p className="text-gray-500">Loading questions...</p>
+            </div>
+          ) : questions.length === 0 ? (
+            <div className="flex justify-center items-center h-full">
+              <p className="text-gray-500">No questions found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {questions.map((question) => (
+                <div
+                  key={`${question.id}-${Date.now()}`}
+                  className={`p-4 border rounded hover:bg-gray-50 transition-colors cursor-pointer ${
+                    selectedQuestions.includes(question.id)
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => toggleSelect(question.id)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="mb-2">
+                        {renderTextWithMath(question.questionText)}
+                      </div>
+                      {question.imageUrl && (
+                        <div className="mt-2 mb-3">
+                          <img
+                            src={question.imageUrl}
+                            alt="Question"
+                            className="max-h-40 object-contain"
+                          />
+                        </div>
+                      )}
+                      {question.type === "MCQ" && question.options && (
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {question.options.map((option, index) => (
+                            <div key={index} className="flex items-start">
+                              <span className="font-semibold mr-2">
+                                {option.key}.
+                              </span>
+                              <div>
+                                {renderTextWithMath(option.option)}
+                                {option.imageUrl && (
+                                  <img
+                                    src={option.imageUrl}
+                                    alt={`Option ${option.key}`}
+                                    className="mt-1 max-h-20 object-contain"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end ml-4 space-y-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {question.type}
+                      </span>
+                      {question.difficulty && (
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            ${
+                              question.difficulty.toLowerCase() === "easy"
+                                ? "bg-green-100 text-green-800"
+                                : question.difficulty.toLowerCase() === "medium"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                        >
+                          {question.difficulty}
+                        </span>
+                      )}
+                      {question.marks && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          {question.marks} marks
+                        </span>
+                      )}
+                      <div className="mt-2 flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestions.includes(question.id)}
+                          onChange={() => toggleSelect(question.id)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {infiniteLoading && (
+                <div className="text-center py-4">
+                  <p className="text-gray-500">Loading more questions...</p>
+                </div>
+              )}
+              {!hasNextPage && questions.length > 0 && (
+                <div className="text-center py-4">
+                  <p className="text-gray-500">No more questions to load</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t flex justify-between items-center">
+          <div>
+            <span className="text-gray-700">
+              {selectedQuestions.length} questions selected
+            </span>
+          </div>
+          <div className="flex space-x-4">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onImport(selectedQuestions)}
+              disabled={selectedQuestions.length === 0}
+              className={`px-4 py-2 border border-transparent rounded shadow-sm text-sm font-medium text-white ${
+                selectedQuestions.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-black hover:bg-gray-800"
+              }`}
+            >
+              Import Selected
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 /**
  * COMPONENT: CustomPaperCreatePage
@@ -130,8 +419,6 @@ export const CustomPaperCreatePage = () => {
   // NEW: Modal for adding a new section
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
-
-  const navigate = useNavigate();
 
   // ======================= Helper Functions =======================
 
@@ -619,43 +906,18 @@ export const CustomPaperCreatePage = () => {
           return updatedOpt;
         })
       );
+      const orderIndex = calculateNextOrderIndex(sectionForNewQuestion);
+
       let createQuestionBody = {
         ...newQuestion,
         imageUrl: uploadedQuestionImageUrl,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         difficulty: newQuestion.difficulty?.toLowerCase(),
-      };
-      const createRes = await postRequest(
-        `${BASE_URL_API}/question/upsert`,
-        createQuestionBody
-      );
-      console.log(createRes, "create res");
-      const newQuestionId = createRes.id;
-      const orderIndex = (() => {
-        const foundSection = sections.find(
-          (sec) => sec.name === sectionForNewQuestion
-        );
-        return foundSection ? foundSection.questions.length + 1 : 1;
-      })();
-      const addReqBody = {
+        orderIndex,
+        section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
-        questionDetails: [
-          {
-            questionId: newQuestionId,
-            orderIndex,
-            section: sectionForNewQuestion,
-          },
-        ],
       };
-      const addRes = await postRequest(
-        `${BASE_URL_API}/questionPaper/addQuestions`,
-        addReqBody
-      );
-      if (addRes?.success) {
-        alert("New question added successfully!");
-      } else {
-        alert("Failed to add question to paper.");
-      }
+      await postRequest(`${BASE_URL_API}/question/upsert`, createQuestionBody);
       await fetchQuestionPaperDetails();
       setShowAddQuestionModal(false);
       setSectionForNewQuestion(null);

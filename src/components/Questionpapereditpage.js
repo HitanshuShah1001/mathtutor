@@ -620,16 +620,26 @@ const QuestionPaperEditPage = () => {
 
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading with plus button */}
+              {/* Section Heading with plus and import buttons */}
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
-                <button
-                  onClick={() => handleAddQuestionForSection(section.name)}
-                  className="p-2 rounded bg-black text-white flex items-center justify-center"
-                  title="Add a new question to this section"
-                >
-                  <Plus size={16} className="text-white" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleAddQuestionForSection(section.name)}
+                    className="p-2 rounded bg-black text-white flex items-center justify-center"
+                    title="Add a new question to this section"
+                  >
+                    <Plus size={16} className="text-white" />
+                  </button>
+                  <button
+                    onClick={() => {}}
+                    className="p-2 rounded text-white flex items-center justify-center"
+                    title="Import questions from question bank"
+                    style={{backgroundColor: "black"}}
+                  >
+                    Import questions from question bank
+                  </button>
+                </div>
               </div>
 
               <Droppable droppableId={`${sectionIndex}`}>

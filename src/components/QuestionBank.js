@@ -154,7 +154,7 @@ const QuestionBank = () => {
    */
   const fetchQuestions = async (isInitialLoad = false) => {
     // Decide which loading spinner to show
-    console.log('fetching questions')
+    console.log("fetching questions");
     if (isInitialLoad) {
       setLoading(true);
     } else {
@@ -213,7 +213,6 @@ const QuestionBank = () => {
    *  we load the next page. We also check that we aren't already in the middle
    *  of an API call.
    */
-  
 
   // Toggle selection of a question
   const toggleSelection = (questionId) => {
