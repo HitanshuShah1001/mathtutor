@@ -1598,14 +1598,14 @@ export const CustomPaperCreatePage = () => {
       )}
 
       {/* ================= IMPORT FROM QUESTION BANK MODAL ================= */}
-      {showBankModal.visible && (
+      {/* {showBankModal.visible && (
         <QuestionBankModal
           onClose={() =>
             setShowBankModal({ visible: false, sectionName: null })
           }
           onImport={handleImportQuestions}
         />
-      )}
+      )} */}
     </div>
   );
 };
