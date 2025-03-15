@@ -10,9 +10,10 @@ import { BASE_URL_API } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
+import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 
 const QuestionPaperEditPage = () => {
-  const { docId } = useParams();
+  const { docId: questionPaperId } = useParams();
 
   const [sections, setSections] = useState([]);
   const [originalQuestion, setOriginalQuestion] = useState(null);
@@ -24,6 +25,10 @@ const QuestionPaperEditPage = () => {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
+  const [showBankModal, setShowBankModal] = useState({
+    visible: false,
+    sectionName: null,
+  });
 
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
@@ -88,7 +93,7 @@ const QuestionPaperEditPage = () => {
   const fetchQuestionPaperDetails = async () => {
     try {
       const response = await getRequest(
-        `${BASE_URL_API}/questionPaper/${docId}`
+        `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response.success) {
         setSections(response.questionPaper.sections || []);
@@ -194,7 +199,7 @@ const QuestionPaperEditPage = () => {
     setSections(updatedSections);
 
     const payload = {
-      id: docId,
+      id: questionPaperId,
       sections: updatedSections,
     };
 
@@ -228,6 +233,42 @@ const QuestionPaperEditPage = () => {
       ...prev,
       type: newType,
     }));
+  };
+
+  const handleImportQuestions = async (selectedIds) => {
+    if (!selectedIds || selectedIds.length === 0) {
+      setShowBankModal({ visible: false, sectionName: null });
+      return;
+    }
+    const foundSection = sections.find(
+      (sec) => sec.name === showBankModal.sectionName
+    );
+    const baseIndex = foundSection ? foundSection.questions.length : 0;
+    const questionDetails = selectedIds.map((qId, i) => ({
+      questionId: qId,
+      orderIndex: baseIndex + i + 1,
+      section: showBankModal.sectionName,
+    }));
+    try {
+      const body = {
+        questionPaperId: parseInt(questionPaperId),
+        questionDetails,
+      };
+      const resp = await postRequest(
+        `${BASE_URL_API}/questionPaper/addQuestions`,
+        body
+      );
+      if (resp?.success) {
+        alert("Imported questions successfully!");
+        await fetchQuestionPaperDetails();
+      } else {
+        alert("Failed to import questions.");
+      }
+    } catch (err) {
+      console.error("Error importing questions:", err);
+      alert("Error importing questions.");
+    }
+    setShowBankModal({ visible: false, sectionName: null });
   };
 
   const handleDifficultyChange = (e) => {
@@ -339,7 +380,7 @@ const QuestionPaperEditPage = () => {
       let payload = {
         ...updatedQuestion,
         difficulty: updatedQuestion.difficulty?.toLowerCase(),
-        questionPaperId: docId,
+        questionPaperId,
       };
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
@@ -379,7 +420,7 @@ const QuestionPaperEditPage = () => {
           `${BASE_URL_API}/questionPaper/removeQuestion`,
           {
             questionId,
-            questionPaperId: parseInt(docId),
+            questionPaperId: parseInt(questionPaperId),
           }
         );
         if (res.success) {
@@ -419,7 +460,7 @@ const QuestionPaperEditPage = () => {
       setSections(updatedSections);
 
       const payload = {
-        id: docId,
+        id: questionPaperId,
         sections: updatedSections,
       };
       const response = await postRequest(
@@ -544,7 +585,7 @@ const QuestionPaperEditPage = () => {
         section: sectionForNewQuestion, // used if needed on the backend
         imageUrl: updatedImageUrl,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
-        questionPaperId: docId,
+        questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
       };
@@ -632,12 +673,17 @@ const QuestionPaperEditPage = () => {
                     <Plus size={16} className="text-white" />
                   </button>
                   <button
-                    onClick={() => {}}
+                    onClick={() =>
+                      setShowBankModal({
+                        visible: true,
+                        sectionName: section.name,
+                      })
+                    }
                     className="p-2 rounded text-white flex items-center justify-center"
                     title="Import questions from question bank"
-                    style={{backgroundColor: "black"}}
+                    style={{ backgroundColor: "black",height:'32px' }}
                   >
-                    Import questions from question bank
+                    Import questions
                   </button>
                 </div>
               </div>
@@ -1167,6 +1213,14 @@ const QuestionPaperEditPage = () => {
             </div>
           </div>
         </div>
+      )}
+      {showBankModal.visible && (
+        <QuestionBankModal
+          onClose={() =>
+            setShowBankModal({ visible: false, sectionName: null })
+          }
+          onImport={handleImportQuestions}
+        />
       )}
     </div>
   );

@@ -10,7 +10,7 @@ import { BASE_URL_API } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 
-const QuestionBankModal = ({ onClose, onImport }) => {
+export const QuestionBankModal = ({ onClose, onImport }) => {
   const [questions, setQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -1025,7 +1025,7 @@ export const CustomPaperCreatePage = () => {
                     className="p-2 rounded bg-black text-white flex items-center justify-center text-sm"
                     style={{ height: "32px" }}
                   >
-                    Import
+                    Import questions
                   </button>
                   {/* {sections.length >= 2 && (
                     <button
@@ -1598,14 +1598,14 @@ export const CustomPaperCreatePage = () => {
       )}
 
       {/* ================= IMPORT FROM QUESTION BANK MODAL ================= */}
-      {showBankModal.visible && (
+      {/* {showBankModal.visible && (
         <QuestionBankModal
           onClose={() =>
             setShowBankModal({ visible: false, sectionName: null })
           }
           onImport={handleImportQuestions}
         />
-      )}
+      )} */}
     </div>
   );
 };
