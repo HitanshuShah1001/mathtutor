@@ -16,7 +16,6 @@ const buildHeaders = () => {
 
   // Always add the token from localStorage as the Authorization header.
   const token = localStorage.getItem(ACCESS_KEY);
-  console.log(token);
   if (token) {
     myHeaders.append("Authorization", token);
   }
