@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FileText, ChevronDown, DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL_API } from "../constants/constants";
@@ -29,14 +29,24 @@ const dropdownIconClass =
   "absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none";
 
 export const DocumentSidebar = () => {
+  // List of documents
   const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true);
+
+  // Pagination states
+  const [cursor, setCursor] = useState(undefined);
+  const [hasNextPage, setHasNextPage] = useState(true);
+
+  // Loading states
+  const [loading, setLoading] = useState(false);          // For initial load
+  const [infiniteLoading, setInfiniteLoading] = useState(false); // For load-more
+
+  // Filter states
   const [filters, setFilters] = useState({
     grade: null,
     subject: null,
   });
 
-  // Modal-related states for Document View
+  // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDocument, setModalDocument] = useState(null);
   const [modalActiveTab, setModalActiveTab] = useState("question");
@@ -72,51 +82,105 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * Fetch all documents (question papers) for the user
+   * fetchDocuments: loads question papers from the server
+   * isInitialLoad = true => we reset everything
+   * Otherwise, we load the next "page" (using cursor).
    */
-  const fetchDocuments = async () => {
-    setLoading(true);
+  const fetchDocuments = async (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setInfiniteLoading(true);
+    }
+
     try {
+      // We'll send `limit=10` in query params (or whatever you prefer).
+      const queryParams = new URLSearchParams({
+        limit: "10",
+        ...(cursor && { cursor }),
+      });
+
+      // Build the filters body
       const requestBody = {};
       if (filters.grade) requestBody.grade = filters.grade;
       if (filters.subject) requestBody.subject = filters.subject;
 
+      // Fetch from your paginated API
       const data = await postRequest(
-        `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?limit=10000`,
+        `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?${queryParams.toString()}`,
         requestBody
       );
 
+      // Handle invalid token or similar
       if (data.message) {
         if (
           data.message === "Invalid or expired access token" ||
           data.message === "Access token is required"
         ) {
-          // Token invalid: remove local data, navigate to login
-          navigate("/login");
           removeDataFromLocalStorage();
+          navigate("/login");
+          return;
         }
       }
 
       if (data.success && data.questionPapers) {
-        setDocuments(data.questionPapers);
+        // If it's a fresh load, replace documents
+        if (isInitialLoad) {
+          setDocuments(data.questionPapers);
+        } else {
+          // Otherwise, append
+          setDocuments((prev) => [...prev, ...data.questionPapers]);
+        }
+
+        // Suppose your backend returns `hasNextPage` & `nextCursor`
+        setHasNextPage(data.hasNextPage);
+        setCursor(data.nextCursor);
       } else {
-        setDocuments([]);
+        // If no papers or success=false, handle accordingly
+        if (isInitialLoad) setDocuments([]);
       }
     } catch (error) {
       console.error("Error fetching documents:", error);
-      setDocuments([]);
+      if (isInitialLoad) setDocuments([]);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      } else {
+        setInfiniteLoading(false);
+      }
     }
   };
 
   /**
-   * On initial mount or when filters change, fetch documents
+   * When filters change, reset pagination & fetch fresh
    */
   useEffect(() => {
-    fetchDocuments();
+    setDocuments([]);
+    setCursor(undefined);
+    setHasNextPage(true);
+    fetchDocuments(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  /**
+   * Infinite scroll logic
+   */
+  const handleInfiniteScroll = useCallback(() => {
+    if (!hasNextPage || infiniteLoading || loading) return;
+    const scrollThreshold = 300;
+    const scrolledToBottom =
+      window.innerHeight + window.scrollY >=
+      document.body.offsetHeight - scrollThreshold;
+
+    if (scrolledToBottom) {
+      fetchDocuments(false);
+    }
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleInfiniteScroll);
+    return () => window.removeEventListener("scroll", handleInfiniteScroll);
+  }, [handleInfiniteScroll]);
 
   /**
    * Instead of direct navigation, open a simple dialog (AI or Custom)
@@ -143,8 +207,6 @@ export const DocumentSidebar = () => {
       setErrorMessage("All three fields are required.");
       return;
     }
-
-    // Clear error
     setErrorMessage("");
 
     try {
@@ -154,24 +216,18 @@ export const DocumentSidebar = () => {
         subject: customPaperSubject,
       };
 
-      // Suppose the backend endpoint for creating a paper is:
-      //    POST /questionPaper/create
-      // returning { success: boolean, questionPaperId: number }
-      // Adjust as needed for your actual endpoint
       const url = `${BASE_URL_API}/questionPaper/create`;
       const response = await postRequest(url, body);
-      console.log(response);
+
       if (response.id) {
-        // Navigate to custom question paper route, passing the new ID
         navigate("/custom-question-paper-generation", {
           state: { questionPaperId: response.id },
         });
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
       }
-      // Close the form modal
+
       setShowCustomCreateModal(false);
-      // Reset form fields
       setCustomPaperName("");
       setCustomPaperGrade("");
       setCustomPaperSubject("");
@@ -182,7 +238,75 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * Filter dropdowns for selecting grade & subject
+   * Download/print multiple PDFs for all sets in a question paper
+   * (Used in your "Download All Sets" logic)
+   */
+  const downloadAllSetPDFs = async (links) => {
+    for (let index = 0; index < links?.length; index++) {
+      const link = links[index];
+      try {
+        const printWindow = window.open("", "_blank");
+        if (!printWindow) {
+          alert("Popup blocked. Please allow pop-ups for this site.");
+          return;
+        }
+        const response = await fetch(link);
+        const htmlContent = await response.text();
+
+        printWindow.document.open();
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        await new Promise((resolve) => {
+          printWindow.onload = () => {
+            if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
+              printWindow.MathJax.typesetPromise()
+                .then(() => {
+                  printWindow.print();
+                  printWindow.close();
+                  resolve();
+                })
+                .catch((err) => {
+                  console.error("Error during MathJax typesetting:", err);
+                  printWindow.print();
+                  printWindow.close();
+                  resolve();
+                });
+            } else {
+              setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+                resolve();
+              }, 500);
+            }
+          };
+        });
+      } catch (error) {
+        console.error(`Error downloading PDF for set ${index + 1}:`, error);
+      }
+    }
+  };
+
+  /**
+   * Transform doc name from "abc_xyz" => "Abc Xyz"
+   */
+  const getDocumentName = ({ name }) => {
+    const names = name.split("_");
+    let capitalisedWords = names.map(
+      (n) => n.charAt(0).toUpperCase() + n.slice(1)
+    );
+    return capitalisedWords.join(" ");
+  };
+
+  /**
+   * Capitalize subject
+   */
+  const getCapitalSubjectName = ({ subject }) => {
+    return subject.charAt(0).toUpperCase() + subject.slice(1);
+  };
+
+  /**
+   * Filter Dropdowns
    */
   const FilterDropdowns = () => (
     <div className="mb-6 flex items-center gap-4">
@@ -238,73 +362,6 @@ export const DocumentSidebar = () => {
     </div>
   );
 
-  /**
-   * Helper function to download/print multiple PDFs for all sets in a question paper
-   */
-  const downloadAllSetPDFs = async (links) => {
-    for (let index = 0; index < links?.length; index++) {
-      const link = links[index];
-      try {
-        const printWindow = window.open("", "_blank");
-        if (!printWindow) {
-          alert("Popup blocked. Please allow pop-ups for this site.");
-          return;
-        }
-        const response = await fetch(link);
-        const htmlContent = await response.text();
-
-        printWindow.document.open();
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-
-        await new Promise((resolve) => {
-          printWindow.onload = () => {
-            if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
-              printWindow.MathJax.typesetPromise()
-                .then(() => {
-                  printWindow.print();
-                  printWindow.close();
-                  resolve();
-                })
-                .catch((err) => {
-                  console.error("Error during MathJax typesetting:", err);
-                  printWindow.print();
-                  printWindow.close();
-                  resolve();
-                });
-            } else {
-              setTimeout(() => {
-                printWindow.print();
-                printWindow.close();
-                resolve();
-              }, 500);
-            }
-          };
-        });
-      } catch (error) {
-        console.error(`Error downloading PDF for set ${index + 1}:`, error);
-      }
-    }
-  };
-
-  /**
-   * Utility to transform doc name from "abc_xyz" => "Abc Xyz"
-   */
-  const getDocumentName = ({ name }) => {
-    const names = name.split("_");
-    let capitalisedWords = names.map(
-      (n) => n.charAt(0).toUpperCase() + n.slice(1)
-    );
-    return capitalisedWords.join(" ");
-  };
-
-  /**
-   * Utility to capitalize subject
-   */
-  const getCapitalSubjectName = ({ subject }) => {
-    return subject.charAt(0).toUpperCase() + subject.slice(1);
-  };
-
   return (
     <>
       <div className="p-4">
@@ -323,7 +380,7 @@ export const DocumentSidebar = () => {
         <FilterDropdowns />
 
         {/* Document list */}
-        {loading ? (
+        {loading && documents.length === 0 ? (
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             <p className="ml-4 text-gray-600">Loading documents...</p>
@@ -401,7 +458,11 @@ export const DocumentSidebar = () => {
                             await deleteRequest(
                               `${BASE_URL_API}/questionPaper/${doc.id}`
                             );
-                            fetchDocuments();
+                            // After deleting, refresh from scratch
+                            setDocuments([]);
+                            setCursor(undefined);
+                            setHasNextPage(true);
+                            fetchDocuments(true);
                           } catch (error) {
                             console.error("Error deleting paper:", error);
                           }
@@ -413,6 +474,19 @@ export const DocumentSidebar = () => {
                     </div>
                   </div>
                 ))}
+
+                {/* Infinite scroll loader or "No more data" message */}
+                {hasNextPage ? (
+                  infiniteLoading && (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading more documents...
+                    </div>
+                  )
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    No more documents to load
+                  </div>
+                )}
               </div>
             )}
           </div>
