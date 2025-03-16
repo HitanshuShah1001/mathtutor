@@ -6,26 +6,161 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { BASE_URL_API } from "../constants/constants";
+import {
+  BASE_URL_API,
+  difficulties,
+  examDays,
+  examMonths,
+  examNames,
+  examYears,
+  grades,
+  marksOptions,
+  questionTypes,
+  shifts,
+  streams,
+  subjects,
+  types,
+} from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 
+// --- FilterGroupAccordion Component ---
+const FilterGroupAccordion = ({
+  label,
+  filterKey,
+  values,
+  isOpen,
+  onToggleAccordion,
+  selectedValues,
+  toggleFilterValue,
+}) => {
+  return (
+    <div className="border-b mb-2">
+      {/* Header: clickable area to expand/collapse */}
+      <div
+        className="flex items-center justify-between cursor-pointer py-2 px-1"
+        onClick={() => onToggleAccordion(filterKey)}
+      >
+        <h3 className="font-semibold text-base">{label}</h3>
+        <span className="text-sm text-gray-600 select-none">
+          {isOpen ? "▲" : "▼"}
+        </span>
+      </div>
+      {/* Body: Only visible if isOpen is true */}
+      {isOpen && (
+        <div className="flex flex-wrap gap-2 pb-3 pt-1 px-1">
+          {values.map((val) => {
+            const isSelected = selectedValues.includes(val);
+            return (
+              <span
+                key={val}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFilterValue(filterKey, val);
+                }}
+                className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
+                  isSelected
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                }`}
+              >
+                {val}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Main Component ---
+
 export const QuestionBankModal = ({ onClose, onImport }) => {
+  const blackButtonClass =
+    "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200";
+  // Questions and selection states
   const [questions, setQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
+
+  // Updated filters as multi-select arrays
   const [filters, setFilters] = useState({
-    marks: "",
-    type: "",
-    difficulty: "",
+    marks: [],
+    types: [],
+    difficulties: [],
+    grades: [],
+    subjects: [],
+    examDays: [],
+    examMonths: [],
+    examYears: [],
+    shifts: [],
+    streams: [],
+    examNames: [],
+    questionTypes: [],
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [cursor, setCursor] = useState(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
   const scrollContainerRef = useRef(null);
 
-  // Helper to fetch questions
+  // State for filter accordions open/close
+  const [openFilterGroups, setOpenFilterGroups] = useState({
+    marks: false,
+    types: false,
+    difficulties: false,
+    grades: false,
+    subjects: false,
+    examDays: false,
+    examMonths: false,
+    examYears: false,
+    shifts: false,
+    streams: false,
+    examNames: false,
+    questionTypes: false,
+  });
+
+  // State to toggle the entire left panel visibility
+  const [showFilterPanel, setShowFilterPanel] = useState(true);
+
+  const onToggleAccordion = (filterKey) => {
+    setOpenFilterGroups((prev) => ({
+      ...prev,
+      [filterKey]: !prev[filterKey],
+    }));
+  };
+
+  const toggleFilterValue = (filterKey, value) => {
+    setFilters((prev) => {
+      const existingValues = prev[filterKey];
+      let newValues;
+      if (existingValues.includes(value)) {
+        newValues = existingValues.filter((v) => v !== value);
+      } else {
+        newValues = [...existingValues, value];
+      }
+      return { ...prev, [filterKey]: newValues };
+    });
+  };
+
+  // Define filter groups to display—all filters from state
+  const filterGroups = [
+    { label: "Marks", key: "marks", values: marksOptions },
+    { label: "Types", key: "types", values: types },
+    { label: "Difficulty", key: "difficulties", values: difficulties },
+    { label: "Grades", key: "grades", values: grades },
+    { label: "Subjects", key: "subjects", values: subjects },
+    { label: "Exam Days", key: "examDays", values: examDays },
+    { label: "Exam Months", key: "examMonths", values: examMonths },
+    { label: "Exam Years", key: "examYears", values: examYears },
+    { label: "Shifts", key: "shifts", values: shifts },
+    { label: "Streams", key: "streams", values: streams },
+    { label: "Exam Names", key: "examNames", values: examNames },
+    { label: "Question Types", key: "questionTypes", values: questionTypes },
+  ];
+
+  // --- Fetch Questions ---
   const fetchQuestions = async (isInitialLoad = false) => {
     if (isInitialLoad) {
       setLoading(true);
@@ -36,12 +171,25 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
       setInfiniteLoading(true);
     }
     try {
-      const queryParams = new URLSearchParams({ limit: "100" });
+      const queryParams = new URLSearchParams({ limit: "10" });
       const payload = {
-        ...(filters.marks && { marks: filters.marks }),
-        ...(filters.type && { type: filters.type }),
-        ...(filters.difficulty && {
-          difficulty: filters.difficulty.toLowerCase(),
+        ...(filters.marks.length > 0 && { marks: filters.marks }),
+        ...(filters.types.length > 0 && { types: filters.types }),
+        ...(filters.difficulties.length > 0 && {
+          difficulties: filters.difficulties.map((d) => d.toLowerCase()),
+        }),
+        ...(filters.grades.length > 0 && { grades: filters.grades }),
+        ...(filters.subjects.length > 0 && { subjects: filters.subjects }),
+        ...(filters.examDays.length > 0 && { examDays: filters.examDays }),
+        ...(filters.examMonths.length > 0 && {
+          examMonths: filters.examMonths,
+        }),
+        ...(filters.examYears.length > 0 && { examYears: filters.examYears }),
+        ...(filters.shifts.length > 0 && { shifts: filters.shifts }),
+        ...(filters.streams.length > 0 && { streams: filters.streams }),
+        ...(filters.examNames.length > 0 && { examNames: filters.examNames }),
+        ...(filters.questionTypes.length > 0 && {
+          questionTypes: filters.questionTypes,
         }),
         ...(cursor && { cursor }),
         ...(searchTerm && { search: searchTerm }),
@@ -67,38 +215,25 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     }
   };
 
-  // Infinite scroll logic
+  // --- Infinite Scroll Logic ---
   const handleInfiniteScroll = useCallback(() => {
-    if (!hasNextPage || infiniteLoading || loading) {
-      return;
-    }
-
+    if (!hasNextPage || infiniteLoading || loading) return;
     const scrollContainer = scrollContainerRef.current;
-
-    if (!scrollContainer) {
-      return;
-    }
-
+    if (!scrollContainer) return;
     const scrollThreshold = 100;
     const { clientHeight, scrollTop, scrollHeight } = scrollContainer;
-
-    const scrolledToBottom =
-      clientHeight + scrollTop >= scrollHeight - scrollThreshold;
-
-    if (scrolledToBottom) {
+    if (clientHeight + scrollTop >= scrollHeight - scrollThreshold) {
       fetchQuestions(false);
     }
-  }, [hasNextPage, infiniteLoading, loading, cursor, fetchQuestions]);
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
+
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
-
     if (scrollContainer) {
       const handleScroll = () => {
         handleInfiniteScroll();
       };
-
       scrollContainer.addEventListener("scroll", handleScroll);
-
       return () => {
         scrollContainer.removeEventListener("scroll", handleScroll);
       };
@@ -128,197 +263,186 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     );
   };
 
+  const resetAllFilters = () => {
+    setFilters({
+      marks: [],
+      types: [],
+      difficulties: [],
+      grades: [],
+      subjects: [],
+      examDays: [],
+      examMonths: [],
+      examYears: [],
+      shifts: [],
+      streams: [],
+      examNames: [],
+      questionTypes: [],
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div
         className="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col"
-        style={{ width: "80%", height: "80%" }}
+        style={{ width: "90%", height: "90%" }}
       >
-        {/* Header */}
+        {/* Modal Header with Filter Panel Toggle */}
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold">Question Bank</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <span className="text-xl font-bold">&times;</span>
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="p-4 border-b">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search questions..."
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Type
-              </label>
-              <select
-                value={filters.type}
-                onChange={(e) =>
-                  setFilters({ ...filters, type: e.target.value })
-                }
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Types</option>
-                <option value="MCQ">MCQ</option>
-                <option value="Descriptive">Descriptive</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Difficulty
-              </label>
-              <select
-                value={filters.difficulty}
-                onChange={(e) =>
-                  setFilters({ ...filters, difficulty: e.target.value })
-                }
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Difficulties</option>
-                <option value="EASY">Easy</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HARD">Hard</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Marks
-              </label>
-              <input
-                type="number"
-                value={filters.marks}
-                onChange={(e) =>
-                  setFilters({ ...filters, marks: e.target.value })
-                }
-                placeholder="Filter by marks"
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+              className="px-3 py-2 border rounded"
+            >
+              {showFilterPanel ? "Hide Filters" : "Show Filters"}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <span className="text-xl font-bold">&times;</span>
+            </button>
           </div>
         </div>
 
-        {/* Question List */}
-        <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef}>
-          {loading ? (
-            <div className="flex justify-center items-center h-full">
-              <p className="text-gray-500">Loading questions...</p>
-            </div>
-          ) : questions.length === 0 ? (
-            <div className="flex justify-center items-center h-full">
-              <p className="text-gray-500">No questions found</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((question) => (
-                <div
-                  key={`${question.id}-${Date.now()}`}
-                  className={`p-4 border rounded hover:bg-gray-50 transition-colors cursor-pointer ${
-                    selectedQuestions.includes(question.id)
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200"
-                  }`}
-                  onClick={() => toggleSelect(question.id)}
+        {/* Modal Content: Left panel for Filters and Right panel for Questions */}
+        <div className="flex flex-1 overflow-hidden">
+          {showFilterPanel && (
+            <div
+              className="w-64 border-r overflow-y-auto p-4"
+              style={{ backgroundColor: "white" }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-bold text-lg">Filters</h2>
+                <button
+                  className={`${blackButtonClass} px-3 py-2`}
+                  onClick={resetAllFilters}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="mb-2">
-                        {renderTextWithMath(question.questionText)}
-                      </div>
-                      {question.imageUrl && (
-                        <div className="mt-2 mb-3">
-                          <img
-                            src={question.imageUrl}
-                            alt="Question"
-                            className="max-h-40 object-contain"
-                          />
+                  Reset
+                </button>
+              </div>
+              {filterGroups.map(({ label, key, values }) => (
+                <FilterGroupAccordion
+                  key={key}
+                  label={label}
+                  filterKey={key}
+                  values={values}
+                  isOpen={openFilterGroups[key]}
+                  onToggleAccordion={onToggleAccordion}
+                  selectedValues={filters[key]}
+                  toggleFilterValue={toggleFilterValue}
+                />
+              ))}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef}>
+            {loading ? (
+              <div className="flex justify-center items-center h-full">
+                <p className="text-gray-500">Loading questions...</p>
+              </div>
+            ) : questions.length === 0 ? (
+              <div className="flex justify-center items-center h-full">
+                <p className="text-gray-500">No questions found</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {questions.map((question) => (
+                  <div
+                    key={question.id}
+                    className={`p-4 border rounded hover:bg-gray-50 transition-colors cursor-pointer ${
+                      selectedQuestions.includes(question.id)
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() => toggleSelect(question.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="mb-2">
+                          {renderTextWithMath(question.questionText)}
                         </div>
-                      )}
-                      {question.type === "MCQ" && question.options && (
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {question.options.map((option, index) => (
-                            <div key={index} className="flex items-start">
-                              <span className="font-semibold mr-2">
-                                {option.key}.
-                              </span>
-                              <div>
-                                {renderTextWithMath(option.option)}
-                                {option.imageUrl && (
-                                  <img
-                                    src={option.imageUrl}
-                                    alt={`Option ${option.key}`}
-                                    className="mt-1 max-h-20 object-contain"
-                                  />
-                                )}
+                        {question.imageUrl && (
+                          <div className="mt-2 mb-3">
+                            <img
+                              src={question.imageUrl}
+                              alt="Question"
+                              className="max-h-40 object-contain"
+                            />
+                          </div>
+                        )}
+                        {question.type === "MCQ" && question.options && (
+                          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {question.options.map((option, index) => (
+                              <div key={index} className="flex items-start">
+                                <span className="font-semibold mr-2">
+                                  {option.key}.
+                                </span>
+                                <div>
+                                  {renderTextWithMath(option.option)}
+                                  {option.imageUrl && (
+                                    <img
+                                      src={option.imageUrl}
+                                      alt={`Option ${option.key}`}
+                                      className="mt-1 max-h-20 object-contain"
+                                    />
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end ml-4 space-y-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {question.type}
-                      </span>
-                      {question.difficulty && (
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                            ${
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end ml-4 space-y-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {question.type}
+                        </span>
+                        {question.difficulty && (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               question.difficulty.toLowerCase() === "easy"
                                 ? "bg-green-100 text-green-800"
                                 : question.difficulty.toLowerCase() === "medium"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-red-100 text-red-800"
                             }`}
-                        >
-                          {question.difficulty}
-                        </span>
-                      )}
-                      {question.marks && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                          {question.marks} marks
-                        </span>
-                      )}
-                      <div className="mt-2 flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedQuestions.includes(question.id)}
-                          onChange={() => toggleSelect(question.id)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                          >
+                            {question.difficulty}
+                          </span>
+                        )}
+                        {question.marks && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            {question.marks} marks
+                          </span>
+                        )}
+                        <div className="mt-2 flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedQuestions.includes(question.id)}
+                            onChange={() => toggleSelect(question.id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {infiniteLoading && (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">Loading more questions...</p>
-                </div>
-              )}
-              {!hasNextPage && questions.length > 0 && (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">No more questions to load</p>
-                </div>
-              )}
-            </div>
-          )}
+                ))}
+                {infiniteLoading && (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">Loading more questions...</p>
+                  </div>
+                )}
+                {!hasNextPage && questions.length > 0 && (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">No more questions to load</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Footer */}
+        {/* Modal Footer */}
         <div className="p-4 border-t flex justify-between items-center">
           <div>
             <span className="text-gray-700">
