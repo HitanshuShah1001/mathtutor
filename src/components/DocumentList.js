@@ -1,5 +1,21 @@
+/**
+ * This file defines the DocumentSidebar component which serves as a filterable document
+ * list and includes functionality for creating, viewing, editing, and deleting question
+ * papers. The component also includes a modal-based viewer for viewing question papers
+ *
+ * Overall Flow:
+ * 1. We have filter accordions on the left to filter the list of question papers from an API.
+ * 2. As a user scrolls, more documents are fetched and appended (infinite scroll).
+ * 3. Users can view, edit, or delete documents.
+ * 4. There’s a modal-based flow that allows for creating new question papers – either AI-generated
+ *    or completely custom (manually built).
+ * 5. When a document is viewed, the code fetches its HTML version from the server and displays it
+ *    in a modal. A solution link can also be viewed if available.
+ * 6. The entire file focuses on user-friendly UI interactions (accordions, modals, infinite scrolling).
+ */
+
 import React, { useState, useEffect, useCallback } from "react";
-import { FileText, DownloadIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   grades,
@@ -21,7 +37,7 @@ import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
 
 /**
- * Common CSS classes for styling
+ * Reusable styling classes for various buttons and input fields.
  */
 const primaryButtonClass =
   "px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors";
@@ -31,28 +47,11 @@ const modalButtonClass =
   "p-2 bg-black text-white font-semibold rounded hover:bg-black";
 const downloadButtonClass =
   "inline-flex items-center px-3 py-2 bg-black text-white font-semibold rounded-md hover:bg-black transition-colors";
-const selectClass =
-  "appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-8 text-black font-semibold focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
-const dropdownIconClass =
-  "absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none";
 
-// Mapping for filter labels (used in chips)
-const filterLabels = {
-  grade: "Grade",
-  subject: "Subject",
-  examDays: "Exam Day",
-  examMonths: "Exam Month",
-  examYears: "Exam Year",
-  shifts: "Shift",
-  streams: "Stream",
-  examNames: "Exam Name",
-  marks: "Marks",
-  types: "Type",
-  difficulties: "Difficulty",
-  questionTypes: "Question Type",
-};
-
-// Accordion-like component for each filter group
+/**
+ * This component creates an accordion-based group of filter options for a particular filter category.
+ * Each group can expand/collapse, and it displays a list of possible values to select.
+ */
 const FilterGroupAccordion = ({
   label,
   filterKey,
@@ -64,6 +63,7 @@ const FilterGroupAccordion = ({
 }) => {
   return (
     <div className="border-b mb-2">
+      {/* Accordion header with label and toggle icon */}
       <div
         className="flex items-center justify-between cursor-pointer py-2 px-1"
         onClick={() => onToggleAccordion(filterKey)}
@@ -73,6 +73,8 @@ const FilterGroupAccordion = ({
           {isOpen ? "▲" : "▼"}
         </span>
       </div>
+
+      {/* If the accordion is open, render the list of filter values */}
       {isOpen && (
         <div className="flex flex-wrap gap-2 pb-3 pt-1 px-1">
           {values.map((val) => {
@@ -100,21 +102,36 @@ const FilterGroupAccordion = ({
   );
 };
 
+/**
+ * Main component: DocumentSidebar
+ *
+ * This component:
+ * - Renders a sidebar with various filters (grades, subjects, exam details, etc.).
+ * - Manages state for fetched documents, loading states, pagination, and modal dialogs.
+ * - Handles creation of new question papers (both AI-generated and custom).
+ * - Handles viewing (with a modal), editing, and deleting of question papers.
+ * - Implements infinite scrolling to load more papers as the user scrolls.
+ */
 export const DocumentSidebar = () => {
   const navigate = useNavigate();
 
-  // List of documents
+  /**
+   * documents: Array of fetched documents (question papers).
+   * cursor: Used for pagination; the API returns a cursor to get the next page.
+   * hasNextPage: Indicates if there are more pages to load.
+   * loading: Boolean for the first load or filter change (displays main spinner).
+   * infiniteLoading: Boolean for additional pages loading (displays smaller spinner).
+   */
   const [documents, setDocuments] = useState([]);
-
-  // Pagination states
   const [cursor, setCursor] = useState(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
-
-  // Loading states
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
 
-  // Filters as multi-select arrays.
+  /**
+   * filters: Object that holds arrays of selected filter values (multi-select).
+   * Each filter category can hold multiple values (e.g., multiple subjects or grades).
+   */
   const [filters, setFilters] = useState({
     grade: [],
     subject: [],
@@ -130,28 +147,46 @@ export const DocumentSidebar = () => {
     questionTypes: [],
   });
 
-  // Modal states
+  /**
+   * Modals and dialogs:
+   * - modalVisible: Controls visibility of the "View Document" modal.
+   * - modalDocument: Holds the data for the document being viewed.
+   * - modalActiveTab: Toggles between "question" and "solution" inside the viewing modal.
+   * - showPaperDialog: Shows a prompt to choose between AI-generated or custom paper creation.
+   * - showCustomCreateModal: After user selects "Custom Paper," open a form for name/grade/subject.
+   */
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDocument, setModalDocument] = useState(null);
   const [modalActiveTab, setModalActiveTab] = useState("question");
 
-  // Dialog for AI vs Custom
   const [showPaperDialog, setShowPaperDialog] = useState(false);
-
-  // Custom Paper creation modal states
   const [showCustomCreateModal, setShowCustomCreateModal] = useState(false);
+
+  /**
+   * Custom paper creation form state:
+   * - customPaperName: Name for the new custom paper.
+   * - customPaperGrade: Selected grade for the new custom paper.
+   * - customPaperSubject: Selected subject for the new custom paper.
+   * - errorMessage: Used to display validation errors to the user.
+   */
   const [customPaperName, setCustomPaperName] = useState("");
   const [customPaperGrade, setCustomPaperGrade] = useState("");
   const [customPaperSubject, setCustomPaperSubject] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Control the visibility of the left filter panel
+  /**
+   * Toggling the visibility of the filter panel:
+   * - showFilterPanel: Boolean that, if false, hides the entire filter sidebar.
+   */
   const [showFilterPanel, setShowFilterPanel] = useState(true);
 
-  // Accordion state for each filter group
+  /**
+   * Accordion state for each filter group:
+   * - openFilterGroups: object storing a boolean for whether each filter category is expanded.
+   */
   const [openFilterGroups, setOpenFilterGroups] = useState({
-    grade: true,
-    subject: true,
+    grade: false,
+    subject: false,
     examDays: false,
     examMonths: false,
     examYears: false,
@@ -164,7 +199,10 @@ export const DocumentSidebar = () => {
     questionTypes: false,
   });
 
-  // Define filter groups with all options.
+  /**
+   * filterGroups: This array of objects maps each category's label, key, and possible values.
+   * We iterate over these to create multiple FilterGroupAccordion components.
+   */
   const filterGroups = [
     { label: "Grade", key: "grade", values: grades.map((g) => `Grade ${g}`) },
     { label: "Subject", key: "subject", values: subjects },
@@ -180,7 +218,13 @@ export const DocumentSidebar = () => {
     { label: "Question Type", key: "questionTypes", values: questionTypes },
   ];
 
-  // Toggle a filter value in a multi-select
+  /**
+   * toggleFilterValue: Helper function to add/remove a value in a multi-select filter category.
+   *
+   * For example, if a user clicks "Grade 10" in the "Grade" filter:
+   *  - If "Grade 10" is not in the array, we add it.
+   *  - If it is already selected, we remove it.
+   */
   const toggleFilterValue = (filterKey, value) => {
     setFilters((prev) => {
       const existing = prev[filterKey];
@@ -194,7 +238,9 @@ export const DocumentSidebar = () => {
     });
   };
 
-  // Toggle accordion open/close for a filter group
+  /**
+   * onToggleAccordion: Toggles the open/close state for a specific filter group's accordion.
+   */
   const onToggleAccordion = (filterKey) => {
     setOpenFilterGroups((prev) => ({
       ...prev,
@@ -202,20 +248,30 @@ export const DocumentSidebar = () => {
     }));
   };
 
-  // Fetch documents from the server
+  /**
+   * fetchDocuments: Fetches the question papers from the server. It supports two modes:
+   *  - isInitialLoad = true: Clear out old documents and fetch a fresh list.
+   *  - isInitialLoad = false: Appends the next page of documents for infinite scrolling.
+   *
+   * The function uses the 'filters' state to build a request body for the server,
+   * so the documents returned already match the selected filter criteria.
+   */
   const fetchDocuments = async (isInitialLoad = false) => {
+    // Distinguish between the initial load or subsequent loads
     if (isInitialLoad) {
       setLoading(true);
     } else {
       setInfiniteLoading(true);
     }
+
     try {
+      // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
         limit: "10",
         ...(cursor && { cursor }),
       });
 
-      // Build request body from filters
+      // Prepare request body from filters
       const requestBody = {};
       if (filters.grade.length > 0) requestBody.grade = filters.grade;
       if (filters.subject.length > 0) requestBody.subject = filters.subject;
@@ -237,11 +293,13 @@ export const DocumentSidebar = () => {
       if (filters.questionTypes.length > 0)
         requestBody.questionTypes = filters.questionTypes;
 
+      // Use an API call helper (postRequest) to fetch data
       const data = await postRequest(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?${queryParams.toString()}`,
         requestBody
       );
 
+      // Check if the API returned an error about the token; if so, reset local storage
       if (data.message) {
         if (
           data.message === "Invalid or expired access token" ||
@@ -253,21 +311,26 @@ export const DocumentSidebar = () => {
         }
       }
 
+      // If success, update documents
       if (data.success && data.questionPapers) {
         if (isInitialLoad) {
+          // For fresh load, reset the documents array
           setDocuments(data.questionPapers);
         } else {
+          // For infinite scrolling, append
           setDocuments((prev) => [...prev, ...data.questionPapers]);
         }
         setHasNextPage(data.hasNextPage);
         setCursor(data.nextCursor);
       } else {
+        // If no documents returned, clear array on initial load
         if (isInitialLoad) setDocuments([]);
       }
     } catch (error) {
       console.error("Error fetching documents:", error);
       if (isInitialLoad) setDocuments([]);
     } finally {
+      // Turn off loading states
       if (isInitialLoad) {
         setLoading(false);
       } else {
@@ -276,7 +339,10 @@ export const DocumentSidebar = () => {
     }
   };
 
-  // Reset pagination & fetch documents whenever filters change.
+  /**
+   * Whenever the filters change, we reset pagination (cursor, hasNextPage, etc.)
+   * and fetch the first batch of documents anew.
+   */
   useEffect(() => {
     setDocuments([]);
     setCursor(undefined);
@@ -285,7 +351,10 @@ export const DocumentSidebar = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  // Infinite scroll logic (for right panel only)
+  /**
+   * handleInfiniteScroll: This function runs on the window scroll event.
+   * If the user scrolls near the bottom, we fetch the next page of documents (if available).
+   */
   const handleInfiniteScroll = useCallback(() => {
     if (!hasNextPage || infiniteLoading || loading) return;
     const scrollThreshold = 300;
@@ -298,12 +367,19 @@ export const DocumentSidebar = () => {
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
+  /**
+   * This effect attaches a scroll listener to the window when the component mounts
+   * and removes it when the component unmounts.
+   */
   useEffect(() => {
     window.addEventListener("scroll", handleInfiniteScroll);
     return () => window.removeEventListener("scroll", handleInfiniteScroll);
   }, [handleInfiniteScroll]);
 
-  // Helper: fetch HTML link for a question paper
+  /**
+   * getHtmlLink: Helper to send a request to the server, asking it to generate an HTML link
+   * for a specific question paper. This is used when the user clicks "View" to open a paper in a modal.
+   */
   const getHtmlLink = async (questionPaperId) => {
     const url = `${BASE_URL_API}/questionpaper/generateHtml`;
     const body = { questionPaperId };
@@ -317,15 +393,27 @@ export const DocumentSidebar = () => {
     }
   };
 
+  /**
+   * handleCreatePaper: This is triggered when the user clicks the "Create Question Paper" button.
+   * It shows a dialog letting them choose between "AI-generated" or "Custom" question paper creation.
+   */
   const handleCreatePaper = () => {
     setShowPaperDialog(true);
   };
 
+  /**
+   * handleCustomPaperClick: If the user chooses "Custom Paper," we show another modal
+   * where they specify paper name, grade, and subject.
+   */
   const handleCustomPaperClick = () => {
     setShowPaperDialog(false);
     setShowCustomCreateModal(true);
   };
 
+  /**
+   * handleConfirmCustomPaper: Validates the custom paper form (ensures all required fields),
+   * then creates a new paper via the API. If successful, navigates to the custom question paper editor.
+   */
   const handleConfirmCustomPaper = async () => {
     if (!customPaperName || !customPaperGrade || !customPaperSubject) {
       setErrorMessage("All three fields are required.");
@@ -340,13 +428,17 @@ export const DocumentSidebar = () => {
       };
       const url = `${BASE_URL_API}/questionPaper/create`;
       const response = await postRequest(url, body);
+
       if (response.id) {
+        // Navigate to the custom question paper generation screen with a new paper ID
         navigate("/custom-question-paper-generation", {
           state: { questionPaperId: response.id },
         });
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
       }
+
+      // Reset fields and close the modal
       setShowCustomCreateModal(false);
       setCustomPaperName("");
       setCustomPaperGrade("");
@@ -357,6 +449,13 @@ export const DocumentSidebar = () => {
     }
   };
 
+  /**
+   * downloadAllSetPDFs: For a multi-set question paper, each set can have its own link.
+   * This function opens each link, loads it, prints as a PDF, and then closes the window.
+   *
+   * The reason for multiple links is that the same question paper can have multiple versions
+   * or sets for different sections / streams, etc.
+   */
   const downloadAllSetPDFs = async (links) => {
     for (let index = 0; index < links?.length; index++) {
       const link = links[index];
@@ -366,11 +465,16 @@ export const DocumentSidebar = () => {
           alert("Popup blocked. Please allow pop-ups for this site.");
           return;
         }
+        // Fetch the HTML content
         const response = await fetch(link);
         const htmlContent = await response.text();
+
+        // Write the fetched HTML to the newly opened window
         printWindow.document.open();
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+
+        // Wait for the document to load, handle MathJax rendering, then print
         await new Promise((resolve) => {
           printWindow.onload = () => {
             if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
@@ -387,6 +491,7 @@ export const DocumentSidebar = () => {
                   resolve();
                 });
             } else {
+              // If MathJax isn't available, just wait a bit, then print
               setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
@@ -401,6 +506,9 @@ export const DocumentSidebar = () => {
     }
   };
 
+  /**
+   * getDocumentName: Utility to prettify the name of a document (split by underscores, capitalize words).
+   */
   const getDocumentName = ({ name }) => {
     const names = name.split("_");
     let capitalisedWords = names.map(
@@ -409,14 +517,18 @@ export const DocumentSidebar = () => {
     return capitalisedWords.join(" ");
   };
 
+  /**
+   * getCapitalSubjectName: Utility to capitalize the subject (e.g., "english" -> "English").
+   */
   const getCapitalSubjectName = ({ subject }) => {
     return subject.charAt(0).toUpperCase() + subject.slice(1);
   };
 
+  // Render: the main JSX structure
   return (
     <>
       <div className="p-4">
-        {/* Header */}
+        {/* Header section with title and "Create Question Paper" button */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
           <button
@@ -428,24 +540,19 @@ export const DocumentSidebar = () => {
           </button>
         </div>
 
-        {/* Horizontal line spanning left and right panels */}
+        {/* Horizontal line to separate the header from the main content */}
         <hr className="border-t border-gray-300 mb-4" />
 
-        {/* Layout with Left Filter Panel and Main Content Area */}
+        {/* Primary layout: left panel (filters) and right panel (document list) */}
         <div className="flex">
-          {/* Left Panel: Filters (non-scrollable) */}
+          {/* Left Panel: Filter Sidebar (conditionally rendered based on showFilterPanel) */}
           {showFilterPanel && (
             <div className="w-64 border-r px-4 py-2 h-screen overflow-y-hidden">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold text-lg">Filters</h2>
-                {/* <button
-                  onClick={() => setShowFilterPanel(false)}
-                  className="px-3 py-2 border rounded"
-                >
-                  Hide
-                </button> */}
               </div>
-              {/* Selected Filters Chips */}
+
+              {/* Displays "chips" for selected filters */}
               <div className="mb-4">
                 {Object.entries(filters).map(([key, values]) =>
                   values.map((val) => (
@@ -453,7 +560,7 @@ export const DocumentSidebar = () => {
                       key={`${key}-${val}`}
                       className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-blue-600 text-white rounded-full text-sm"
                     >
-                       {val}
+                      {val}
                       <button
                         onClick={() => toggleFilterValue(key, val)}
                         className="ml-1 text-white"
@@ -464,7 +571,8 @@ export const DocumentSidebar = () => {
                   ))
                 )}
               </div>
-              {/* Filter Accordions */}
+
+              {/* Filter categories and their accordions (grades, subjects, etc.) */}
               {filterGroups.map(({ label, key, values }) => (
                 <FilterGroupAccordion
                   key={key}
@@ -477,6 +585,8 @@ export const DocumentSidebar = () => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
+
+              {/* Reset filter button to clear all selections */}
               <button
                 onClick={() =>
                   setFilters({
@@ -501,9 +611,9 @@ export const DocumentSidebar = () => {
             </div>
           )}
 
-          {/* Main Content Area (scrollable) */}
+          {/* Right Panel: Document list with infinite scrolling */}
           <div className="flex-1 py-2 px-4 overflow-y-auto">
-            {/* Toggle Filter Panel Button */}
+            {/* Button to toggle filter sidebar visibility */}
             <div className="mb-4">
               <button
                 onClick={() => setShowFilterPanel(!showFilterPanel)}
@@ -512,6 +622,11 @@ export const DocumentSidebar = () => {
                 {showFilterPanel ? "Hide Filters" : "Show Filters"}
               </button>
             </div>
+
+            {/* Main documents display area:
+                1. Show a spinner if loading the initial set of documents.
+                2. Otherwise, list the documents or show a "no results" message if empty. 
+            */}
             {loading && documents.length === 0 ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -528,6 +643,7 @@ export const DocumentSidebar = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Map over the documents array and display each document with options */}
                     {documents.map((doc) => (
                       <div
                         key={doc.id}
@@ -548,7 +664,7 @@ export const DocumentSidebar = () => {
                         </div>
 
                         <div className="flex gap-2">
-                          {/* View */}
+                          {/* Button: View (opens modal) */}
                           <button
                             onClick={async () => {
                               const docWithQuestionAndSolutionLink =
@@ -561,7 +677,7 @@ export const DocumentSidebar = () => {
                           >
                             View
                           </button>
-                          {/* Edit */}
+                          {/* Button: Edit (navigates to edit page if sections exist) */}
                           <button
                             onClick={() => {
                               if (doc.sections && doc.sections.length > 0) {
@@ -581,7 +697,7 @@ export const DocumentSidebar = () => {
                           >
                             Edit
                           </button>
-                          {/* Delete */}
+                          {/* Button: Delete (calls DELETE request and refreshes list) */}
                           <button
                             onClick={async () => {
                               try {
@@ -604,6 +720,7 @@ export const DocumentSidebar = () => {
                       </div>
                     ))}
 
+                    {/* If there are more documents available, show infinite scroll indicator */}
                     {hasNextPage ? (
                       infiniteLoading && (
                         <div className="text-center py-4 text-gray-500">
@@ -623,7 +740,7 @@ export const DocumentSidebar = () => {
         </div>
       </div>
 
-      {/* Modal for viewing a document */}
+      {/* Modal for viewing a document (Question Paper or Answer Sheet). */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
@@ -662,6 +779,8 @@ export const DocumentSidebar = () => {
                     </button>
                   )}
               </div>
+
+              {/* Use the DocumentViewer component to render either the question paper or the solution link. */}
               <DocumentViewer
                 documentUrl={
                   modalActiveTab === "question"
@@ -679,7 +798,7 @@ export const DocumentSidebar = () => {
         </div>
       )}
 
-      {/* AI vs Custom Paper Choice Dialog */}
+      {/* Dialog for choosing between AI-generated or Custom Paper creation */}
       {showPaperDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div
@@ -699,6 +818,7 @@ export const DocumentSidebar = () => {
               Choose the type of question paper you want to create:
             </p>
             <div className="flex flex-row gap-4 w-full justify-end">
+              {/* AI-generated path */}
               <button
                 className={commonButtonClass}
                 onClick={() => {
@@ -708,6 +828,7 @@ export const DocumentSidebar = () => {
               >
                 AI-generated
               </button>
+              {/* Custom creation path */}
               <button
                 className={commonButtonClass}
                 onClick={handleCustomPaperClick}
@@ -719,7 +840,7 @@ export const DocumentSidebar = () => {
         </div>
       )}
 
-      {/* Custom Paper Creation Modal */}
+      {/* Custom Paper Creation Modal: asks for name, grade, subject */}
       {showCustomCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white border border-gray-200 shadow-lg rounded-lg w-[400px] p-6 relative">
