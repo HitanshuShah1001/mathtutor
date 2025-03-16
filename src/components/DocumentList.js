@@ -527,9 +527,9 @@ export const DocumentSidebar = () => {
   // Render: the main JSX structure
   return (
     <>
-      <div className="p-4">
+      <div className="p-2">
         {/* Header section with title and "Create Question Paper" button */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sticky top-0 bg-white z-10 py-4">
           <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
           <button
             onClick={handleCreatePaper}
@@ -547,7 +547,7 @@ export const DocumentSidebar = () => {
         <div className="flex">
           {/* Left Panel: Filter Sidebar (conditionally rendered based on showFilterPanel) */}
           {showFilterPanel && (
-            <div className="w-64 border-r px-4 py-2 h-screen overflow-y-hidden">
+            <div className="fixed w-64 border-r px-4 py-2 h-screen overflow-y-auto bg-white">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="font-bold text-lg">Filters</h2>
               </div>
@@ -573,18 +573,20 @@ export const DocumentSidebar = () => {
               </div>
 
               {/* Filter categories and their accordions (grades, subjects, etc.) */}
-              {filterGroups.map(({ label, key, values }) => (
-                <FilterGroupAccordion
-                  key={key}
-                  label={label}
-                  filterKey={key}
-                  values={values}
-                  isOpen={openFilterGroups[key]}
-                  onToggleAccordion={onToggleAccordion}
-                  selectedValues={filters[key]}
-                  toggleFilterValue={toggleFilterValue}
-                />
-              ))}
+              <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                {filterGroups.map(({ label, key, values }) => (
+                  <FilterGroupAccordion
+                    key={key}
+                    label={label}
+                    filterKey={key}
+                    values={values}
+                    isOpen={openFilterGroups[key]}
+                    onToggleAccordion={onToggleAccordion}
+                    selectedValues={filters[key]}
+                    toggleFilterValue={toggleFilterValue}
+                  />
+                ))}
+              </div>
 
               {/* Reset filter button to clear all selections */}
               <button
@@ -612,7 +614,11 @@ export const DocumentSidebar = () => {
           )}
 
           {/* Right Panel: Document list with infinite scrolling */}
-          <div className="flex-1 py-2 px-4 overflow-y-auto">
+          <div
+            className={`flex-1 py-2 px-4 overflow-y-auto ${
+              showFilterPanel ? "ml-64" : ""
+            }`}
+          >
             {/* Button to toggle filter sidebar visibility */}
             <div className="mb-4">
               <button
