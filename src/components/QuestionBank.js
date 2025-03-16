@@ -547,11 +547,12 @@ const QuestionBank = () => {
     >
       {/* Collapsible Filter Panel */}
       <div
-        className={`fixed md:static top-0 left-0 h-full w-64 bg-gray-100 border-r overflow-auto transform transition-transform duration-300 z-40 ${
+        className={`fixed md:static top-0 left-0 min-h-screen w-64 bg-gray-100 border-r overflow-auto transform transition-transform duration-300 z-40 ${
           showFilterPanel
             ? "translate-x-0"
             : "-translate-x-full md:translate-x-0"
         }`}
+        style={{ backgroundColor: "white" }}
       >
         {/* Close button for mobile */}
         <div className="md:hidden flex justify-end p-2 border-b">
@@ -564,15 +565,23 @@ const QuestionBank = () => {
         </div>
 
         <div className="p-4" style={{ backgroundColor: "white" }}>
-          <h2 className="font-bold text-lg mb-4">Filters</h2>
-          {/* Reset All Filters */}
-          <div className="mb-6">
-            <button
-              className={`${blackButtonClass} px-3 py-2`}
-              onClick={resetAllFilters}
-            >
-              Reset All Filters
-            </button>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2 className="font-bold text-lg mb-4">Filters</h2>
+            {/* Reset All Filters */}
+            <div className="mb-6">
+              <button
+                className={`${blackButtonClass} px-3 py-2`}
+                onClick={resetAllFilters}
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
           {/* Render each filter group in an accordion */}
@@ -595,33 +604,22 @@ const QuestionBank = () => {
       <div className="flex-1 ml-0">
         {/* Sticky Header with search and actions */}
         <div className={headerClass}>
-          {/* Left side: Toggle Filters button (mobile) */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className="md:hidden px-3 py-2 border rounded"
-            >
-              {showFilterPanel ? "Hide Filters" : "Show Filters"}
-            </button>
+          {/* Left side: Toggle Filters button (mobile) and Search Bar */}
+          <div className="flex items-center gap-2 flex-1 mr-3">
+            
 
-            {/* Search Bar */}
+            {/* Make the input grow with flex-1 */}
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search..."
-              className={`${inputClass} w-48`}
+              className={`${inputClass} flex-1`}
             />
           </div>
 
           {/* Right side: Action Buttons */}
           <div className="flex gap-2">
-            {/* <button
-              onClick={handleGenerateQuestionPaper}
-              className={blackButtonClass}
-            >
-              Generate Paper
-            </button> */}
             <button
               onClick={() => {
                 setIsEditing(false);
