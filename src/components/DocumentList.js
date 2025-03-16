@@ -106,7 +106,8 @@ const FilterGroupAccordion = ({
  * Main component: DocumentSidebar
  *
  * This component:
- * - Renders a sidebar with various filters (grades, subjects, exam details, etc.).
+ * - Renders a fixed header with the title and "Create Question Paper" button.
+ * - Renders a left filter sidebar (fixed below the header) and a right document list that is scrollable.
  * - Manages state for fetched documents, loading states, pagination, and modal dialogs.
  * - Handles creation of new question papers (both AI-generated and custom).
  * - Handles viewing (with a modal), editing, and deleting of question papers.
@@ -115,23 +116,18 @@ const FilterGroupAccordion = ({
 export const DocumentSidebar = () => {
   const navigate = useNavigate();
 
-  /**
-   * documents: Array of fetched documents (question papers).
-   * cursor: Used for pagination; the API returns a cursor to get the next page.
-   * hasNextPage: Indicates if there are more pages to load.
-   * loading: Boolean for the first load or filter change (displays main spinner).
-   * infiniteLoading: Boolean for additional pages loading (displays smaller spinner).
-   */
+  // ----------------------------
+  // Document and pagination state
+  // ----------------------------
   const [documents, setDocuments] = useState([]);
   const [cursor, setCursor] = useState(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
 
-  /**
-   * filters: Object that holds arrays of selected filter values (multi-select).
-   * Each filter category can hold multiple values (e.g., multiple subjects or grades).
-   */
+  // ----------------------------
+  // Filter state
+  // ----------------------------
   const [filters, setFilters] = useState({
     grade: [],
     subject: [],
@@ -184,6 +180,7 @@ export const DocumentSidebar = () => {
    * Accordion state for each filter group:
    * - openFilterGroups: object storing a boolean for whether each filter category is expanded.
    */
+
   const [openFilterGroups, setOpenFilterGroups] = useState({
     grade: false,
     subject: false,
@@ -228,16 +225,12 @@ export const DocumentSidebar = () => {
   const toggleFilterValue = (filterKey, value) => {
     setFilters((prev) => {
       const existing = prev[filterKey];
-      let newValues;
-      if (existing.includes(value)) {
-        newValues = existing.filter((v) => v !== value);
-      } else {
-        newValues = [...existing, value];
-      }
+      const newValues = existing.includes(value)
+        ? existing.filter((v) => v !== value)
+        : [...existing, value];
       return { ...prev, [filterKey]: newValues };
     });
   };
-
   /**
    * onToggleAccordion: Toggles the open/close state for a specific filter group's accordion.
    */
@@ -257,13 +250,8 @@ export const DocumentSidebar = () => {
    * so the documents returned already match the selected filter criteria.
    */
   const fetchDocuments = async (isInitialLoad = false) => {
-    // Distinguish between the initial load or subsequent loads
-    if (isInitialLoad) {
-      setLoading(true);
-    } else {
-      setInfiniteLoading(true);
-    }
-
+    // Distinguish between initial load and subsequent loads
+    isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
       // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
@@ -299,7 +287,7 @@ export const DocumentSidebar = () => {
         requestBody
       );
 
-      // Check if the API returned an error about the token; if so, reset local storage
+      // Check if API returned an error about the token; if so, reset local storage and navigate to login
       if (data.message) {
         if (
           data.message === "Invalid or expired access token" ||
@@ -311,31 +299,21 @@ export const DocumentSidebar = () => {
         }
       }
 
-      // If success, update documents
+      // If successful, update documents and pagination state
       if (data.success && data.questionPapers) {
-        if (isInitialLoad) {
-          // For fresh load, reset the documents array
-          setDocuments(data.questionPapers);
-        } else {
-          // For infinite scrolling, append
-          setDocuments((prev) => [...prev, ...data.questionPapers]);
-        }
+        isInitialLoad
+          ? setDocuments(data.questionPapers)
+          : setDocuments((prev) => [...prev, ...data.questionPapers]);
         setHasNextPage(data.hasNextPage);
         setCursor(data.nextCursor);
       } else {
-        // If no documents returned, clear array on initial load
         if (isInitialLoad) setDocuments([]);
       }
     } catch (error) {
       console.error("Error fetching documents:", error);
       if (isInitialLoad) setDocuments([]);
     } finally {
-      // Turn off loading states
-      if (isInitialLoad) {
-        setLoading(false);
-      } else {
-        setInfiniteLoading(false);
-      }
+      isInitialLoad ? setLoading(false) : setInfiniteLoading(false);
     }
   };
 
@@ -361,29 +339,21 @@ export const DocumentSidebar = () => {
     const scrolledToBottom =
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
-
-    if (scrolledToBottom) {
-      fetchDocuments(false);
-    }
+    if (scrolledToBottom) fetchDocuments(false);
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
-  /**
-   * This effect attaches a scroll listener to the window when the component mounts
-   * and removes it when the component unmounts.
-   */
+  // Attach scroll listener on mount and clean up on unmount
   useEffect(() => {
     window.addEventListener("scroll", handleInfiniteScroll);
     return () => window.removeEventListener("scroll", handleInfiniteScroll);
   }, [handleInfiniteScroll]);
 
-  /**
-   * getHtmlLink: Helper to send a request to the server, asking it to generate an HTML link
-   * for a specific question paper. This is used when the user clicks "View" to open a paper in a modal.
-   */
+  // ----------------------------
+  // Helper functions for document actions
+  // ----------------------------
   const getHtmlLink = async (questionPaperId) => {
     const url = `${BASE_URL_API}/questionpaper/generateHtml`;
     const body = { questionPaperId };
-
     try {
       const result = await postRequest(url, body);
       return result?.questionPaper;
@@ -394,7 +364,7 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * handleCreatePaper: This is triggered when the user clicks the "Create Question Paper" button.
+   * handleCreatePaper: Triggered when the user clicks the "Create Question Paper" button.
    * It shows a dialog letting them choose between "AI-generated" or "Custom" question paper creation.
    */
   const handleCreatePaper = () => {
@@ -402,8 +372,7 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * handleCustomPaperClick: If the user chooses "Custom Paper," we show another modal
-   * where they specify paper name, grade, and subject.
+   * handleCustomPaperClick: If the user chooses "Custom Paper," close the paper type dialog and open the custom paper creation modal.
    */
   const handleCustomPaperClick = () => {
     setShowPaperDialog(false);
@@ -411,8 +380,8 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * handleConfirmCustomPaper: Validates the custom paper form (ensures all required fields),
-   * then creates a new paper via the API. If successful, navigates to the custom question paper editor.
+   * handleConfirmCustomPaper: Validates the custom paper form and creates a new paper via the API.
+   * If successful, navigates to the custom question paper generation screen.
    */
   const handleConfirmCustomPaper = async () => {
     if (!customPaperName || !customPaperGrade || !customPaperSubject) {
@@ -428,17 +397,14 @@ export const DocumentSidebar = () => {
       };
       const url = `${BASE_URL_API}/questionPaper/create`;
       const response = await postRequest(url, body);
-
       if (response.id) {
-        // Navigate to the custom question paper generation screen with a new paper ID
         navigate("/custom-question-paper-generation", {
           state: { questionPaperId: response.id },
         });
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
       }
-
-      // Reset fields and close the modal
+      // Reset fields and close modal
       setShowCustomCreateModal(false);
       setCustomPaperName("");
       setCustomPaperGrade("");
@@ -465,16 +431,11 @@ export const DocumentSidebar = () => {
           alert("Popup blocked. Please allow pop-ups for this site.");
           return;
         }
-        // Fetch the HTML content
         const response = await fetch(link);
         const htmlContent = await response.text();
-
-        // Write the fetched HTML to the newly opened window
         printWindow.document.open();
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-
-        // Wait for the document to load, handle MathJax rendering, then print
         await new Promise((resolve) => {
           printWindow.onload = () => {
             if (printWindow.MathJax && printWindow.MathJax.typesetPromise) {
@@ -491,7 +452,6 @@ export const DocumentSidebar = () => {
                   resolve();
                 });
             } else {
-              // If MathJax isn't available, just wait a bit, then print
               setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
@@ -507,7 +467,7 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * getDocumentName: Utility to prettify the name of a document (split by underscores, capitalize words).
+   * getDocumentName: Utility to prettify the document name by splitting underscores and capitalizing words.
    */
   const getDocumentName = ({ name }) => {
     const names = name.split("_");
@@ -518,235 +478,228 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * getCapitalSubjectName: Utility to capitalize the subject (e.g., "english" -> "English").
+   * getCapitalSubjectName: Utility to capitalize the subject name.
    */
   const getCapitalSubjectName = ({ subject }) => {
     return subject.charAt(0).toUpperCase() + subject.slice(1);
   };
 
-  // Render: the main JSX structure
+  // ----------------------------
+  // Render
+  // ----------------------------
   return (
-    <>
-      <div className="p-2">
-        {/* Header section with title and "Create Question Paper" button */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sticky top-0 bg-white z-10 py-4">
-          <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
+    <div className="min-h-screen relative">
+      {/* Fixed Header */}
+      <header className="fixed top-0 left-0 right-0 z-20 bg-white shadow-md h-20 flex items-center px-4">
+        {/* Header section with title and Create Question Paper button */}
+        <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
+        <div className="ml-auto">
           <button
             onClick={handleCreatePaper}
-            className={`mt-4 sm:mt-0 inline-flex items-center ${primaryButtonClass}`}
+            className={`inline-flex items-center ${primaryButtonClass}`}
           >
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
           </button>
         </div>
+      </header>
 
-        {/* Horizontal line to separate the header from the main content */}
-        <hr className="border-t border-gray-300 mb-4" />
-
-        {/* Primary layout: left panel (filters) and right panel (document list) */}
-        <div className="flex">
-          {/* Left Panel: Filter Sidebar (conditionally rendered based on showFilterPanel) */}
-          {showFilterPanel && (
-            <div className="fixed w-64 border-r px-4 py-2 h-screen overflow-y-auto bg-white">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="font-bold text-lg">Filters</h2>
-              </div>
-
-              {/* Displays "chips" for selected filters */}
-              <div className="mb-4">
-                {Object.entries(filters).map(([key, values]) =>
-                  values.map((val) => (
-                    <span
-                      key={`${key}-${val}`}
-                      className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-blue-600 text-white rounded-full text-sm"
-                    >
-                      {val}
-                      <button
-                        onClick={() => toggleFilterValue(key, val)}
-                        className="ml-1 text-white"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))
-                )}
-              </div>
-
-              {/* Filter categories and their accordions (grades, subjects, etc.) */}
-              <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                {filterGroups.map(({ label, key, values }) => (
-                  <FilterGroupAccordion
-                    key={key}
-                    label={label}
-                    filterKey={key}
-                    values={values}
-                    isOpen={openFilterGroups[key]}
-                    onToggleAccordion={onToggleAccordion}
-                    selectedValues={filters[key]}
-                    toggleFilterValue={toggleFilterValue}
-                  />
-                ))}
-              </div>
-
-              {/* Reset filter button to clear all selections */}
-              <button
-                onClick={() =>
-                  setFilters({
-                    grade: [],
-                    subject: [],
-                    examDays: [],
-                    examMonths: [],
-                    examYears: [],
-                    shifts: [],
-                    streams: [],
-                    examNames: [],
-                    marks: [],
-                    types: [],
-                    difficulties: [],
-                    questionTypes: [],
-                  })
-                }
-                className={`${primaryButtonClass} w-full mt-4`}
-              >
-                Reset Filters
-              </button>
+      {/* Main Content Container */}
+      {/* Padding-top equal to header height (h-20) to avoid being overlapped */}
+      <div className="flex pt-20">
+        {/* Left Filter Panel (Fixed) */}
+        {showFilterPanel && (
+          <aside className="fixed top-20 left-0 w-64 h-[calc(100vh-80px)] border-r px-4 py-2 overflow-y-auto bg-white">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-bold text-lg">Filters</h2>
             </div>
-          )}
-
-          {/* Right Panel: Document list with infinite scrolling */}
-          <div
-            className={`flex-1 py-2 px-4 overflow-y-auto ${
-              showFilterPanel ? "ml-64" : ""
-            }`}
-          >
-            {/* Button to toggle filter sidebar visibility */}
+            {/* Selected Filters Chips */}
             <div className="mb-4">
-              <button
-                onClick={() => setShowFilterPanel(!showFilterPanel)}
-                className="px-3 py-2 border rounded"
-              >
-                {showFilterPanel ? "Hide Filters" : "Show Filters"}
-              </button>
+              {Object.entries(filters).map(([key, values]) =>
+                values.map((val) => (
+                  <span
+                    key={`${key}-${val}`}
+                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-blue-600 text-white rounded-full text-sm"
+                  >
+                    {val}
+                    <button
+                      onClick={() => toggleFilterValue(key, val)}
+                      className="ml-1 text-white"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              )}
             </div>
+            {/* Filter Accordions */}
+            <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+              {filterGroups.map(({ label, key, values }) => (
+                <FilterGroupAccordion
+                  key={key}
+                  label={label}
+                  filterKey={key}
+                  values={values}
+                  isOpen={openFilterGroups[key]}
+                  onToggleAccordion={onToggleAccordion}
+                  selectedValues={filters[key]}
+                  toggleFilterValue={toggleFilterValue}
+                />
+              ))}
+            </div>
+            {/* Reset Filters Button */}
+            <button
+              onClick={() =>
+                setFilters({
+                  grade: [],
+                  subject: [],
+                  examDays: [],
+                  examMonths: [],
+                  examYears: [],
+                  shifts: [],
+                  streams: [],
+                  examNames: [],
+                  marks: [],
+                  types: [],
+                  difficulties: [],
+                  questionTypes: [],
+                })
+              }
+              className={`${primaryButtonClass} w-full mt-4`}
+            >
+              Reset Filters
+            </button>
+          </aside>
+        )}
 
-            {/* Main documents display area:
+        {/* Right Document List Panel */}
+        <main
+          className={`flex-1 overflow-y-auto p-4 ${
+            showFilterPanel ? "ml-64" : ""
+          }`}
+        >
+          {/* Button to toggle filter sidebar visibility */}
+          <div className="mb-4">
+            <button
+              onClick={() => setShowFilterPanel(!showFilterPanel)}
+              className="px-3 py-2 border rounded"
+            >
+              {showFilterPanel ? "Hide Filters" : "Show Filters"}
+            </button>
+          </div>
+          {/* Main documents display area:
                 1. Show a spinner if loading the initial set of documents.
                 2. Otherwise, list the documents or show a "no results" message if empty. 
-            */}
-            {loading && documents.length === 0 ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                <p className="ml-4 text-gray-600">Loading documents...</p>
-              </div>
-            ) : (
-              <div>
-                {documents?.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">
-                      No question papers found. Adjust your filters or create a
-                      new question paper.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Map over the documents array and display each document with options */}
-                    {documents.map((doc) => (
-                      <div
-                        key={doc.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
-                      >
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-800">
-                            {getDocumentName({ name: doc.name })}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {getCapitalSubjectName({ subject: doc.subject })} •
-                            Grade {doc.grade}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Created on{" "}
-                            {new Date(doc.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {/* Button: View (opens modal) */}
-                          <button
-                            onClick={async () => {
-                              const docWithQuestionAndSolutionLink =
-                                await getHtmlLink(doc.id);
-                              setModalDocument(docWithQuestionAndSolutionLink);
-                              setModalActiveTab("question");
-                              setModalVisible(true);
-                            }}
-                            className={commonButtonClass}
-                          >
-                            View
-                          </button>
-                          {/* Button: Edit (navigates to edit page if sections exist) */}
-                          <button
-                            onClick={() => {
-                              if (doc.sections && doc.sections.length > 0) {
-                                navigate(`/edit-document/${doc.id}`, {
-                                  state: {
-                                    sections: doc.sections,
-                                    docName: doc.name,
-                                  },
-                                });
-                              } else {
-                                alert(
-                                  "No sections found for this document. Cannot edit."
-                                );
-                              }
-                            }}
-                            className={commonButtonClass}
-                          >
-                            Edit
-                          </button>
-                          {/* Button: Delete (calls DELETE request and refreshes list) */}
-                          <button
-                            onClick={async () => {
-                              try {
-                                await deleteRequest(
-                                  `${BASE_URL_API}/questionPaper/${doc.id}`
-                                );
-                                setDocuments([]);
-                                setCursor(undefined);
-                                setHasNextPage(true);
-                                fetchDocuments(true);
-                              } catch (error) {
-                                console.error("Error deleting paper:", error);
-                              }
-                            }}
-                            className={commonButtonClass}
-                          >
-                            Delete
-                          </button>
-                        </div>
+          */}
+          {loading && documents.length === 0 ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <p className="ml-4 text-gray-600">Loading documents...</p>
+            </div>
+          ) : (
+            <div>
+              {documents?.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">
+                    No question papers found. Adjust your filters or create a
+                    new question paper.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
+                    >
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-800">
+                          {getDocumentName({ name: doc.name })}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {getCapitalSubjectName({ subject: doc.subject })} •
+                          Grade {doc.grade}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Created on{" "}
+                          {new Date(doc.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                    ))}
-
-                    {/* If there are more documents available, show infinite scroll indicator */}
-                    {hasNextPage ? (
-                      infiniteLoading && (
-                        <div className="text-center py-4 text-gray-500">
-                          Loading more documents...
-                        </div>
-                      )
-                    ) : (
+                      <div className="flex gap-2">
+                        {/* View Button */}
+                        <button
+                          onClick={async () => {
+                            const docWithQuestionAndSolutionLink =
+                              await getHtmlLink(doc.id);
+                            setModalDocument(docWithQuestionAndSolutionLink);
+                            setModalActiveTab("question");
+                            setModalVisible(true);
+                          }}
+                          className={commonButtonClass}
+                        >
+                          View
+                        </button>
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => {
+                            if (doc.sections && doc.sections.length > 0) {
+                              navigate(`/edit-document/${doc.id}`, {
+                                state: {
+                                  sections: doc.sections,
+                                  docName: doc.name,
+                                },
+                              });
+                            } else {
+                              alert(
+                                "No sections found for this document. Cannot edit."
+                              );
+                            }
+                          }}
+                          className={commonButtonClass}
+                        >
+                          Edit
+                        </button>
+                        {/* Delete Button */}
+                        <button
+                          onClick={async () => {
+                            try {
+                              await deleteRequest(
+                                `${BASE_URL_API}/questionPaper/${doc.id}`
+                              );
+                              setDocuments([]);
+                              setCursor(undefined);
+                              setHasNextPage(true);
+                              fetchDocuments(true);
+                            } catch (error) {
+                              console.error("Error deleting paper:", error);
+                            }
+                          }}
+                          className={commonButtonClass}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {hasNextPage ? (
+                    infiniteLoading && (
                       <div className="text-center py-4 text-gray-500">
-                        No more documents to load
+                        Loading more documents...
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+                    )
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      No more documents to load
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </main>
       </div>
 
-      {/* Modal for viewing a document (Question Paper or Answer Sheet). */}
+      {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
@@ -785,8 +738,7 @@ export const DocumentSidebar = () => {
                     </button>
                   )}
               </div>
-
-              {/* Use the DocumentViewer component to render either the question paper or the solution link. */}
+              {/* DocumentViewer displays the HTML version of the document */}
               <DocumentViewer
                 documentUrl={
                   modalActiveTab === "question"
@@ -824,7 +776,6 @@ export const DocumentSidebar = () => {
               Choose the type of question paper you want to create:
             </p>
             <div className="flex flex-row gap-4 w-full justify-end">
-              {/* AI-generated path */}
               <button
                 className={commonButtonClass}
                 onClick={() => {
@@ -834,7 +785,6 @@ export const DocumentSidebar = () => {
               >
                 AI-generated
               </button>
-              {/* Custom creation path */}
               <button
                 className={commonButtonClass}
                 onClick={handleCustomPaperClick}
@@ -846,7 +796,7 @@ export const DocumentSidebar = () => {
         </div>
       )}
 
-      {/* Custom Paper Creation Modal: asks for name, grade, subject */}
+      {/* Custom Paper Creation Modal */}
       {showCustomCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white border border-gray-200 shadow-lg rounded-lg w-[400px] p-6 relative">
@@ -924,7 +874,7 @@ export const DocumentSidebar = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
