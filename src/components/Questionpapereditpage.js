@@ -1,7 +1,13 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Trash, Image as ImageIcon, Plus } from "lucide-react";
+import {
+  Trash,
+  Image as ImageIcon,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
@@ -48,6 +54,16 @@ const QuestionPaperEditPage = () => {
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
   );
+
+  const [collapsedSections, setCollapsedSections] = useState({});
+
+  // Function to toggle the collapse state of a section
+  const toggleSectionCollapse = (sectionIndex) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionIndex]: !prev[sectionIndex],
+    }));
+  };
 
   // -------------------------
   // Panel resizing state
@@ -646,6 +662,7 @@ const QuestionPaperEditPage = () => {
               className="w-full p-2 border rounded"
             />
           </div>
+
           {/* Mark as optional if exactly 2 selected (non-MCQ) */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
@@ -661,10 +678,26 @@ const QuestionPaperEditPage = () => {
 
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading with plus and import buttons */}
+              {/* Section Heading */}
               <div className="flex items-center justify-between mb-2">
+                {/* Section Name on the Left */}
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
+
+                {/* Action Buttons on the Right */}
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleSectionCollapse(sectionIndex)}
+                    className="p-2 rounded flex items-center justify-center bg-black text-white"
+                    title="Toggle section collapse"
+                  >
+                    {collapsedSections[sectionIndex] ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronUp size={16} />
+                    )}
+                  </button>
+
+                  {/* Add Question Button */}
                   <button
                     onClick={() => handleAddQuestionForSection(section.name)}
                     className="p-2 rounded bg-black text-white flex items-center justify-center"
@@ -672,6 +705,10 @@ const QuestionPaperEditPage = () => {
                   >
                     <Plus size={16} className="text-white" />
                   </button>
+
+                  {/* Collapse Toggle Button with Chevron */}
+
+                  {/* Import Questions Button */}
                   <button
                     onClick={() =>
                       setShowBankModal({
@@ -681,80 +718,83 @@ const QuestionPaperEditPage = () => {
                     }
                     className="p-2 rounded text-white flex items-center justify-center"
                     title="Import questions from question bank"
-                    style={{ backgroundColor: "black",height:'32px' }}
+                    style={{ backgroundColor: "black", height: "32px" }}
                   >
                     Import questions
                   </button>
                 </div>
               </div>
 
-              <Droppable droppableId={`${sectionIndex}`}>
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps}>
-                    {section.questions.map((question, index) => {
-                      const isSelected = editedQuestion?.id === question.id;
-                      return (
-                        <Draggable
-                          key={question.id}
-                          draggableId={`${question.id}`}
-                          index={index}
-                        >
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              onClick={() => handleQuestionClick(question)}
-                              className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
-                                isSelected
-                                  ? "bg-blue-50 border-l-4 border-blue-500"
-                                  : "bg-white hover:bg-gray-100"
-                              }`}
-                            >
-                              <div className="items-center gap-2">
-                                {/* Checkbox for non-MCQ questions */}
-                                {question.type !== "MCQ" && (
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedOptionalQuestions.includes(
-                                      question.id
-                                    )}
-                                    onChange={(e) =>
-                                      toggleOptionalSelection(question.id, e)
-                                    }
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{ marginRight: 4 }}
-                                  />
-                                )}
-                                {renderTruncatedTextWithMath(
-                                  question.questionText,
-                                  60
-                                )}
-                                {/* Show "Optional" badge if question is in optional group */}
-                                {question.optionalGroupId && (
-                                  <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                    Optional
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteQuestion(question.id);
-                                }}
-                                className="text-red-500 hover:text-red-700"
+              {/* Render questions only if section is expanded */}
+              {!collapsedSections[sectionIndex] && (
+                <Droppable droppableId={`${sectionIndex}`}>
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps}>
+                      {section.questions.map((question, index) => {
+                        const isSelected = editedQuestion?.id === question.id;
+                        return (
+                          <Draggable
+                            key={question.id}
+                            draggableId={`${question.id}`}
+                            index={index}
+                          >
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                onClick={() => handleQuestionClick(question)}
+                                className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? "bg-blue-50 border-l-4 border-blue-500"
+                                    : "bg-white hover:bg-gray-100"
+                                }`}
                               >
-                                <Trash size={16} />
-                              </button>
-                            </div>
-                          )}
-                        </Draggable>
-                      );
-                    })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
+                                <div className="items-center gap-2">
+                                  {/* Checkbox for non-MCQ questions */}
+                                  {question.type !== "MCQ" && (
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedOptionalQuestions.includes(
+                                        question.id
+                                      )}
+                                      onChange={(e) =>
+                                        toggleOptionalSelection(question.id, e)
+                                      }
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ marginRight: 4 }}
+                                    />
+                                  )}
+                                  {renderTruncatedTextWithMath(
+                                    question.questionText,
+                                    60
+                                  )}
+                                  {/* Optional badge */}
+                                  {question.optionalGroupId && (
+                                    <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                      Optional
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteQuestion(question.id);
+                                  }}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              )}
             </div>
           ))}
         </div>
