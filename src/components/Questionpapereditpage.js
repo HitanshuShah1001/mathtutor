@@ -1,4 +1,22 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+/**
+ * This file defines the QuestionPaperEditPage component, which provides a comprehensive
+ * interface for editing a question paper. It supports:
+ * - Creating new sections
+ * - Adding questions within sections
+ * - Editing and deleting existing questions
+ * - Drag-and-drop reordering of questions
+ * - Marking certain questions as optional
+ * - Importing questions from a question bank
+ *
+ * MAIN FLOW:
+ * 1. The page fetches the existing sections (and their questions) for a given question paper (docId).
+ * 2. Users can add sections, add new questions, or modify/delete existing ones.
+ * 3. A drag-and-drop functionality (react-beautiful-dnd) allows rearranging questions in a section.
+ * 4. Users can mark exactly two non-MCQ questions as optional, grouping them together via an `optionalGroupId`.
+ * 5. A right panel displays detailed editing controls for the currently selected question (clicked on the left list).
+ * 6. The user can also resize the panels by dragging a horizontal handle between the left and right sections.
+ */
+
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -18,16 +36,37 @@ import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 
+/**
+ * Main component that orchestrates the UI and logic for editing a question paper.
+ * Allows adding/editing/deleting questions and sections, drag-and-drop reordering,
+ * marking optional questions, and more.
+ */
 const QuestionPaperEditPage = () => {
+  // Retrieve questionPaperId from route params
   const { docId: questionPaperId } = useParams();
 
+  // ---------------------------------------
+  // State management
+  // ---------------------------------------
+  // sections: an array of objects, each containing a 'name' and an array of 'questions'
   const [sections, setSections] = useState([]);
+
+  // originalQuestion: The question object as it originally existed (before edits).
+  // editedQuestion: The question object that the user is currently editing.
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
+
+  // questionImageFile: If a new image is uploaded for a question, store the File object here.
   const [questionImageFile, setQuestionImageFile] = useState(null);
+
+  // searchTerm: For filtering the question list on the left panel by question text
   const [searchTerm, setSearchTerm] = useState("");
 
-  // For adding a new question
+  // Modals and related states:
+  // - showAddQuestionModal: Toggles the form for adding a new question
+  // - isEditingNewQuestion: True if we're editing a just-created question instead of an existing one
+  // - sectionForNewQuestion: The section name where a new question is being added
+  // - showBankModal: Manages visibility for importing questions from a question bank
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
@@ -36,6 +75,7 @@ const QuestionPaperEditPage = () => {
     sectionName: null,
   });
 
+  // newQuestion: Template for a newly created question, including type, text, options, etc.
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
@@ -50,14 +90,79 @@ const QuestionPaperEditPage = () => {
     ],
   });
 
-  // NEW: state for optional question selections (only non-MCQ questions)
+  // For managing the creation of a new section:
+  // - showAddSectionModal: Toggle the modal for new section creation
+  // - newSectionName: Controlled input state for the new section's name
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
+
+  // selectedOptionalQuestions: For tracking which questions (2 at a time) are selected
+  // to be marked as optional
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
   );
 
+  // collapsedSections: Object storing boolean collapse states for each section, keyed by index
   const [collapsedSections, setCollapsedSections] = useState({});
 
-  // Function to toggle the collapse state of a section
+  // ---------------------------------------
+  // Panel resizing state
+  // ---------------------------------------
+  const [leftPanelWidth, setLeftPanelWidth] = useState(33);
+  const [isResizing, setIsResizing] = useState(false);
+
+  /**
+   * Helper function to get the next alphabetical letter for naming a new section:
+   * e.g., if existing sections are A, B, C, it returns D.
+   */
+  const getNextSectionLetter = () => {
+    if (!sections || sections.length === 0) return "A";
+    const letters = sections
+      .map((sec) => sec.name.trim().toUpperCase())
+      .filter((name) => /^[A-Z]$/.test(name));
+    if (letters.length === 0) return "A";
+    const maxLetter = letters.reduce((prev, curr) =>
+      curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
+    );
+    const nextCharCode = maxLetter.charCodeAt(0) + 1;
+    if (nextCharCode > "Z".charCodeAt(0)) return "A"; // loop if needed
+    return String.fromCharCode(nextCharCode);
+  };
+
+  /**
+   * Handler to add a new section to the question paper.
+   * If successful, the new section is appended and a modal to add a question is optionally triggered.
+   */
+  const handleAddSection = async () => {
+    if (!newSectionName.trim()) {
+      alert("Please enter a valid section name.");
+      return;
+    }
+    const newSection = { name: newSectionName.trim(), questions: [] };
+    const updatedSections = [...sections, newSection];
+    setSections(updatedSections);
+
+    const payload = { id: questionPaperId, sections: updatedSections };
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (!response?.success) {
+      alert("Failed to add new section. Please try again.");
+      return;
+    }
+
+    setShowAddSectionModal(false);
+    setNewSectionName("");
+
+    // Optionally open the "Add Question" modal right after adding a new section
+    setSectionForNewQuestion(newSection.name);
+    setShowAddQuestionModal(true);
+  };
+
+  /**
+   * toggleSectionCollapse: Toggles the visual collapse/expand state of a given section by index.
+   */
   const toggleSectionCollapse = (sectionIndex) => {
     setCollapsedSections((prev) => ({
       ...prev,
@@ -65,21 +170,17 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
-  // -------------------------
-  // Panel resizing state
-  // -------------------------
-  const [leftPanelWidth, setLeftPanelWidth] = useState(33); // default ~33%
-  const [isResizing, setIsResizing] = useState(false);
-
+  /**
+   * Panel resizing hooks:
+   * - On mouse move, if isResizing is true, update leftPanelWidth to the new percentage based on the cursor.
+   * - On mouse up, end the resizing operation.
+   */
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
-
-      // Calculate new width in percentage
       let newWidth = (e.clientX / window.innerWidth) * 100;
-      // Clamp between 15% and 60%
-      if (newWidth < 15) newWidth = 15;
-      if (newWidth > 60) newWidth = 60;
+      if (newWidth < 25) newWidth = 25;
+      if (newWidth > 50) newWidth = 50;
       setLeftPanelWidth(newWidth);
     };
 
@@ -89,23 +190,25 @@ const QuestionPaperEditPage = () => {
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing]);
 
+  /**
+   * handleMouseDown: Sets isResizing to true when the user clicks down on the resize handle.
+   */
   const handleMouseDown = () => {
     setIsResizing(true);
   };
-  // -------------------------
-  // END: Panel resizing logic
-  // -------------------------
 
-  // ----------------------------------------
+  // ---------------------------------------
   // FETCH/REFRESH QUESTION PAPER
-  // ----------------------------------------
+  // ---------------------------------------
+  /**
+   * fetchQuestionPaperDetails: Retrieves the question paper's sections and questions from the server.
+   */
   const fetchQuestionPaperDetails = async () => {
     try {
       const response = await getRequest(
@@ -121,25 +224,39 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * On mount, fetch the question paper details. Also re-fetch when questionPaperId changes.
+   */
   useEffect(() => {
     fetchQuestionPaperDetails();
   }, []);
 
-  // ----------------------------------------
+  // ---------------------------------------
   // EDIT functionalities
-  // ----------------------------------------
+  // ---------------------------------------
+  /**
+   * handleQuestionClick: When the user clicks on a question in the left panel,
+   * we store the question as both originalQuestion and editedQuestion (for toggling changes).
+   */
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
     setQuestionImageFile(null);
   };
 
+  /**
+   * isModified: Checks if the currently edited question has any changes compared to the original.
+   */
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
         questionImageFile !== null
       : false;
 
+  /**
+   * renderTextWithMath: Splits text by '$' and renders inline math in between.
+   * This is used for live preview of math expressions in the question text.
+   */
   const renderTextWithMath = (text) => {
     if (!text) return null;
     const parts = text.split("$");
@@ -152,6 +269,10 @@ const QuestionPaperEditPage = () => {
     );
   };
 
+  /**
+   * renderTruncatedTextWithMath: Same as renderTextWithMath, but truncates the text to maxLength chars.
+   * Used in the left panel question list.
+   */
   const renderTruncatedTextWithMath = (text, maxLength = 60) => {
     if (!text) return null;
     let truncated = text;
@@ -168,6 +289,9 @@ const QuestionPaperEditPage = () => {
     );
   };
 
+  /**
+   * getFilteredSections: Filters out questions (and thus sections) that do not match the search term.
+   */
   const getFilteredSections = () => {
     const lowerSearch = searchTerm?.toLowerCase();
     const filtered = sections.map((section) => {
@@ -179,17 +303,21 @@ const QuestionPaperEditPage = () => {
     return filtered.filter((section) => section.questions.length > 0);
   };
 
+  /**
+   * visibleSections: The sections that pass the search filter (displayed on the left panel).
+   */
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
-  // NEW: Toggle selection for optional marking
+  /**
+   * toggleOptionalSelection: Allows user to select up to 2 non-MCQ questions to be marked as optional.
+   */
   const toggleOptionalSelection = (questionId, e) => {
     e.stopPropagation();
     setSelectedOptionalQuestions((prev) => {
       if (prev.includes(questionId)) {
         return prev.filter((id) => id !== questionId);
       } else {
-        // restrict selection to 2
         if (prev.length < 2) {
           return [...prev, questionId];
         }
@@ -198,11 +326,12 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // NEW: Mark selected questions as optional
+  /**
+   * handleMarkAsOptional: Groups exactly 2 selected questions under the same `optionalGroupId`.
+   */
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;
-    const optionalGroupId = uuidv4(); // unique group id
-
+    const optionalGroupId = uuidv4();
     const updatedSections = sections.map((section) => {
       const updatedQuestions = section.questions.map((q) => {
         if (selectedOptionalQuestions.includes(q.id)) {
@@ -214,11 +343,7 @@ const QuestionPaperEditPage = () => {
     });
     setSections(updatedSections);
 
-    const payload = {
-      id: questionPaperId,
-      sections: updatedSections,
-    };
-
+    const payload = { id: questionPaperId, sections: updatedSections };
     const response = await postRequest(
       `${BASE_URL_API}/questionPaper/update`,
       payload
@@ -232,9 +357,12 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ----------------------------------------
+  // ---------------------------------------
   // EDIT: changes for question fields
-  // ----------------------------------------
+  // ---------------------------------------
+  /**
+   * handleQuestionTextChange: Updates the question text as the user types in the right panel.
+   */
   const handleQuestionTextChange = (e) => {
     const newText = e.target.value;
     setEditedQuestion((prev) => ({
@@ -243,6 +371,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * handleTypeChange: Updates the question type (MCQ vs descriptive).
+   */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setEditedQuestion((prev) => ({
@@ -251,6 +382,10 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * handleImportQuestions: Triggered when user imports selected questions from the bank
+   * to a specific section within the current question paper.
+   */
   const handleImportQuestions = async (selectedIds) => {
     if (!selectedIds || selectedIds.length === 0) {
       setShowBankModal({ visible: false, sectionName: null });
@@ -287,6 +422,9 @@ const QuestionPaperEditPage = () => {
     setShowBankModal({ visible: false, sectionName: null });
   };
 
+  /**
+   * handleDifficultyChange: Sets the difficulty field of the currently edited question.
+   */
   const handleDifficultyChange = (e) => {
     const newDiff = e.target.value;
     setEditedQuestion((prev) => ({
@@ -295,6 +433,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * handleMarksChange: Sets the marks field of the currently edited question.
+   */
   const handleMarksChange = (e) => {
     const newMarks = e.target.value;
     setEditedQuestion((prev) => ({
@@ -303,6 +444,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * handleOptionChange: For MCQ questions, updates the text of a specific option.
+   */
   const handleOptionChange = (index, newValue) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -314,23 +458,37 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // ----------------------------------------
-  // EDIT: images
-  // ----------------------------------------
+  // ---------------------------------------
+  // EDIT: images (question & options)
+  // ---------------------------------------
+  /**
+   * handleQuestionImageChange: Stores the File object for the question image being uploaded.
+   */
   const handleQuestionImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setQuestionImageFile(file);
     }
   };
+
+  /**
+   * handleDeleteQuestionImage: Clears the existing question image reference.
+   */
   const handleDeleteQuestionImage = () => {
     setQuestionImageFile(null);
     setEditedQuestion((prev) => ({ ...prev, imageUrl: "" }));
   };
+
+  /**
+   * handleDiscardQuestionImage: Discards the newly selected image (go back to original).
+   */
   const handleDiscardQuestionImage = () => {
     setQuestionImageFile(null);
   };
 
+  /**
+   * handleOptionImageChange: Handles new file upload for a specific MCQ option image.
+   */
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -341,6 +499,10 @@ const QuestionPaperEditPage = () => {
       return { ...prev, options: updatedOptions };
     });
   };
+
+  /**
+   * handleDeleteOptionImage: Removes the existing imageUrl and imageFile for a given option.
+   */
   const handleDeleteOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -349,6 +511,10 @@ const QuestionPaperEditPage = () => {
       return { ...prev, options: updatedOptions };
     });
   };
+
+  /**
+   * handleDiscardOptionImage: Discards a newly chosen image file for an option, reverting to the old image.
+   */
   const handleDiscardOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -359,12 +525,17 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // ----------------------------------------
-  // EDIT: save/upsert existing question
-  // ----------------------------------------
+  // ---------------------------------------
+  // Saving / Upserting an existing question
+  // ---------------------------------------
+  /**
+   * handleSave: Saves changes to the currently edited question (editedQuestion).
+   * This includes uploading images to S3 if they've changed.
+   */
   const handleSave = async () => {
     try {
       let updatedImageUrl = editedQuestion.imageUrl || "";
+      // If a new question image file is selected, upload to S3
       if (questionImageFile) {
         const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
           questionImageFile.name
@@ -372,6 +543,7 @@ const QuestionPaperEditPage = () => {
         updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
       }
 
+      // For each MCQ option that has a new image file, upload it
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
@@ -387,6 +559,7 @@ const QuestionPaperEditPage = () => {
         })
       );
 
+      // Construct the final question payload
       const updatedQuestion = {
         ...editedQuestion,
         imageUrl: updatedImageUrl,
@@ -401,6 +574,7 @@ const QuestionPaperEditPage = () => {
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
       }
+      // If not MCQ, remove "options" array from payload
       if (updatedQuestion.type !== "MCQ") {
         delete payload.options;
       }
@@ -416,7 +590,7 @@ const QuestionPaperEditPage = () => {
       }
 
       await fetchQuestionPaperDetails();
-
+      // Clear editing states
       setOriginalQuestion(null);
       setEditedQuestion(null);
       setQuestionImageFile(null);
@@ -426,9 +600,12 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ----------------------------------------
-  // DELETE
-  // ----------------------------------------
+  // ---------------------------------------
+  // DELETE question
+  // ---------------------------------------
+  /**
+   * handleDeleteQuestion: Removes a question from the question paper entirely, updating the server.
+   */
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm("Are you sure you want to delete this question?")) {
       try {
@@ -445,7 +622,7 @@ const QuestionPaperEditPage = () => {
           alert("Failed to delete question.");
         }
         await fetchQuestionPaperDetails();
-
+        // If currently editing the deleted question, clear the editing states
         if (editedQuestion && editedQuestion.id === questionId) {
           setOriginalQuestion(null);
           setEditedQuestion(null);
@@ -457,14 +634,19 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ----------------------------------------
-  // DRAG & DROP
-  // ----------------------------------------
+  // ---------------------------------------
+  // DRAG & DROP reorder logic
+  // ---------------------------------------
+  /**
+   * handleDragEnd: When the user finishes dragging a question, update local section ordering
+   * and notify the server via `questionPaper/update`.
+   */
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
 
     if (source.droppableId === destination.droppableId) {
+      // Reorder within the same section
       const sectionIndex = parseInt(source.droppableId, 10);
       const section = sections[sectionIndex];
       const newQuestions = Array.from(section.questions);
@@ -475,10 +657,7 @@ const QuestionPaperEditPage = () => {
       updatedSections[sectionIndex] = { ...section, questions: newQuestions };
       setSections(updatedSections);
 
-      const payload = {
-        id: questionPaperId,
-        sections: updatedSections,
-      };
+      const payload = { id: questionPaperId, sections: updatedSections };
       const response = await postRequest(
         `${BASE_URL_API}/questionPaper/update`,
         payload
@@ -486,22 +665,23 @@ const QuestionPaperEditPage = () => {
       if (!response.success) {
         console.error("Failed to update question paper order", response);
       }
-
       await fetchQuestionPaperDetails();
     } else {
-      // handle cross-section moves if needed
+      // TODO: Implement cross-section drag if needed
     }
   };
 
-  // ----------------------------------------
+  // ---------------------------------------
   // ADD NEW QUESTION
-  // ----------------------------------------
+  // ---------------------------------------
+  /**
+   * handleAddQuestionForSection: Called when user clicks "Add New Question" for a specific section.
+   * Opens the modal to create a new question for that section.
+   */
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
-
-    // reset form
     setNewQuestion({
       type: "MCQ",
       questionText: "",
@@ -517,7 +697,10 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // new question handlers
+  /**
+   * handleNewQuestionChange: Updates the newQuestion state as user types in the modal (type, text, marks, etc.).
+   * For MCQ options, we also track the relevant index.
+   */
   const handleNewQuestionChange = (e, field, index) => {
     const { value } = e.target;
     if (
@@ -536,10 +719,16 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * handleMathKeyDown: Optional handler to detect SHIFT + $ for math insertion in new questions or options.
+   */
   const handleMathKeyDown = (e, field, index) => {
-    // Optional: custom logic to insert $ or handle SHIFT+$ for math
+    // Implementation detail: optional custom logic
   };
 
+  /**
+   * handleQuestionImageUpload: Updates the local state with a file and a preview URL for the new question's image.
+   */
   const handleQuestionImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -547,6 +736,9 @@ const QuestionPaperEditPage = () => {
     setNewQuestion((prev) => ({ ...prev, imageFile: file, imageUrl }));
   };
 
+  /**
+   * handleOptionImageUpload: Similar to handleQuestionImageUpload, but for a specific MCQ option.
+   */
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -562,14 +754,25 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  const calculateOrderIndex = () => {
-    // Very naive example; you can customize logic as needed.
-    return 1;
+  /**
+   * calculateOrderIndex: Stub function to decide where to place the new question in order.
+   * Custom logic can be inserted here. For now, returns 1 or a simple value.
+   */
+  const calculateOrderIndex = (sectionName) => {
+    const foundSection = sections.find((sec) => sec.name === sectionName);
+    if (!foundSection) return 1;
+    // e.g. length + 1
+    return foundSection.questions.length + 1;
   };
 
+  /**
+   * handleNewQuestionSubmit: Creates or updates a new question for the currently selected section,
+   * including image uploads if necessary.
+   */
   const handleNewQuestionSubmit = async () => {
     try {
       let updatedImageUrl = newQuestion.imageUrl || "";
+      // If a new image is chosen, upload to S3
       if (newQuestion.imageFile) {
         const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
           newQuestion.imageFile.name
@@ -580,6 +783,7 @@ const QuestionPaperEditPage = () => {
         );
       }
 
+      // Upload images for options if MCQ
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
@@ -595,17 +799,16 @@ const QuestionPaperEditPage = () => {
         })
       );
 
-      const orderIndex = calculateOrderIndex();
+      const orderIndex = calculateOrderIndex(sectionForNewQuestion);
       const payload = {
         ...newQuestion,
-        section: sectionForNewQuestion, // used if needed on the backend
+        section: sectionForNewQuestion,
         imageUrl: updatedImageUrl,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
       };
-
       if (newQuestion.type !== "MCQ") {
         delete payload.options;
       }
@@ -621,7 +824,7 @@ const QuestionPaperEditPage = () => {
       }
 
       await fetchQuestionPaperDetails();
-
+      // Close modal and reset states
       setShowAddQuestionModal(false);
       setIsEditingNewQuestion(false);
       setSectionForNewQuestion(null);
@@ -644,9 +847,18 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------------------------
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
-      {/* LEFT PANEL (Resizable) + DRAG&DROP */}
+      {/* 
+        LEFT PANEL:
+        - Displays sections and their questions.
+        - Includes drag-and-drop and a search bar.
+        - Button for creating a new section.
+        - Option to select exactly 2 non-MCQ questions for optional grouping.
+      */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div
           className="border-r p-4 overflow-y-auto"
@@ -663,7 +875,22 @@ const QuestionPaperEditPage = () => {
             />
           </div>
 
-          {/* Mark as optional if exactly 2 selected (non-MCQ) */}
+          {/* Add New Section Button */}
+          <div className="mb-4" style={{ width: "100%" }}>
+            <button
+              onClick={() => {
+                setNewSectionName(getNextSectionLetter());
+                setShowAddSectionModal(true);
+              }}
+              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-black transition-colors"
+              style={{ width: "100%" }}
+            >
+              Add New Section
+            </button>
+          </div>
+
+          {/* Mark as optional if exactly 2 selected (non-MCQ). 
+              The button appears only when exactly 2 questions have been selected. */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -676,14 +903,12 @@ const QuestionPaperEditPage = () => {
             </div>
           )}
 
+          {/* Display the list of sections (filtered by searchTerm), each with a question list */}
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading */}
+              {/* Section Heading with toggles to collapse and to add/import questions */}
               <div className="flex items-center justify-between mb-2">
-                {/* Section Name on the Left */}
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
-
-                {/* Action Buttons on the Right */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => toggleSectionCollapse(sectionIndex)}
@@ -696,8 +921,6 @@ const QuestionPaperEditPage = () => {
                       <ChevronUp size={16} />
                     )}
                   </button>
-
-                  {/* Add Question Button */}
                   <button
                     onClick={() => handleAddQuestionForSection(section.name)}
                     className="p-2 rounded bg-black text-white flex items-center justify-center"
@@ -705,10 +928,6 @@ const QuestionPaperEditPage = () => {
                   >
                     <Plus size={16} className="text-white" />
                   </button>
-
-                  {/* Collapse Toggle Button with Chevron */}
-
-                  {/* Import Questions Button */}
                   <button
                     onClick={() =>
                       setShowBankModal({
@@ -725,7 +944,7 @@ const QuestionPaperEditPage = () => {
                 </div>
               </div>
 
-              {/* Render questions only if section is expanded */}
+              {/* If the section is not collapsed, display its droppable question list */}
               {!collapsedSections[sectionIndex] && (
                 <Droppable droppableId={`${sectionIndex}`}>
                   {(provided) => (
@@ -751,7 +970,7 @@ const QuestionPaperEditPage = () => {
                                 }`}
                               >
                                 <div className="items-center gap-2">
-                                  {/* Checkbox for non-MCQ questions */}
+                                  {/* Check box for optional selection (non-MCQ only) */}
                                   {question.type !== "MCQ" && (
                                     <input
                                       type="checkbox"
@@ -769,13 +988,14 @@ const QuestionPaperEditPage = () => {
                                     question.questionText,
                                     60
                                   )}
-                                  {/* Optional badge */}
+                                  {/* If the question belongs to an optional group, show a badge */}
                                   {question.optionalGroupId && (
                                     <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
                                       Optional
                                     </span>
                                   )}
                                 </div>
+                                {/* Delete button for the question */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -800,30 +1020,32 @@ const QuestionPaperEditPage = () => {
         </div>
       </DragDropContext>
 
-      {/* Resize handle */}
+      {/* Resize handle between left and right panels */}
       <div
         onMouseDown={handleMouseDown}
         style={{ width: "5px", cursor: "col-resize" }}
         className="bg-gray-300"
       />
 
-      {/* RIGHT PANEL */}
+      {/* RIGHT PANEL: Editing a selected question */}
       <div
         className="p-4 overflow-hidden"
-        style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
+        style={{ width: `${100 - leftPanelWidth}%`, minWidth: "50%" }}
       >
+        {/* If no question is selected, prompt user to select a question. Otherwise, show the editor. */}
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              {/* If question is optional */}
+              {/* Badge for optional question */}
               {editedQuestion?.optionalGroupId && (
                 <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
                   Optional
                 </span>
               )}
+              {/* If there are unsaved changes, show a "Save" button */}
               {isModified && (
                 <button
                   onClick={handleSave}
@@ -835,9 +1057,10 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
+            {/* Main editing layout (question details on the left, math preview on the right if needed) */}
             <div className="flex flex-col md:flex-row md:items-start gap-4">
-              <div className="md:w-1/2">
-                {/* Editable fields: type, difficulty, marks */}
+              <div className="md:w-2/3">
+                {/* Display question type, difficulty, and marks as inline editable fields */}
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
@@ -869,7 +1092,7 @@ const QuestionPaperEditPage = () => {
                   </div>
                 </div>
 
-                {/* Editable question text */}
+                {/* Question text editor */}
                 <div className="mt-4">
                   <label className="font-semibold mb-2 block">
                     Edit Question Text:
@@ -881,11 +1104,11 @@ const QuestionPaperEditPage = () => {
                   />
                 </div>
 
-                {/* Question image upload */}
+                {/* Question image upload and preview */}
                 <div className="mt-4 flex items-center gap-2">
                   <span className="font-semibold">Question Image:</span>
                   {editedQuestion.imageUrl || questionImageFile ? (
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="flex items-center gap-2 ml-2">
                       <img
                         src={
                           questionImageFile
@@ -894,6 +1117,7 @@ const QuestionPaperEditPage = () => {
                         }
                         alt="Question"
                         className="max-w-xs"
+                        style={{ height: 64, width: 64 }}
                       />
                       {questionImageFile ? (
                         <>
@@ -958,6 +1182,7 @@ const QuestionPaperEditPage = () => {
                 </div>
               </div>
 
+              {/* Live preview of math, if the question text contains LaTeX placeholders */}
               {isEditingMath && (
                 <div className="md:w-1/2 border-l pl-4">
                   <h3 className="font-semibold mb-2">Math Preview</h3>
@@ -968,7 +1193,7 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
-            {/* Editable Options (only if MCQ) */}
+            {/* MCQ Options section (only if type is MCQ) */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
@@ -984,6 +1209,7 @@ const QuestionPaperEditPage = () => {
                             handleOptionChange(idx, e.target.value)
                           }
                         />
+                        {/* Option image upload, display, and removal */}
                         {opt.imageUrl || opt.imageFile ? (
                           <div className="flex items-center gap-2 ml-2">
                             <img
@@ -1067,6 +1293,7 @@ const QuestionPaperEditPage = () => {
                           </>
                         )}
                       </div>
+                      {/* If the option text contains math ($...$), render a small preview */}
                       {opt.option && opt.option.includes("$") && (
                         <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
                           {renderTextWithMath(opt.option)}
@@ -1090,14 +1317,14 @@ const QuestionPaperEditPage = () => {
             <h3 className="text-lg font-semibold mb-4">
               {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
             </h3>
-
+            {/* Show which section the new question will belong to */}
             {sectionForNewQuestion && (
               <div className="text-gray-700 mb-2">
                 <strong>Section:</strong> {sectionForNewQuestion}
               </div>
             )}
 
-            {/* Question Type */}
+            {/* Question type dropdown */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">Question Type</label>
               <select
@@ -1110,7 +1337,7 @@ const QuestionPaperEditPage = () => {
               </select>
             </div>
 
-            {/* Question Text */}
+            {/* Question text (supporting math via $ notation) */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">Question Text</label>
               <textarea
@@ -1126,7 +1353,7 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-            {/* Question Image Upload */}
+            {/* Question image upload */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">
                 Question Image (optional)
@@ -1146,7 +1373,7 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
-            {/* Options (MCQ only) */}
+            {/* MCQ option fields (only if type is MCQ) */}
             {newQuestion.type === "MCQ" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Options</label>
@@ -1191,7 +1418,7 @@ const QuestionPaperEditPage = () => {
               </div>
             )}
 
-            {/* Marks and Difficulty */}
+            {/* Marks and Difficulty inputs */}
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <label className="block mb-1 font-medium">Marks</label>
@@ -1219,7 +1446,7 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-            {/* Modal Actions */}
+            {/* Modal buttons */}
             <div className="flex justify-end gap-4 bg-white p-4">
               <button
                 onClick={() => {
@@ -1254,6 +1481,11 @@ const QuestionPaperEditPage = () => {
           </div>
         </div>
       )}
+
+      {/* 
+        QUESTION BANK MODAL: 
+        Used to import questions from a global bank. 
+      */}
       {showBankModal.visible && (
         <QuestionBankModal
           onClose={() =>
@@ -1261,6 +1493,51 @@ const QuestionPaperEditPage = () => {
           }
           onImport={handleImportQuestions}
         />
+      )}
+
+      {/* -----------------------
+          NEW SECTION CREATION MODAL
+      ----------------------- */}
+      {showAddSectionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
+            <button
+              onClick={() => setShowAddSectionModal(false)}
+              className="absolute top-2 right-2 text-black font-bold"
+            >
+              X
+            </button>
+            <h2 className="text-lg font-semibold mb-4 text-black">
+              Add New Section
+            </h2>
+            <div className="mb-4">
+              <label className="block text-black mb-1 font-medium">
+                Section Name
+              </label>
+              <input
+                type="text"
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                className="w-full p-2 border rounded"
+                placeholder="Enter section name"
+              />
+            </div>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowAddSectionModal(false)}
+                className="px-3 py-1 border border-black rounded bg-white text-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSection}
+                className="px-3 py-1 border border-black rounded bg-black text-white"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

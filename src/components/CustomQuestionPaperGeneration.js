@@ -633,8 +633,8 @@ export const CustomPaperCreatePage = () => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
       let newWidth = (e.clientX / window.innerWidth) * 100;
-      if (newWidth < 15) newWidth = 15;
-      if (newWidth > 60) newWidth = 60;
+      if (newWidth < 25) newWidth = 25;
+      if (newWidth > 50) newWidth = 50;
       setLeftPanelWidth(newWidth);
     };
     const handleMouseUp = () => {
@@ -1274,7 +1274,7 @@ export const CustomPaperCreatePage = () => {
               )}
             </div>
             <div className="flex flex-col md:flex-row md:items-start gap-4">
-              <div className="md:w-1/2">
+              <div className="md:w-2/3">
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
@@ -1315,7 +1315,7 @@ export const CustomPaperCreatePage = () => {
                     onChange={handleQuestionTextChange}
                   />
                 </div>
-                <div className="mt-4 flex items-center gap-2">
+                <div className="mt-4 flex items-start gap-2">
                   <span className="font-semibold">Question Image:</span>
                   {editedQuestion.imageUrl || questionImageFile ? (
                     <div className="flex items-center gap-2 ml-4">
@@ -1327,6 +1327,7 @@ export const CustomPaperCreatePage = () => {
                         }
                         alt="Question"
                         className="max-w-xs"
+                        style={{ height: 32, width: 32 }}
                       />
                       {questionImageFile ? (
                         <>
