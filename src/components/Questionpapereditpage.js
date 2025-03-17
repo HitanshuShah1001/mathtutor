@@ -179,8 +179,8 @@ const QuestionPaperEditPage = () => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
       let newWidth = (e.clientX / window.innerWidth) * 100;
-      if (newWidth < 15) newWidth = 15;
-      if (newWidth > 60) newWidth = 60;
+      if (newWidth < 25) newWidth = 25;
+      if (newWidth > 50) newWidth = 50;
       setLeftPanelWidth(newWidth);
     };
 
@@ -1030,7 +1030,7 @@ const QuestionPaperEditPage = () => {
       {/* RIGHT PANEL: Editing a selected question */}
       <div
         className="p-4 overflow-hidden"
-        style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
+        style={{ width: `${100 - leftPanelWidth}%`, minWidth: "50%" }}
       >
         {/* If no question is selected, prompt user to select a question. Otherwise, show the editor. */}
         {!originalQuestion ? (
@@ -1059,7 +1059,7 @@ const QuestionPaperEditPage = () => {
 
             {/* Main editing layout (question details on the left, math preview on the right if needed) */}
             <div className="flex flex-col md:flex-row md:items-start gap-4">
-              <div className="md:w-1/2">
+              <div className="md:w-2/3">
                 {/* Display question type, difficulty, and marks as inline editable fields */}
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
@@ -1108,7 +1108,7 @@ const QuestionPaperEditPage = () => {
                 <div className="mt-4 flex items-center gap-2">
                   <span className="font-semibold">Question Image:</span>
                   {editedQuestion.imageUrl || questionImageFile ? (
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="flex items-center gap-2 ml-2">
                       <img
                         src={
                           questionImageFile
@@ -1117,6 +1117,7 @@ const QuestionPaperEditPage = () => {
                         }
                         alt="Question"
                         className="max-w-xs"
+                        style={{ height: 64, width: 64 }}
                       />
                       {questionImageFile ? (
                         <>

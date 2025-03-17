@@ -10,19 +10,24 @@ import {
 import { PAPER_GENERATION } from "../constants/pages";
 
 const VerifyOtp = () => {
+  // Get authentication context values and navigation functions
   const { setIsAuthenticated, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const { verifyOTP, requestOtp } = useAuth(); // requestOtp added here
+  // Import both verifyOTP and requestOtp from the auth hook
+  const { verifyOTP, requestOtp } = useAuth();
 
   // Extract phone number from location state
   const phoneNumber = location.state?.phoneNumber || "";
 
+  // State for OTP input, error messages, and hover state for the submit button
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
 
-  // State for resend OTP functionality
+  // State for resend OTP functionality:
+  // resendTimer: Countdown timer (in seconds)
+  // resendDisabled: Boolean flag to disable the resend button until timer expires
   const [resendTimer, setResendTimer] = useState(60);
   const [resendDisabled, setResendDisabled] = useState(true);
 
@@ -46,26 +51,31 @@ const VerifyOtp = () => {
     };
   }, [resendDisabled]);
 
+  // Handler for form submission to verify the OTP entered by the user
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
+    // Validate that the OTP is a 6-digit number
     if (!/^\d{6}$/.test(otp)) {
       setError("Please enter a valid 6-digit OTP.");
       return;
     }
 
+    // Call the verifyOTP function from the auth hook
     const isValidAndData = await verifyOTP(phoneNumber, otp);
     if (isValidAndData?.status) {
       const { accessToken, user } = isValidAndData.data?.data || {};
       removeDataFromLocalStorage();
 
+      // If the user has an email, assume they are fully registered and navigate to paper generation page
       if (user?.emailId) {
         addDataToLocalStorage({ accessToken, user });
         setUser(user);
         setIsAuthenticated(true);
         navigate(PAPER_GENERATION, { replace: true });
       } else {
+        // Otherwise, navigate to update-user-details page for additional registration
         addDataToLocalStorage({ accessToken });
         navigate("/update-user-details", {
           state: { firstTime: true, id: user?.id },
@@ -159,7 +169,9 @@ const VerifyOtp = () => {
                 Resend OTP in {resendTimer} second{resendTimer !== 1 && "s"}
               </p>
             ) : (
+              // Added type="button" to prevent form submission on click
               <button
+                type="button"
                 onClick={handleResendOtp}
                 className="text-blue-500 underline text-sm"
               >
