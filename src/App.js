@@ -23,6 +23,7 @@ import { CustomPaperCreatePage } from "./components/CustomQuestionPaperGeneratio
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
+  
   return (
     <MathJaxContext>
       <AuthProvider>
