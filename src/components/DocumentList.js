@@ -348,6 +348,21 @@ export const DocumentSidebar = () => {
     return () => window.removeEventListener("scroll", handleInfiniteScroll);
   }, [handleInfiniteScroll]);
 
+  useEffect(() => {
+    if (modalVisible) {
+      // Disable scrolling on the background when modal is open
+      document.body.style.overflow = "hidden";
+    } else {
+      // Enable scrolling again when modal is closed
+      document.body.style.overflow = "auto";
+    }
+
+    // Cleanup: Reset the overflow when the component unmounts
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [modalVisible]);
+
   // ----------------------------
   // Helper functions for document actions
   // ----------------------------
@@ -620,10 +635,10 @@ export const DocumentSidebar = () => {
                           {getCapitalSubjectName({ subject: doc.subject })} •
                           Grade {doc.grade}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        {/* <p className="text-sm text-gray-500">
                           Created on{" "}
                           {new Date(doc.createdAt).toLocaleDateString()}
-                        </p>
+                        </p> */}
                       </div>
                       <div className="flex gap-2">
                         {/* View Button */}
