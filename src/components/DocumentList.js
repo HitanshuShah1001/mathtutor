@@ -509,8 +509,8 @@ export const DocumentSidebar = () => {
         {/* Header section with title and Create Question Paper button */}
         <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
         <div className="ml-auto">
-        <button
-            onClick={() => navigate('/question-bank')}
+          <button
+            onClick={() => navigate("/question-bank")}
             className={`inline-flex items-center ${primaryButtonClass} mr-4`}
           >
             <FileText className="w-4 h-4 mr-2" />
@@ -524,8 +524,6 @@ export const DocumentSidebar = () => {
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
           </button>
-
-          
         </div>
       </header>
 
@@ -643,7 +641,9 @@ export const DocumentSidebar = () => {
                         </h3>
                         <p className="text-sm text-gray-500">
                           {getCapitalSubjectName({ subject: doc.subject })} •
-                          Grade {doc.grade}
+                          Grade {doc.grade} • Status :-{" "}
+                          {doc.status.charAt(0).toUpperCase() +
+                            doc.status.slice(1)}
                         </p>
                         {/* <p className="text-sm text-gray-500">
                           Created on{" "}

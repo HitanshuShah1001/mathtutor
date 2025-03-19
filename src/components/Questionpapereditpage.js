@@ -970,6 +970,8 @@ const QuestionPaperEditPage = () => {
                                 }`}
                               >
                                 <div className="items-center gap-2">
+                                <span className="font-semibold" style={{marginRight:5}}>{index + 1}.</span>
+
                                   {/* Check box for optional selection (non-MCQ only) */}
                                   {question.type !== "MCQ" && (
                                     <input
@@ -995,6 +997,7 @@ const QuestionPaperEditPage = () => {
                                     </span>
                                   )}
                                 </div>
+                                
                                 {/* Delete button for the question */}
                                 <button
                                   onClick={(e) => {
