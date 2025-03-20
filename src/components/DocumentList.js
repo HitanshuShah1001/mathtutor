@@ -39,7 +39,7 @@ import { deleteRequest, postRequest } from "../utils/ApiCall";
 /**
  * Reusable styling classes for various buttons and input fields.
  */
-const primaryButtonClass =
+export const primaryButtonClass =
   "px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors";
 const commonButtonClass =
   "px-4 py-2 bg-black text-white font-semibold rounded hover:bg-black transition-colors";
