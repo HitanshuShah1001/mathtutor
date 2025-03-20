@@ -128,9 +128,13 @@ export const DocumentSidebar = () => {
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    fetchDocuments(false);
   };
 
+  useEffect(() => {
+    if (searchQuery) {
+      fetchDocuments(true);
+    }
+  }, [searchQuery]);
   // ----------------------------
   // Filter state
   // ----------------------------
@@ -203,7 +207,7 @@ export const DocumentSidebar = () => {
   });
 
   // Attach the mousemove and mouseup event listeners when dragging
-    /**
+  /**
    * filterGroups: This array of objects maps each category's label, key, and possible values.
    * We iterate over these to create multiple FilterGroupAccordion components.
    */
@@ -307,6 +311,7 @@ export const DocumentSidebar = () => {
         }
       }
 
+      console.log(data,"data")
       // If successful, update documents and pagination state
       if (data.success && data.questionPapers) {
         isInitialLoad
@@ -336,7 +341,6 @@ export const DocumentSidebar = () => {
     fetchDocuments(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
-
 
   /**
    * handleInfiniteScroll: This function runs on the window scroll event.
@@ -544,7 +548,6 @@ export const DocumentSidebar = () => {
           <aside className="fixed top-20 left-0 w-64 h-[calc(100vh-80px)] border-r px-4 py-2 overflow-y-auto bg-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
-            
             </div>
             <div className="mb-4">
               <input
