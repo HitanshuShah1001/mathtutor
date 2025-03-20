@@ -25,7 +25,7 @@ const inputClass =
   "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
 const selectClass =
   "w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500";
-const actionButtonClass =
+export const actionButtonClass =
   "px-4 py-2 bg-[#000] text-white font-semibold rounded hover:bg-[#000] transition-colors";
 const chipClass =
   "inline-flex items-center bg-gray-200 text-gray-800 px-3 py-1 mr-2 mb-2";
@@ -248,7 +248,7 @@ const GenerateQuestionPaper = () => {
           )}
         </div>
         <label className={labelClass}>Select Topics</label>
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
           <select
             className={selectClass}
             onChange={(e) => {
@@ -263,12 +263,7 @@ const GenerateQuestionPaper = () => {
             ))}
           </select>
           <div className="flex">
-            <input
-              className={inputClass}
-              value={customTopic}
-              onChange={(e) => setCustomTopic(e.target.value)}
-              placeholder="Or add custom topic"
-            />
+           
             <button
               className={`${actionButtonClass} ml-2`}
               onClick={handleAddCustomTopic}
@@ -280,7 +275,11 @@ const GenerateQuestionPaper = () => {
         {Object.keys(topicsConfig).length > 0 && (
           <div className="mt-2 flex flex-wrap">
             {Object.keys(topicsConfig).map((topic) => (
-              <div key={topic} className={chipClass} style={{borderRadius:4}}>
+              <div
+                key={topic}
+                className={chipClass}
+                style={{ borderRadius: 4 }}
+              >
                 {topic}
                 <button
                   className={chipRemoveButtonClass}
@@ -413,9 +412,13 @@ const GenerateQuestionPaper = () => {
       />
 
       {/* Wrap the ChatHeader in a white background and pass prop to hide analyse reports */}
-      <div className="bg-white">
-        <ChatHeader title="Generate Question Paper" hideAnalyseReports />
-      </div>
+     
+        <ChatHeader
+          title="Generate Question Paper"
+          hideAnalyseReports
+          handleOpenModal={handleOpenModal}
+        />
+
 
       <Blueprintmodal
         isOpen={isModalOpen}
@@ -464,7 +467,7 @@ const GenerateQuestionPaper = () => {
       </Blueprintmodal>
 
       <div className="flex flex-col md:flex-row gap-6">
-        <div className="md:w-1/2">
+        <div className="md:w-1/2" style={{marginTop:8}}>
           <div className={cardClass}>
             <h2 className={cardTitleClass}>Exam Details</h2>
             <div className={formGroupClass}>
@@ -783,12 +786,6 @@ const GenerateQuestionPaper = () => {
           }
         >
           {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
-        </button>
-        <button
-          className={`${actionButtonClass} btn-hover`}
-          onClick={handleOpenModal}
-        >
-          Load from existing blueprint
         </button>
       </div>
     </div>

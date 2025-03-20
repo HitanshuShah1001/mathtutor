@@ -2,8 +2,9 @@ import { useContext } from "react";
 import { Link, useLocation } from "react-router-dom"; // Import useLocation
 import ProfileMenu from "./ProfileMenu";
 import { AuthContext } from "../utils/AuthContext";
+import { actionButtonClass } from "../components/Questionpaper";
 
-export const ChatHeader = ({ title }) => {
+export const ChatHeader = ({ title, handleOpenModal }) => {
   const { selectedChat } = useContext(AuthContext);
   const location = useLocation(); // Get the current location
 
@@ -23,9 +24,16 @@ export const ChatHeader = ({ title }) => {
         {/* Conditionally render the appropriate link */}
         {isQuestionPaperPage ? (
           <>
+            <button
+              className={`${actionButtonClass} btn-hover`}
+              onClick={handleOpenModal}
+            >
+              Load from existing blueprint
+            </button>
+
             <Link
               to="/question-paper-list"
-              className="text-blue-500 hover:underline"
+              className={`${actionButtonClass} btn-hover`}
             >
               Question Papers
             </Link>

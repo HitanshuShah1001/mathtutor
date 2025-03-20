@@ -124,6 +124,12 @@ export const DocumentSidebar = () => {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // New search query state
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    fetchDocuments(false);
+  };
 
   // ----------------------------
   // Filter state
@@ -196,12 +202,13 @@ export const DocumentSidebar = () => {
     questionTypes: false,
   });
 
-  /**
+  // Attach the mousemove and mouseup event listeners when dragging
+    /**
    * filterGroups: This array of objects maps each category's label, key, and possible values.
    * We iterate over these to create multiple FilterGroupAccordion components.
    */
   const filterGroups = [
-    { label: "Grade", key: "grade", values: grades.map((g) => `Grade ${g}`) },
+    { label: "Grade", key: "grade", values: grades },
     { label: "Subject", key: "subject", values: subjects },
     { label: "Exam Day", key: "examDays", values: examDays },
     { label: "Exam Month", key: "examMonths", values: examMonths },
@@ -211,8 +218,8 @@ export const DocumentSidebar = () => {
     { label: "Exam Name", key: "examNames", values: examNames },
     { label: "Marks", key: "marks", values: marksOptions },
     { label: "Type", key: "types", values: types },
-    { label: "Difficulty", key: "difficulties", values: difficulties },
-    { label: "Question Type", key: "questionTypes", values: questionTypes },
+    // { label: "Difficulty", key: "difficulties", values: difficulties },
+    // { label: "Question Type", key: "questionTypes", values: questionTypes },
   ];
 
   /**
@@ -261,8 +268,8 @@ export const DocumentSidebar = () => {
 
       // Prepare request body from filters
       const requestBody = {};
-      if (filters.grade.length > 0) requestBody.grade = filters.grade;
-      if (filters.subject.length > 0) requestBody.subject = filters.subject;
+      if (filters.grade.length > 0) requestBody.grades = filters.grade;
+      if (filters.subject.length > 0) requestBody.subjects = filters.subject;
       if (filters.examDays.length > 0) requestBody.examDays = filters.examDays;
       if (filters.examMonths.length > 0)
         requestBody.examMonths = filters.examMonths;
@@ -278,8 +285,9 @@ export const DocumentSidebar = () => {
         requestBody.difficulties = filters.difficulties.map((d) =>
           d.toLowerCase()
         );
-      if (filters.questionTypes.length > 0)
-        requestBody.questionTypes = filters.questionTypes;
+      // if (filters.questionTypes.length > 0)
+      //   requestBody.questionTypes = filters.questionTypes;
+      requestBody.name = searchQuery;
 
       // Use an API call helper (postRequest) to fetch data
       const data = await postRequest(
@@ -328,6 +336,7 @@ export const DocumentSidebar = () => {
     fetchDocuments(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
 
   /**
    * handleInfiniteScroll: This function runs on the window scroll event.
@@ -535,7 +544,18 @@ export const DocumentSidebar = () => {
           <aside className="fixed top-20 left-0 w-64 h-[calc(100vh-80px)] border-r px-4 py-2 overflow-y-auto bg-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
+            
             </div>
+            <div className="mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                placeholder="Search question papers..."
+              />
+            </div>
+
             {/* Selected Filters Chips */}
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
