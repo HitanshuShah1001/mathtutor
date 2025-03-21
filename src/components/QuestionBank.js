@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import {
@@ -165,6 +165,7 @@ const QuestionBank = () => {
   const [customPaperGrade, setCustomPaperGrade] = useState("");
   const [customPaperSubject, setCustomPaperSubject] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const questionRef = useRef(null);
 
   const onToggleAccordion = (filterKey) => {
     setOpenFilterGroups((prev) => ({
@@ -201,6 +202,25 @@ const QuestionBank = () => {
     setSearchQuery("");
   };
 
+  const checkIfMoreDocumentsNeeded = useCallback(() => {
+    if (!hasNextPage || infiniteLoading || loading) return;
+
+    if (questionRef.current) {
+      const documentListHeight = questionRef.current.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      const headerHeight = 80; // 80px for the header
+
+      // If the document list doesn't fill the viewport (with some buffer),
+      // and we have more documents to load, then load more
+      if (
+        documentListHeight < viewportHeight - headerHeight - 10 &&
+        hasNextPage
+      ) {
+        fetchQuestions(false);
+      }
+    }
+  }, [hasNextPage, infiniteLoading, loading]);
+
   // Infinite scroll
   const handleInfiniteScroll = useCallback(() => {
     if (!hasNextPage || infiniteLoading || loading) return;
@@ -212,6 +232,15 @@ const QuestionBank = () => {
       fetchQuestions(false);
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
+
+  // Initial check after documents load or resize
+  useEffect(() => {
+    checkIfMoreDocumentsNeeded();
+    // Add resize event listener to check if more documents are needed when window is resized
+    window.addEventListener("resize", checkIfMoreDocumentsNeeded);
+    return () =>
+      window.removeEventListener("resize", checkIfMoreDocumentsNeeded);
+  }, [questions, checkIfMoreDocumentsNeeded]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleInfiniteScroll);
@@ -535,7 +564,7 @@ const QuestionBank = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
-            
+
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
                 values.map((val) => (
