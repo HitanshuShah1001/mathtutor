@@ -1,20 +1,4 @@
-/**
- * This file defines the DocumentSidebar component which serves as a filterable document
- * list and includes functionality for creating, viewing, editing, and deleting question
- * papers. The component also includes a modal-based viewer for viewing question papers
- *
- * Overall Flow:
- * 1. We have filter accordions on the left to filter the list of question papers from an API.
- * 2. As a user scrolls, more documents are fetched and appended (infinite scroll).
- * 3. Users can view, edit, or delete documents.
- * 4. There’s a modal-based flow that allows for creating new question papers – either AI-generated
- *    or completely custom (manually built).
- * 5. When a document is viewed, the code fetches its HTML version from the server and displays it
- *    in a modal. A solution link can also be viewed if available.
- * 6. The entire file focuses on user-friendly UI interactions (accordions, modals, infinite scrolling).
- */
-
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { FileText, DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -115,6 +99,7 @@ const FilterGroupAccordion = ({
  */
 export const DocumentSidebar = () => {
   const navigate = useNavigate();
+  const documentListRef = useRef(null);
 
   // ----------------------------
   // Document and pagination state
@@ -266,8 +251,8 @@ export const DocumentSidebar = () => {
     try {
       // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
-        limit: "20",
-        ...(cursor && { cursor }),
+        limit: "10",
+        ...(cursor && !isInitialLoad && { cursor }),
       });
 
       // Prepare request body from filters
@@ -311,7 +296,7 @@ export const DocumentSidebar = () => {
         }
       }
 
-      console.log(data,"data")
+      console.log(data, "data");
       // If successful, update documents and pagination state
       if (data.success && data.questionPapers) {
         isInitialLoad
@@ -343,6 +328,30 @@ export const DocumentSidebar = () => {
   }, [filters]);
 
   /**
+   * checkIfMoreDocumentsNeeded: This function checks if the viewport is larger than the content
+   * and loads more documents if needed.
+   */
+
+  const checkIfMoreDocumentsNeeded = useCallback(() => {
+    if (!hasNextPage || infiniteLoading || loading) return;
+
+    if (documentListRef.current) {
+      const documentListHeight = documentListRef.current.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      const headerHeight = 80; // 80px for the header
+
+      // If the document list doesn't fill the viewport (with some buffer),
+      // and we have more documents to load, then load more
+      if (
+        documentListHeight < viewportHeight - headerHeight - 10 &&
+        hasNextPage
+      ) {
+        fetchDocuments(false);
+      }
+    }
+  }, [hasNextPage, infiniteLoading, loading]);
+
+  /**
    * handleInfiniteScroll: This function runs on the window scroll event.
    * If the user scrolls near the bottom, we fetch the next page of documents (if available).
    */
@@ -353,7 +362,16 @@ export const DocumentSidebar = () => {
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
     if (scrolledToBottom) fetchDocuments(false);
-  }, [hasNextPage, infiniteLoading, loading, cursor]);
+  }, [hasNextPage, infiniteLoading, loading]);
+
+  // Initial check after documents load or resize
+  useEffect(() => {
+    checkIfMoreDocumentsNeeded();
+    // Add resize event listener to check if more documents are needed when window is resized
+    window.addEventListener("resize", checkIfMoreDocumentsNeeded);
+    return () =>
+      window.removeEventListener("resize", checkIfMoreDocumentsNeeded);
+  }, [documents, checkIfMoreDocumentsNeeded]);
 
   // Attach scroll listener on mount and clean up on unmount
   useEffect(() => {
@@ -442,7 +460,6 @@ export const DocumentSidebar = () => {
       setErrorMessage("Something went wrong while creating the paper.");
     }
   };
-
   /**
    * downloadAllSetPDFs: For a multi-set question paper, each set can have its own link.
    * This function opens each link, loads it, prints as a PDF, and then closes the window.
@@ -643,7 +660,7 @@ export const DocumentSidebar = () => {
               <p className="ml-4 text-gray-600">Loading documents...</p>
             </div>
           ) : (
-            <div>
+            <div ref={documentListRef}>
               {documents?.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500">
@@ -803,8 +820,6 @@ export const DocumentSidebar = () => {
           </div>
         </div>
       )}
-
-      {/* Dialog for choosing between AI-generated or Custom Paper creation */}
       {showPaperDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div
