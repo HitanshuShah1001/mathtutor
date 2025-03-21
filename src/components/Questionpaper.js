@@ -263,7 +263,6 @@ const GenerateQuestionPaper = () => {
             ))}
           </select>
           <div className="flex">
-           
             <button
               className={`${actionButtonClass} ml-2`}
               onClick={handleAddCustomTopic}
@@ -412,13 +411,12 @@ const GenerateQuestionPaper = () => {
       />
 
       {/* Wrap the ChatHeader in a white background and pass prop to hide analyse reports */}
-     
-        <ChatHeader
-          title="Generate Question Paper"
-          hideAnalyseReports
-          handleOpenModal={handleOpenModal}
-        />
 
+      <ChatHeader
+        title="Generate Question Paper"
+        hideAnalyseReports
+        handleOpenModal={handleOpenModal}
+      />
 
       <Blueprintmodal
         isOpen={isModalOpen}
@@ -467,7 +465,7 @@ const GenerateQuestionPaper = () => {
       </Blueprintmodal>
 
       <div className="flex flex-col md:flex-row gap-6">
-        <div className="md:w-1/2" style={{marginTop:8}}>
+        <div className="md:w-1/2" style={{ marginTop: 8 }}>
           <div className={cardClass}>
             <h2 className={cardTitleClass}>Exam Details</h2>
             <div className={formGroupClass}>
@@ -570,6 +568,43 @@ const GenerateQuestionPaper = () => {
                 placeholder="e.g. Mark problems as section A"
               />
             </div>
+          </div>
+          <div className="mt-6 flex gap-4">
+            <button
+              className={`${actionButtonClass} btn-hover`}
+              onClick={handleGenerateQuestionPaper}
+              disabled={
+                !standard ||
+                !subject ||
+                isLoading ||
+                isMarksExceeded ||
+                !title ||
+                !marks ||
+                !timeDuration ||
+                configuredMarks !== parseInt(marks)
+              }
+            >
+              {isMarksExceeded
+                ? "Total marks exceeded"
+                : isLoading
+                ? "Generating..."
+                : "Generate Question Paper"}
+            </button>
+            <button
+              className={`${actionButtonClass} btn-hover`}
+              onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
+              disabled={
+                !standard ||
+                !subject ||
+                isLoading ||
+                isMarksExceeded ||
+                !title ||
+                !marks ||
+                configuredMarks !== parseInt(marks)
+              }
+            >
+              {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
+            </button>
           </div>
         </div>
         {marks && (
@@ -751,43 +786,6 @@ const GenerateQuestionPaper = () => {
       </div>
 
       {/* Bottom action buttons arranged horizontally */}
-      <div className="mt-6 flex gap-4">
-        <button
-          className={`${actionButtonClass} btn-hover`}
-          onClick={handleGenerateQuestionPaper}
-          disabled={
-            !standard ||
-            !subject ||
-            isLoading ||
-            isMarksExceeded ||
-            !title ||
-            !marks ||
-            !timeDuration ||
-            configuredMarks !== parseInt(marks)
-          }
-        >
-          {isMarksExceeded
-            ? "Total marks exceeded"
-            : isLoading
-            ? "Generating..."
-            : "Generate Question Paper"}
-        </button>
-        <button
-          className={`${actionButtonClass} btn-hover`}
-          onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
-          disabled={
-            !standard ||
-            !subject ||
-            isLoading ||
-            isMarksExceeded ||
-            !title ||
-            !marks ||
-            configuredMarks !== parseInt(marks)
-          }
-        >
-          {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
-        </button>
-      </div>
     </div>
   );
 };
