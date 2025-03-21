@@ -266,7 +266,7 @@ export const DocumentSidebar = () => {
     try {
       // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
-        limit: "10",
+        limit: "20",
         ...(cursor && { cursor }),
       });
 
