@@ -13,7 +13,6 @@ import {
   streams,
   subjects,
   marksOptions,
-  types,
   difficulties,
 } from "../constants/constants";
 import { postRequest, deleteRequest } from "../utils/ApiCall";
@@ -22,7 +21,6 @@ import { FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { primaryButtonClass } from "./DocumentList";
 
-// Extracted styling constants
 const inputClass =
   "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:border-blue-500";
 const blackButtonClass =
@@ -37,7 +35,6 @@ export const modalContainerClass =
 export const modalContentClass =
   "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
 
-// Renders text with math expressions by replacing an invisible marker with "$"
 const renderTextWithMath = (text) => {
   const MATH_MARKER = "\u200B";
   const parts = text?.split("$");
@@ -50,9 +47,6 @@ const renderTextWithMath = (text) => {
   );
 };
 
-/**
- * Accordion-like component for each filter group.
- */
 const FilterGroupAccordion = ({
   label,
   filterKey,
@@ -109,8 +103,9 @@ const QuestionBank = () => {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
+  const [selected, setSelected] = useState({});
 
-  // Filter state (keys match DocumentSidebar)
+  // Filter state
   const [filters, setFilters] = useState({
     grade: [],
     subject: [],
@@ -144,7 +139,7 @@ const QuestionBank = () => {
     ],
   });
 
-  // Control filter panel visibility (default shown)
+  // Control filter panel visibility
   const [showFilterPanel, setShowFilterPanel] = useState(true);
 
   // Accordion state for each filter group
@@ -163,16 +158,14 @@ const QuestionBank = () => {
     questionTypes: false,
   });
 
-  // ----- Create Question Paper Flow States -----
+  // Create Question Paper Flow States
   const [showPaperDialog, setShowPaperDialog] = useState(false);
   const [showCustomCreateModal, setShowCustomCreateModal] = useState(false);
   const [customPaperName, setCustomPaperName] = useState("");
   const [customPaperGrade, setCustomPaperGrade] = useState("");
   const [customPaperSubject, setCustomPaperSubject] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  // ----- End Create Question Paper Flow States -----
 
-  // Toggle accordion open/close for a given filter group
   const onToggleAccordion = (filterKey) => {
     setOpenFilterGroups((prev) => ({
       ...prev,
@@ -180,7 +173,6 @@ const QuestionBank = () => {
     }));
   };
 
-  // Update a filter value (multi-select)
   const toggleFilterValue = (filterKey, value) => {
     setFilters((prev) => {
       const existing = prev[filterKey];
@@ -191,7 +183,6 @@ const QuestionBank = () => {
     });
   };
 
-  // Reset filters to initial empty state
   const resetAllFilters = () => {
     setFilters({
       grade: [],
@@ -227,20 +218,13 @@ const QuestionBank = () => {
     return () => window.removeEventListener("scroll", handleInfiniteScroll);
   }, [handleInfiniteScroll]);
 
-  // Whenever filters or searchQuery change, reset and fetch fresh data
   useEffect(() => {
     setQuestions([]);
     setCursor(undefined);
     setHasNextPage(true);
     fetchQuestions(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, searchQuery]);
 
-  /**
-   * fetchQuestions:
-   * - isInitialLoad clears the list (e.g. after filter/search changes)
-   * - Otherwise, appends the next page.
-   */
   const fetchQuestions = async (isInitialLoad = false) => {
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
@@ -289,19 +273,20 @@ const QuestionBank = () => {
     }
   };
 
-  // ----- Create Question Paper Flow Functions -----
-  // When the Create Question Paper button is clicked:
+  // Create Question Paper Flow Functions
   const handleCreatePaper = () => {
     setShowPaperDialog(true);
   };
 
-  // If user selects Custom Paper:
   const handleCustomPaperClick = () => {
     setShowPaperDialog(false);
     setShowCustomCreateModal(true);
   };
 
-  // When user confirms custom paper creation:
+  useEffect(() => {
+    setSelected({});
+  }, []);
+
   const handleConfirmCustomPaper = async () => {
     if (!customPaperName || !customPaperGrade || !customPaperSubject) {
       setErrorMessage("All three fields are required.");
@@ -323,7 +308,6 @@ const QuestionBank = () => {
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
       }
-      // Reset and close modal
       setShowCustomCreateModal(false);
       setCustomPaperName("");
       setCustomPaperGrade("");
@@ -333,9 +317,7 @@ const QuestionBank = () => {
       setErrorMessage("Something went wrong while creating the paper.");
     }
   };
-  // ----- End Create Question Paper Flow Functions -----
 
-  // MATH editing utilities and handlers
   const MATH_MARKER = "\u200B";
   const handleMathKeyDown = (e, field, index = null) => {
     if (e.metaKey) {
@@ -375,7 +357,6 @@ const QuestionBank = () => {
     }
   };
 
-  // IMAGE UPLOAD HANDLERS
   const handleQuestionImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -436,8 +417,8 @@ const QuestionBank = () => {
           { key: "D", option: "", imageUrl: "" },
         ],
       });
-      // Refresh questions list
       setQuestions([]);
+      setSelected({});
       setCursor(undefined);
       setHasNextPage(true);
       fetchQuestions(true);
@@ -446,22 +427,88 @@ const QuestionBank = () => {
     }
   };
 
-  // Utility functions for display
-  const getDocumentName = ({ name }) => {
-    const names = name.split("_");
-    const capitalisedWords = names.map(
-      (n) => n.charAt(0).toUpperCase() + n.slice(1)
-    );
-    return capitalisedWords.join(" ");
+  const toggleSelection = (questionId) => {
+    setSelected((prev) => ({
+      ...prev,
+      [questionId]: !prev[questionId],
+    }));
   };
 
-  const getCapitalSubjectName = ({ subject }) => {
-    return subject.charAt(0).toUpperCase() + subject.slice(1);
+  const handleDeleteQuestions = async () => {
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 0) {
+      alert("Please select at least one question to delete.");
+      return;
+    }
+    if (
+      !window.confirm("Are you sure you want to delete the selected questions?")
+    ) {
+      return;
+    }
+    try {
+      await Promise.all(
+        selectedIds.map((id) =>
+          deleteRequest(`${BASE_URL_API}/question/delete`, { id })
+        )
+      );
+      setQuestions([]);
+      setCursor(undefined);
+      setHasNextPage(true);
+      setSelected({});
+      fetchQuestions(true);
+    } catch (error) {
+      console.error("Error deleting questions:", error);
+    }
+  };
+
+  const handleEditQuestion = () => {
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 1) {
+      const questionId = selectedIds[0];
+      const questionToEdit = questions.find(
+        (q) => q.id.toString() === questionId.toString()
+      );
+      if (questionToEdit) {
+        setNewQuestion({
+          id: questionToEdit.id,
+          type: questionToEdit.type,
+          questionText: questionToEdit.questionText,
+          imageUrl: questionToEdit.imageUrl || "",
+          marks: questionToEdit.marks,
+          difficulty: questionToEdit.difficulty.toUpperCase(),
+          options:
+            questionToEdit.type === "MCQ"
+              ? questionToEdit.options.map((opt) => ({
+                  ...opt,
+                  imageUrl: opt.imageUrl || "",
+                }))
+              : [
+                  { key: "A", option: "", imageUrl: "" },
+                  { key: "B", option: "", imageUrl: "" },
+                  { key: "C", option: "", imageUrl: "" },
+                  { key: "D", option: "", imageUrl: "" },
+                ],
+        });
+        setIsEditing(true);
+        setShowAddQuestionModal(true);
+      }
+    }
+  };
+
+  // Updated EditQuestionWrapper: only returns the button when exactly one question is selected.
+  const EditQuestionWrapper = () => {
+    const selectedCount = Object.keys(selected).filter(
+      (id) => selected[id]
+    ).length;
+    return selectedCount === 1 ? (
+      <button onClick={handleEditQuestion} className={blackButtonClass}>
+        Edit Question
+      </button>
+    ) : null;
   };
 
   return (
     <div className="min-h-screen relative" style={{ backgroundColor: "white" }}>
-      {/* Fixed Header */}
       <header className={headerClass}>
         <h2 className="text-2xl font-semibold text-gray-800">Questions</h2>
         <div className="ml-auto">
@@ -482,24 +529,13 @@ const QuestionBank = () => {
         </div>
       </header>
 
-      {/* Main Content Container */}
       <div className="flex pt-20">
-        {/* Left Filter Panel */}
         {showFilterPanel && (
           <aside className="fixed top-20 left-0 w-64 h-[calc(100vh-80px)] border-r px-4 py-2 overflow-y-auto bg-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
-            <div className="mb-4">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={inputClass}
-                placeholder="Search question papers..."
-              />
-            </div>
-            {/* Selected Filter Chips */}
+            
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
                 values.map((val) => (
@@ -518,7 +554,6 @@ const QuestionBank = () => {
                 ))
               )}
             </div>
-            {/* Filter Accordions */}
             <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
               {[
                 { label: "Grade", key: "grade", values: grades },
@@ -530,10 +565,16 @@ const QuestionBank = () => {
                 { label: "Stream", key: "streams", values: streams },
                 { label: "Exam Name", key: "examNames", values: examNames },
                 { label: "Marks", key: "marks", values: marksOptions },
-                { label: "Type", key: "types", values: types },
-                // Uncomment below if needed:
-                // { label: "Difficulty", key: "difficulties", values: difficulties },
-                // { label: "Question Type", key: "questionTypes", values: questionTypes },
+                {
+                  label: "Difficulty",
+                  key: "difficulties",
+                  values: difficulties,
+                },
+                {
+                  label: "Question Type",
+                  key: "questionTypes",
+                  values: questionTypes,
+                },
               ].map(({ label, key, values }) => (
                 <FilterGroupAccordion
                   key={key}
@@ -547,7 +588,6 @@ const QuestionBank = () => {
                 />
               ))}
             </div>
-            {/* Reset Filters Button */}
             <button
               onClick={resetAllFilters}
               className={`${blackButtonClass} w-full mt-4`}
@@ -557,19 +597,54 @@ const QuestionBank = () => {
           </aside>
         )}
 
-        {/* Right Content Panel */}
         <main
           className={`flex-1 overflow-y-auto p-4 ${
             showFilterPanel ? "ml-64" : ""
           }`}
         >
-          <div className="mb-4">
+          <div
+            className="mb-4"
+            style={{ display: "flex", justifyContent: "space-between" }}
+          >
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
               className="px-3 py-2 border rounded"
             >
               {showFilterPanel ? "Hide Filters" : "Show Filters"}
             </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  setNewQuestion({
+                    type: "MCQ",
+                    questionText: "",
+                    imageUrl: "",
+                    marks: "",
+                    difficulty: "",
+                    options: [
+                      { key: "A", option: "", imageUrl: "" },
+                      { key: "B", option: "", imageUrl: "" },
+                      { key: "C", option: "", imageUrl: "" },
+                      { key: "D", option: "", imageUrl: "" },
+                    ],
+                  });
+                  setShowAddQuestionModal(true);
+                }}
+                className={blackButtonClass}
+              >
+                Add Question
+              </button>
+              <EditQuestionWrapper />
+              {selected && Object.keys(selected).some((id) => selected[id]) && (
+                <button
+                  onClick={handleDeleteQuestions}
+                  className={blackButtonClass}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
           {loading && questions.length === 0 ? (
             <div className="flex items-center justify-center">
@@ -587,8 +662,14 @@ const QuestionBank = () => {
               {questions.map((question) => (
                 <div
                   key={question.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
+                  className="flex justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
                 >
+                  <input
+                    type="checkbox"
+                    checked={selected[question.id] || false}
+                    onChange={() => toggleSelection(question.id)}
+                    className="mt-1"
+                  />
                   <div className="flex-1">
                     <div className="mb-2">
                       {renderTextWithMath(question.questionText)}
@@ -643,14 +724,12 @@ const QuestionBank = () => {
         </main>
       </div>
 
-      {/* ADD/EDIT QUESTION MODAL (remains unchanged) */}
       {showAddQuestionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative">
             <h3 className="text-lg font-semibold mb-4">
               {isEditing ? "Edit Question" : "Add New Question"}
             </h3>
-            {/* Question Type */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">Question Type</label>
               <select
@@ -658,14 +737,13 @@ const QuestionBank = () => {
                 onChange={(e) => handleNewQuestionChange(e, "type")}
                 className={inputClass}
               >
-                {types.map((type) => (
+                {questionTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
                 ))}
               </select>
             </div>
-            {/* Question Text */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">Question Text</label>
               <textarea
@@ -680,7 +758,6 @@ const QuestionBank = () => {
                 Preview: {renderTextWithMath(newQuestion.questionText)}
               </div>
             </div>
-            {/* Question Image Upload */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">
                 Question Image (optional)
@@ -699,7 +776,6 @@ const QuestionBank = () => {
                 />
               )}
             </div>
-            {/* Options (only for MCQ) */}
             {newQuestion.type === "MCQ" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Options</label>
@@ -743,7 +819,6 @@ const QuestionBank = () => {
                 ))}
               </div>
             )}
-            {/* Marks and Difficulty */}
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
                 <label className="block mb-1 font-medium">Marks</label>
@@ -776,7 +851,6 @@ const QuestionBank = () => {
                 </select>
               </div>
             </div>
-            {/* Modal Actions */}
             <div className="flex justify-end gap-4 bg-white p-4">
               <button
                 onClick={() => {
@@ -811,7 +885,6 @@ const QuestionBank = () => {
         </div>
       )}
 
-      {/* ----- Create Paper Dialog ----- */}
       {showPaperDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div
@@ -851,7 +924,6 @@ const QuestionBank = () => {
         </div>
       )}
 
-      {/* ----- Custom Paper Creation Modal ----- */}
       {showCustomCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white border border-gray-200 shadow-lg rounded-lg w-[400px] p-6 relative">
