@@ -115,11 +115,6 @@ export const DocumentSidebar = () => {
     setSearchQuery(e.target.value);
   };
 
-  useEffect(() => {
-    if (searchQuery !== "") {
-      fetchDocuments(true);
-    }
-  }, [searchQuery]);
   // ----------------------------
   // Filter state
   // ----------------------------
@@ -246,6 +241,7 @@ export const DocumentSidebar = () => {
    * so the documents returned already match the selected filter criteria.
    */
   const fetchDocuments = async (isInitialLoad = false) => {
+    console.log('being called',isInitialLoad)
     // Distinguish between initial load and subsequent loads
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
@@ -315,9 +311,6 @@ export const DocumentSidebar = () => {
     }
   };
 
-  useEffect(() => {
-    console.log("documnts", documents);
-  }, [documents]);
   /**
    * Whenever the filters change, we reset pagination (cursor, hasNextPage, etc.)
    * and fetch the first batch of documents anew.
@@ -328,7 +321,7 @@ export const DocumentSidebar = () => {
     setHasNextPage(true);
     fetchDocuments(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters,searchQuery]);
 
   /**
    * checkIfMoreDocumentsNeeded: This function checks if the viewport is larger than the content
