@@ -168,7 +168,8 @@ const QuestionPaperEditPage = () => {
     );
   };
 
-  const renderTruncatedTextWithMath = (text, maxLength = 60) => {
+  const renderTruncatedTextWithMath = (text, maxLength = 200) => {
+    console.log(text,"text that came")
     if (!text) return null;
     let truncated = text;
     if (text.length > maxLength) {
@@ -771,7 +772,7 @@ const QuestionPaperEditPage = () => {
                                   )}
                                   {renderTruncatedTextWithMath(
                                     question.questionText,
-                                    60
+                                    200
                                   )}
                                   {question.optionalGroupId && (
                                     <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
