@@ -67,30 +67,18 @@ const QuestionPaperEditPage = () => {
     return String.fromCharCode(nextCharCode);
   };
 
-  const handleAddSection = async () => {
+  const handleAddSection = () => {
     if (!newSectionName.trim()) {
       alert("Please enter a valid section name.");
       return;
     }
+    // Create a new section object locally
     const newSection = { name: newSectionName.trim(), questions: [] };
-    const updatedSections = [...sections, newSection];
-    setSections(updatedSections);
-
-    const payload = { id: questionPaperId, sections: updatedSections };
-    const response = await postRequest(
-      `${BASE_URL_API}/questionPaper/update`,
-      payload
-    );
-    if (!response?.success) {
-      alert("Failed to add new section. Please try again.");
-      return;
-    }
-
+    // Update the sections array in local state
+    setSections([...sections, newSection]);
+    // Close the new section modal and clear the input
     setShowAddSectionModal(false);
     setNewSectionName("");
-
-    setSectionForNewQuestion(newSection.name);
-    setShowAddQuestionModal(true);
   };
 
   const toggleSectionCollapse = (sectionIndex) => {
@@ -169,7 +157,7 @@ const QuestionPaperEditPage = () => {
   };
 
   const renderTruncatedTextWithMath = (text, maxLength = 200) => {
-    console.log(text,"text that came")
+    console.log(text, "text that came");
     if (!text) return null;
     let truncated = text;
     if (text.length > maxLength) {
@@ -892,7 +880,7 @@ const QuestionPaperEditPage = () => {
                           src={url}
                           alt={`Question ${index + 1}`}
                           className="object-cover rounded border"
-                          style={{height:'64px'}}
+                          style={{ height: "64px" }}
                         />
                         <button
                           onClick={() => handleDeleteQuestionImage(index)}
@@ -969,7 +957,7 @@ const QuestionPaperEditPage = () => {
                                   : opt.imageUrl
                               }
                               alt={`Option ${opt.key}`}
-                              style={{ height: '64px' }}
+                              style={{ height: "64px" }}
                             />
                             {opt.imageFile ? (
                               <>

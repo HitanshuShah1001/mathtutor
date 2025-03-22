@@ -937,33 +937,18 @@ export const CustomPaperCreatePage = () => {
    */
 
   // ======================= NEW SECTION CREATION =======================
-  const handleAddSection = async () => {
-    // Validate that newSectionName is non-empty
+  const handleAddSection = () => {
     if (!newSectionName.trim()) {
       alert("Please enter a valid section name.");
       return;
     }
-    // Create a new section object
+    // Create a new section object locally
     const newSection = { name: newSectionName.trim(), questions: [] };
-    // Update the sections array locally
-    const updatedSections = [...sections, newSection];
-    setSections(updatedSections);
-    // Optionally, call the update API to persist the new section
-    const payload = { id: questionPaperId, sections: updatedSections };
-    const response = await postRequest(
-      `${BASE_URL_API}/questionPaper/update`,
-      payload
-    );
-    if (!response?.success) {
-      alert("Failed to add new section. Please try again.");
-      return;
-    }
-    // Close the new section modal
+    // Update the sections array in local state
+    setSections([...sections, newSection]);
+    // Close the new section modal and clear the input
     setShowAddSectionModal(false);
     setNewSectionName("");
-    // Automatically open the Add New Question modal for the new section
-    setSectionForNewQuestion(newSection.name);
-    setShowAddQuestionModal(true);
   };
 
   // ======================= IMPORT FROM QUESTION BANK =======================
