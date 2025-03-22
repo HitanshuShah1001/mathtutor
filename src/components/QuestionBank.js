@@ -128,7 +128,7 @@ const QuestionBank = () => {
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
-    imageUrl: "",
+    imageUrls: [], // changed: now an array of image URLs
     marks: "",
     difficulty: "",
     options: [
@@ -210,8 +210,6 @@ const QuestionBank = () => {
       const viewportHeight = window.innerHeight;
       const headerHeight = 80; // 80px for the header
 
-      // If the document list doesn't fill the viewport (with some buffer),
-      // and we have more documents to load, then load more
       if (
         documentListHeight < viewportHeight - headerHeight - 10 &&
         hasNextPage
@@ -233,10 +231,8 @@ const QuestionBank = () => {
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
-  // Initial check after documents load or resize
   useEffect(() => {
     checkIfMoreDocumentsNeeded();
-    // Add resize event listener to check if more documents are needed when window is resized
     window.addEventListener("resize", checkIfMoreDocumentsNeeded);
     return () =>
       window.removeEventListener("resize", checkIfMoreDocumentsNeeded);
@@ -386,16 +382,28 @@ const QuestionBank = () => {
     }
   };
 
+  // Updated to append new image URL to imageUrls array
   const handleQuestionImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const targetLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${file.name}`;
     try {
       const fileUrl = await uploadToS3(file, targetLink);
-      setNewQuestion((prev) => ({ ...prev, imageUrl: fileUrl }));
+      setNewQuestion((prev) => ({
+        ...prev,
+        imageUrls: [...prev.imageUrls, fileUrl],
+      }));
     } catch (error) {
       console.error("Error uploading question image:", error);
     }
+  };
+
+  // Remove a single image from the imageUrls array
+  const removeQuestionImage = (index) => {
+    setNewQuestion((prev) => ({
+      ...prev,
+      imageUrls: prev.imageUrls.filter((_, i) => i !== index),
+    }));
   };
 
   const handleOptionImageUpload = async (e, index) => {
@@ -436,7 +444,7 @@ const QuestionBank = () => {
       setNewQuestion({
         type: "MCQ",
         questionText: "",
-        imageUrl: "",
+        imageUrls: [], // reset to empty array
         marks: "",
         difficulty: "",
         options: [
@@ -502,7 +510,7 @@ const QuestionBank = () => {
           id: questionToEdit.id,
           type: questionToEdit.type,
           questionText: questionToEdit.questionText,
-          imageUrl: questionToEdit.imageUrl || "",
+          imageUrls: questionToEdit.imageUrls || [], // updated here
           marks: questionToEdit.marks,
           difficulty: questionToEdit.difficulty.toUpperCase(),
           options:
@@ -524,7 +532,6 @@ const QuestionBank = () => {
     }
   };
 
-  // Updated EditQuestionWrapper: only returns the button when exactly one question is selected.
   const EditQuestionWrapper = () => {
     const selectedCount = Object.keys(selected).filter(
       (id) => selected[id]
@@ -627,129 +634,146 @@ const QuestionBank = () => {
         )}
 
         <main
-          className={`flex-1 overflow-y-auto p-4 ${
-            showFilterPanel ? "ml-64" : ""
-          }`}
+          className={`flex-1 p-4 ${showFilterPanel ? "ml-64" : ""}`}
+          style={{ position: "relative" }}
         >
+          {/* Fixed action bar */}
           <div
-            className="mb-4"
-            style={{ display: "flex", justifyContent: "space-between" }}
+            className={`fixed z-50 bg-white p-4 border-b ${
+              showFilterPanel ? "left-64" : "left-0"
+            } right-0`}
+            style={{ top: "80px" }} // 80px to account for header height
           >
-            <button
-              onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className="px-3 py-2 border rounded"
-            >
-              {showFilterPanel ? "Hide Filters" : "Show Filters"}
-            </button>
-            <div className="flex gap-2">
+            <div className="flex justify-between">
               <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setNewQuestion({
-                    type: "MCQ",
-                    questionText: "",
-                    imageUrl: "",
-                    marks: "",
-                    difficulty: "",
-                    options: [
-                      { key: "A", option: "", imageUrl: "" },
-                      { key: "B", option: "", imageUrl: "" },
-                      { key: "C", option: "", imageUrl: "" },
-                      { key: "D", option: "", imageUrl: "" },
-                    ],
-                  });
-                  setShowAddQuestionModal(true);
-                }}
-                className={blackButtonClass}
+                onClick={() => setShowFilterPanel(!showFilterPanel)}
+                className="px-3 py-2 border rounded"
               >
-                Add Question
+                {showFilterPanel ? "Hide Filters" : "Show Filters"}
               </button>
-              <EditQuestionWrapper />
-              {selected && Object.keys(selected).some((id) => selected[id]) && (
+              <div className="flex gap-2">
                 <button
-                  onClick={handleDeleteQuestions}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setNewQuestion({
+                      type: "MCQ",
+                      questionText: "",
+                      imageUrls: [],
+                      marks: "",
+                      difficulty: "",
+                      options: [
+                        { key: "A", option: "", imageUrl: "" },
+                        { key: "B", option: "", imageUrl: "" },
+                        { key: "C", option: "", imageUrl: "" },
+                        { key: "D", option: "", imageUrl: "" },
+                      ],
+                    });
+                    setShowAddQuestionModal(true);
+                  }}
                   className={blackButtonClass}
                 >
-                  Delete
+                  Add Question
                 </button>
-              )}
+                <EditQuestionWrapper />
+                {selected &&
+                  Object.keys(selected).some((id) => selected[id]) && (
+                    <button
+                      onClick={handleDeleteQuestions}
+                      className={blackButtonClass}
+                    >
+                      Delete
+                    </button>
+                  )}
+              </div>
             </div>
           </div>
-          {loading && questions.length === 0 ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-              <p className="ml-4 text-gray-600">Loading questions...</p>
-            </div>
-          ) : questions.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">
-                No questions found. Adjust your filters or add a new question.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((question) => (
-                <div
-                  key={question.id}
-                  className="flex justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected[question.id] || false}
-                    onChange={() => toggleSelection(question.id)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="mb-2">
-                      {renderTextWithMath(question.questionText)}
-                    </div>
-                    {question.imageUrl && (
-                      <img
-                        src={question.imageUrl}
-                        alt="Question"
-                        className="mb-2 rounded w-24 h-24"
-                      />
-                    )}
-                    {question.type === "MCQ" && question.options && (
-                      <div className="ml-4 space-y-2 mt-2">
-                        {question.options.map((option) => (
-                          <div
-                            key={option.key}
-                            className="flex items-center gap-2"
-                          >
-                            <span className="font-bold">{option.key}:</span>
-                            {renderTextWithMath(option.option)}
-                            {option.imageUrl && (
-                              <img
-                                src={option.imageUrl}
-                                alt={`Option ${option.key}`}
-                                className="rounded w-24 h-24"
-                              />
-                            )}
-                          </div>
-                        ))}
+
+          {/* Scrollable questions list */}
+          <div className="pt-[72px]">
+            {" "}
+            {/* 80px header + ~64px fixed bar */}
+            {loading && questions.length === 0 ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                <p className="ml-4 text-gray-600">Loading questions...</p>
+              </div>
+            ) : questions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">
+                  No questions found. Adjust your filters or add a new question.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4" ref={questionRef}>
+                {questions.map((question) => (
+                  <div
+                    key={question.id}
+                    className="flex justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected[question.id] || false}
+                      onChange={() => toggleSelection(question.id)}
+                      className="mt-1 mr-3"
+                      style={{ height: "20px" }}
+                    />
+                    <div className="flex-1">
+                      <div className="mb-2">
+                        {renderTextWithMath(question.questionText)}
                       </div>
-                    )}
-                    <div className="mt-2 text-sm text-gray-600">
-                      Marks: {question.marks} | Type: {question.type} |
-                      Difficulty: {question.difficulty}
+                      {question.imageUrls && question.imageUrls.length > 0 && (
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          {question.imageUrls.map((url, idx) => (
+                            <img
+                              key={idx}
+                              src={url}
+                              alt={`Question ${question.id} preview ${idx}`}
+                              className="rounded w-48 h-48"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {question.type === "MCQ" && question.options && (
+                        <div className="ml-4 space-y-2 mt-2">
+                          {question.options.map((option) => (
+                            <div
+                              key={option.key}
+                              className="flex items-center gap-2"
+                            >
+                              <span className="font-bold">{option.key}:</span>
+                              {renderTextWithMath(option.option)}
+                              {option.imageUrl && (
+                                <img
+                                  src={option.imageUrl}
+                                  alt={`Option ${option.key}`}
+                                  className="rounded w-24 h-24"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-2 text-sm text-gray-600">
+                        Marks: {question.marks} | Type: {question.type} |
+                        Difficulty: {question.difficulty}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {hasNextPage ? (
-                infiniteLoading && (
+                ))}
+                {hasNextPage ? (
+                  infiniteLoading && (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading more questions...
+                    </div>
+                  )
+                ) : (
                   <div className="text-center py-4 text-gray-500">
-                    Loading more questions...
+                    No more questions to load
                   </div>
-                )
-              ) : (
-                <div className="text-center py-4 text-gray-500">
-                  No more questions to load
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </main>
       </div>
 
@@ -789,7 +813,7 @@ const QuestionBank = () => {
             </div>
             <div className="mb-4">
               <label className="block mb-1 font-medium">
-                Question Image (optional)
+                Question Images (optional)
               </label>
               <input
                 type="file"
@@ -797,12 +821,24 @@ const QuestionBank = () => {
                 onChange={handleQuestionImageUpload}
                 className="block"
               />
-              {newQuestion.imageUrl && (
-                <img
-                  src={newQuestion.imageUrl}
-                  alt="Question preview"
-                  className="mt-2 rounded w-24 h-24 border"
-                />
+              {newQuestion.imageUrls && newQuestion.imageUrls.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {newQuestion.imageUrls.map((url, idx) => (
+                    <div key={idx} className="relative">
+                      <img
+                        src={url}
+                        alt={`Question preview ${idx}`}
+                        className="rounded w-24 h-24 border"
+                      />
+                      <button
+                        onClick={() => removeQuestionImage(idx)}
+                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                      >
+                        X
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             {newQuestion.type === "MCQ" && (
@@ -888,7 +924,7 @@ const QuestionBank = () => {
                   setNewQuestion({
                     type: "MCQ",
                     questionText: "",
-                    imageUrl: "",
+                    imageUrls: [],
                     marks: "",
                     difficulty: "",
                     options: [
