@@ -116,7 +116,7 @@ export const DocumentSidebar = () => {
   };
 
   useEffect(() => {
-    if (searchQuery) {
+    if (searchQuery !== "") {
       fetchDocuments(true);
     }
   }, [searchQuery]);
@@ -315,6 +315,9 @@ export const DocumentSidebar = () => {
     }
   };
 
+  useEffect(() => {
+    console.log("documnts", documents);
+  }, [documents]);
   /**
    * Whenever the filters change, we reset pagination (cursor, hasNextPage, etc.)
    * and fetch the first batch of documents anew.
@@ -767,7 +770,7 @@ export const DocumentSidebar = () => {
       {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
+          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative">
             <button
               onClick={() => setModalVisible(false)}
               className={`absolute top-4 right-4 ${modalButtonClass}`}
