@@ -18,20 +18,45 @@ import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 
+/**
+ * Main component for editing a question paper.
+ * Allows adding sections, adding/editing questions within each section,
+ * handling question images, optionally marking questions as optional, and more.
+ */
 const QuestionPaperEditPage = () => {
   const { docId: questionPaperId } = useParams();
+
+  // State to hold the sections of the question paper
   const [sections, setSections] = useState([]);
+
+  // The original question (before editing)
   const [originalQuestion, setOriginalQuestion] = useState(null);
+
+  // The edited question (after making changes)
   const [editedQuestion, setEditedQuestion] = useState(null);
+
+  // Local state for newly selected question images (not yet saved)
   const [questionImageUrls, setQuestionImageUrls] = useState([]);
+
+  // Search term for filtering questions in the left panel
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Controls visibility of the "Add Question" modal
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+
+  // Indicates if we're editing (rather than creating) a new question
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
+
+  // Stores the section name for which we are adding a new question
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
+
+  // Controls visibility of the question bank modal
   const [showBankModal, setShowBankModal] = useState({
     visible: false,
     sectionName: null,
   });
+
+  // Object that holds the data for a brand-new question to be added
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
@@ -45,15 +70,30 @@ const QuestionPaperEditPage = () => {
       { key: "D", option: "", imageUrl: "" },
     ],
   });
+
+  // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+
+  // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
+
+  // Stores question IDs which are selected to be marked as optional
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
   );
+
+  // Keeps track of which sections are currently collapsed in the left panel
   const [collapsedSections, setCollapsedSections] = useState({});
+
+  // Manages the left panel's width for resizing
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
 
+  /**
+   * Returns the next alphabet letter for naming a new section.
+   * If no sections exist, returns "A".
+   * If there's at least one, finds the highest letter and returns the next letter.
+   */
   const getNextSectionLetter = () => {
     if (!sections || sections.length === 0) return "A";
     const letters = sections
@@ -68,20 +108,24 @@ const QuestionPaperEditPage = () => {
     return String.fromCharCode(nextCharCode);
   };
 
+  /**
+   * Handles creating and adding a new section to the local state.
+   * This doesn't persist to the server directly in this function.
+   */
   const handleAddSection = () => {
     if (!newSectionName.trim()) {
       alert("Please enter a valid section name.");
       return;
     }
-    // Create a new section object locally
     const newSection = { name: newSectionName.trim(), questions: [] };
-    // Update the sections array in local state
     setSections([...sections, newSection]);
-    // Close the new section modal and clear the input
     setShowAddSectionModal(false);
     setNewSectionName("");
   };
 
+  /**
+   * Toggles the collapse/expand state of a given section.
+   */
   const toggleSectionCollapse = (sectionIndex) => {
     setCollapsedSections((prev) => ({
       ...prev,
@@ -89,6 +133,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * Handles the mousemove event for resizing the left panel.
+   */
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
@@ -110,10 +157,16 @@ const QuestionPaperEditPage = () => {
     };
   }, [isResizing]);
 
+  /**
+   * Initiates resizing when user mouses down on the resize handle.
+   */
   const handleMouseDown = () => {
     setIsResizing(true);
   };
 
+  /**
+   * Fetches the details of the question paper (sections, questions) from the server.
+   */
   const fetchQuestionPaperDetails = async () => {
     try {
       const response = await getRequest(
@@ -129,22 +182,33 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  // Fetch question paper details on component mount
   useEffect(() => {
     fetchQuestionPaperDetails();
   }, []);
 
+  /**
+   * When a question is clicked from the left panel, set it as the original and
+   * initialize the editedQuestion with a deep copy.
+   */
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
     setQuestionImageUrls([]);
   };
 
+  /**
+   * Determines if the current edited question has unsaved changes.
+   */
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
         questionImageUrls.length > 0
       : false;
 
+  /**
+   * Splits text on $ signs and renders inline math for every odd segment.
+   */
   const renderTextWithMath = (text) => {
     if (!text) return null;
     const parts = text.split("$");
@@ -157,6 +221,9 @@ const QuestionPaperEditPage = () => {
     );
   };
 
+  /**
+   * Renders truncated question text with math. Only shows up to maxLength characters.
+   */
   const renderTruncatedTextWithMath = (text, maxLength = 200) => {
     if (!text) return null;
     let truncated = text;
@@ -173,6 +240,9 @@ const QuestionPaperEditPage = () => {
     );
   };
 
+  /**
+   * Filters the sections by the search term so that only matching questions appear.
+   */
   const getFilteredSections = () => {
     const lowerSearch = searchTerm?.toLowerCase();
     const filtered = sections.map((section) => {
@@ -185,8 +255,13 @@ const QuestionPaperEditPage = () => {
   };
 
   const visibleSections = getFilteredSections();
+
+  // For showing a live math preview on the right side
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
+  /**
+   * Toggles a question's inclusion in the optional selection list (only 2 at a time allowed).
+   */
   const toggleOptionalSelection = (questionId, e) => {
     e.stopPropagation();
     setSelectedOptionalQuestions((prev) => {
@@ -201,6 +276,9 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Marks the selected questions as optional by assigning them the same optionalGroupId.
+   */
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;
     const optionalGroupId = uuidv4();
@@ -229,6 +307,9 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * Updates the question text in the editedQuestion state.
+   */
   const handleQuestionTextChange = (e) => {
     const newText = e.target.value;
     setEditedQuestion((prev) => ({
@@ -237,6 +318,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * Changes the question type (MCQ/Descriptive) in the editedQuestion.
+   */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setEditedQuestion((prev) => ({
@@ -245,6 +329,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * Imports questions from the question bank into the specified section.
+   */
   const handleImportQuestions = async (selectedIds) => {
     if (!selectedIds || selectedIds.length === 0) {
       setShowBankModal({ visible: false, sectionName: null });
@@ -281,6 +368,9 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * Updates the difficulty level of the edited question.
+   */
   const handleDifficultyChange = (e) => {
     const newDiff = e.target.value;
     setEditedQuestion((prev) => ({
@@ -289,6 +379,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * Updates the marks for the edited question.
+   */
   const handleMarksChange = (e) => {
     const newMarks = e.target.value;
     setEditedQuestion((prev) => ({
@@ -297,6 +390,9 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * Updates the text of one of the MCQ options for the edited question.
+   */
   const handleOptionChange = (index, newValue) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -308,11 +404,17 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Adds newly selected files to the local questionImageUrls array.
+   */
   const handleQuestionImageChange = (e) => {
     const files = Array.from(e.target.files);
     setQuestionImageUrls((prev) => [...prev, ...files]);
   };
 
+  /**
+   * Removes an existing image from the edited question.
+   */
   const handleDeleteQuestionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedImageUrls = [...prev.imageUrls];
@@ -321,6 +423,9 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Discards a newly added (but not yet saved) image from local state.
+   */
   const handleDiscardQuestionImage = (index) => {
     setQuestionImageUrls((prev) => {
       const updatedFiles = [...prev];
@@ -329,6 +434,9 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Handles the event of uploading a new image for one of the MCQ options in the edited question.
+   */
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -340,6 +448,9 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Removes (existing) or discards (new) an option image from the edited question.
+   */
   const handleDeleteOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -348,6 +459,10 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Removes (existing) or discards (new) an option image from the edited question.
+   * Typically used for newly uploaded images.
+   */
   const handleDiscardOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -358,8 +473,12 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Saves the edited question to the database (upsert). It uploads newly added images first.
+   */
   const handleSave = async () => {
     try {
+      // Upload newly selected question-level images
       let updatedImageUrls = editedQuestion.imageUrls || [];
       if (questionImageUrls.length > 0) {
         const uploadedUrls = await Promise.all(
@@ -373,16 +492,16 @@ const QuestionPaperEditPage = () => {
         updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
       }
 
+      // Upload newly selected option images
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          if (opt.imageUrl) {
+          if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               opt.imageUrl.name
             }`;
             const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            
           }
           return updatedOption;
         })
@@ -426,6 +545,9 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * Deletes a question from the server and updates the local state.
+   */
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm("Are you sure you want to delete this question?")) {
       try {
@@ -453,6 +575,9 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * Handles the reorder of questions within the same section via drag-and-drop.
+   */
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
@@ -478,10 +603,13 @@ const QuestionPaperEditPage = () => {
       }
       await fetchQuestionPaperDetails();
     } else {
-      // TODO: Implement cross-section drag if needed
+      // Cross-section drag not implemented
     }
   };
 
+  /**
+   * Prepares to add a new question to a specified section.
+   */
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
     setShowAddQuestionModal(true);
@@ -501,6 +629,9 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Handles updates to the new question form fields (including MCQ option text).
+   */
   const handleNewQuestionChange = (e, field, index) => {
     const { value } = e.target;
     if (
@@ -519,10 +650,16 @@ const QuestionPaperEditPage = () => {
     }
   };
 
+  /**
+   * Placeholder for keydown events that handle math input in the new question form.
+   */
   const handleMathKeyDown = (e, field, index) => {
     // Implementation detail: optional custom logic
   };
 
+  /**
+   * Handles new question images. Stores the local object URLs in newQuestion.imageUrls.
+   */
   const handleQuestionImageUpload = (e) => {
     const files = Array.from(e.target.files);
     const imageUrls = files.map((file) => URL.createObjectURL(file));
@@ -532,6 +669,10 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
+  /**
+   * Handles image upload for an MCQ option in the new question form.
+   * Saves a local preview in the option's imageUrl.
+   */
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -546,18 +687,29 @@ const QuestionPaperEditPage = () => {
     });
   };
 
+  /**
+   * Determines the correct order index for a new question in a given section.
+   */
   const calculateOrderIndex = (sectionName) => {
     const foundSection = sections.find((sec) => sec.name === sectionName);
     if (!foundSection) return 1;
     return foundSection.questions.length + 1;
   };
 
+  /**
+   * Submits the new question form data to the server.
+   * Uploads images first, then calls the server with the final URLs.
+   */
   const handleNewQuestionSubmit = async () => {
     try {
+      // Upload question-level images
       let updatedImageUrls = newQuestion.imageUrls || [];
       if (newQuestion.imageUrls?.length > 0) {
         const uploadedUrls = await Promise.all(
           newQuestion.imageUrls.map(async (file) => {
+            // For a real implementation, we'd store actual File objects
+            // and pass them to uploadToS3. The code below assumes each
+            // item in newQuestion.imageUrls is a File, not just a string.
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               file.name
             }`;
@@ -567,15 +719,18 @@ const QuestionPaperEditPage = () => {
         updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
       }
 
+      // Upload option images if any
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          if (opt.imageUrl) {
+          // Similar assumption about opt.imageUrl being a File.
+          if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               opt.imageUrl.name
             }`;
             const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
+            // Remove the local reference (we only store the URL in the DB).
             delete updatedOption.imageUrl;
           }
           return updatedOption;
@@ -631,6 +786,7 @@ const QuestionPaperEditPage = () => {
 
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
+      {/* Left panel with sections and questions */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div
           className="border-r p-4 overflow-y-auto"
@@ -790,12 +946,14 @@ const QuestionPaperEditPage = () => {
         </div>
       </DragDropContext>
 
+      {/* Resizable divider */}
       <div
         onMouseDown={handleMouseDown}
         style={{ width: "5px", cursor: "col-resize" }}
         className="bg-gray-300"
       />
 
+      {/* Right panel for question editing */}
       <div
         className="p-4 overflow-y-auto"
         style={{ width: `${100 - leftPanelWidth}%`, minWidth: "50%" }}
@@ -877,7 +1035,6 @@ const QuestionPaperEditPage = () => {
                           src={url}
                           alt={`Question ${index + 1}`}
                           className="object-cover rounded border h-24"
-                          
                         />
                         <button
                           onClick={() => handleDeleteQuestionImage(index)}
@@ -936,25 +1093,39 @@ const QuestionPaperEditPage = () => {
                 <ul className="list-disc ml-6 mt-2 space-y-3">
                   {editedQuestion.options.map((opt, idx) => {
                     return (
-                    <li key={idx} className="ml-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold">{opt.key}.</span>
-                        <textarea
-                          className="w-1/2 p-2 border rounded min-h-[40px]"
-                          value={opt.option || ""}
-                          onChange={(e) =>
-                            handleOptionChange(idx, e.target.value)
-                          }
-                        />
-                        {opt.imageUrl ? (
-                          <div className="flex items-center gap-2 ml-2">
-                            <img
-                              src={URL.createObjectURL(opt.imageUrl)}
-                              alt={`Option ${opt.key}`}
-                              className="h-24"
-                            />
-                            {opt.imageUrl ? (
-                              <>
+                      <li key={idx} className="ml-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">{opt.key}.</span>
+                          <textarea
+                            className="w-1/2 p-2 border rounded min-h-[40px]"
+                            value={opt.option || ""}
+                            onChange={(e) =>
+                              handleOptionChange(idx, e.target.value)
+                            }
+                          />
+                          {opt.imageUrl ? (
+                            // If opt.imageUrl is set, we show the image.
+                            <div className="flex items-center gap-2 ml-2">
+                              <img
+                                src={
+                                  typeof opt.imageUrl === "string"
+                                    ? opt.imageUrl
+                                    : URL.createObjectURL(opt.imageUrl)
+                                }
+                                alt={`Option ${opt.key}`}
+                                className="h-24"
+                              />
+                              {typeof opt.imageUrl === "string" ? (
+                                // Existing image: user can remove it
+                                <button
+                                  onClick={() => handleDeleteOptionImage(idx)}
+                                  className="px-2 py-1 bg-red-200 rounded text-sm"
+                                  title="Remove Option Image"
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              ) : (
+                                // Newly uploaded image: user can discard
                                 <button
                                   onClick={() => handleDiscardOptionImage(idx)}
                                   className="px-2 py-1 bg-gray-200 rounded text-sm"
@@ -962,76 +1133,44 @@ const QuestionPaperEditPage = () => {
                                 >
                                   Discard
                                 </button>
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <label
-                                  htmlFor={`option-image-${idx}`}
-                                  className="cursor-pointer"
-                                  title="Change Option Image"
-                                >
-                                  <ImageIcon
-                                    size={20}
-                                    className="text-gray-500 hover:text-gray-700"
-                                  />
-                                </label>
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </>
-                            )}
-                            <input
-                              id={`option-image-${idx}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleOptionImageChange(idx, e.target.files[0])
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <label
-                              htmlFor={`option-image-${idx}`}
-                              className="cursor-pointer"
-                              title="Upload Option Image"
-                            >
-                              <ImageIcon
-                                size={20}
-                                className="text-gray-500 hover:text-gray-700"
+                              )}
+                            </div>
+                          ) : (
+                            // No imageUrl -> user can upload
+                            <>
+                              <label
+                                htmlFor={`option-image-${idx}`}
+                                className="cursor-pointer"
+                                title="Upload Option Image"
+                              >
+                                <ImageIcon
+                                  size={20}
+                                  className="text-gray-500 hover:text-gray-700"
+                                />
+                              </label>
+                              <input
+                                id={`option-image-${idx}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) =>
+                                  handleOptionImageChange(
+                                    idx,
+                                    e.target.files[0]
+                                  )
+                                }
                               />
-                            </label>
-                            <input
-                              id={`option-image-${idx}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleOptionImageChange(idx, e.target.files[0])
-                              }
-                            />
-                          </>
-                        )}
-                      </div>
-                      {opt.option && opt.option.includes("$") && (
-                        <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
-                          {renderTextWithMath(opt.option)}
+                            </>
+                          )}
                         </div>
-                      )}
-                    </li>
-                  )})}
+                        {opt.option && opt.option.includes("$") && (
+                          <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
+                            {renderTextWithMath(opt.option)}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
