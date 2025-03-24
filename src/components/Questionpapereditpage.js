@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/img-redundant-alt */
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -381,7 +382,7 @@ const QuestionPaperEditPage = () => {
             }`;
             const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            delete updatedOption.imageUrl;
+            
           }
           return updatedOption;
         })
@@ -523,7 +524,6 @@ const QuestionPaperEditPage = () => {
   };
 
   const handleQuestionImageUpload = (e) => {
-    console.log(e);
     const files = Array.from(e.target.files);
     const imageUrls = files.map((file) => URL.createObjectURL(file));
     setNewQuestion((prev) => ({
@@ -532,7 +532,6 @@ const QuestionPaperEditPage = () => {
     }));
   };
 
-  console.log(newQuestion, "new question");
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -877,8 +876,8 @@ const QuestionPaperEditPage = () => {
                         <img
                           src={url}
                           alt={`Question ${index + 1}`}
-                          className="object-cover rounded border"
-                          style={{ height: "64px" }}
+                          className="object-cover rounded border h-24"
+                          
                         />
                         <button
                           onClick={() => handleDeleteQuestionImage(index)}
@@ -893,7 +892,6 @@ const QuestionPaperEditPage = () => {
                         <img
                           src={URL.createObjectURL(file)}
                           alt={`New Image ${index + 1}`}
-                          
                           className="h-24 object-cover rounded border"
                         />
                         <button
@@ -936,7 +934,8 @@ const QuestionPaperEditPage = () => {
               <div>
                 <strong>Options</strong>
                 <ul className="list-disc ml-6 mt-2 space-y-3">
-                  {editedQuestion.options.map((opt, idx) => (
+                  {editedQuestion.options.map((opt, idx) => {
+                    return (
                     <li key={idx} className="ml-3">
                       <div className="flex items-center gap-2">
                         <span className="font-bold">{opt.key}.</span>
@@ -950,9 +949,9 @@ const QuestionPaperEditPage = () => {
                         {opt.imageUrl ? (
                           <div className="flex items-center gap-2 ml-2">
                             <img
-                              src={opt.imageUrl}
+                              src={URL.createObjectURL(opt.imageUrl)}
                               alt={`Option ${opt.key}`}
-                              style={{ height: "64px" }}
+                              className="h-24"
                             />
                             {opt.imageUrl ? (
                               <>
@@ -1032,7 +1031,7 @@ const QuestionPaperEditPage = () => {
                         </div>
                       )}
                     </li>
-                  ))}
+                  )})}
                 </ul>
               </div>
             )}
