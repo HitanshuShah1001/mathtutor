@@ -251,7 +251,7 @@ const QuestionPaperEditPage = () => {
       );
       return { ...section, questions: filteredQuestions };
     });
-    return filtered.filter((section) => section.questions.length > 0);
+    return filtered;
   };
 
   const visibleSections = getFilteredSections();
@@ -662,10 +662,9 @@ const QuestionPaperEditPage = () => {
    */
   const handleQuestionImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
     setNewQuestion((prev) => ({
       ...prev,
-      imageUrls: [...prev.imageUrls, ...imageUrls],
+      imageUrls: [...prev.imageUrls, ...files],
     }));
   };
 
@@ -676,12 +675,12 @@ const QuestionPaperEditPage = () => {
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
-    const imageUrl = URL.createObjectURL(file);
+
     setNewQuestion((prev) => {
       const newOptions = [...prev.options];
       newOptions[index] = {
         ...newOptions[index],
-        imageUrl,
+        file,
       };
       return { ...prev, options: newOptions };
     });
@@ -703,7 +702,7 @@ const QuestionPaperEditPage = () => {
   const handleNewQuestionSubmit = async () => {
     try {
       // Upload question-level images
-      let updatedImageUrls = newQuestion.imageUrls || [];
+      let updatedImageUrls = [];
       if (newQuestion.imageUrls?.length > 0) {
         const uploadedUrls = await Promise.all(
           newQuestion.imageUrls.map(async (file) => {
@@ -716,7 +715,7 @@ const QuestionPaperEditPage = () => {
             return await uploadToS3(file, generatedLink);
           })
         );
-        updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
+        updatedImageUrls = uploadedUrls;
       }
 
       // Upload option images if any
@@ -1225,7 +1224,7 @@ const QuestionPaperEditPage = () => {
                 {newQuestion.imageUrls?.map((url, index) => (
                   <div key={index} className="relative">
                     <img
-                      src={url}
+                      src={URL.createObjectURL(url)}
                       alt={`Question ${index + 1}`}
                       className="w-24 h-24 object-cover rounded border"
                     />
@@ -1293,7 +1292,7 @@ const QuestionPaperEditPage = () => {
                       />
                       {option.imageUrl && (
                         <img
-                          src={option.imageUrl}
+                          src={URL.createObjectURL(option.imageUrl)}
                           alt={`Option ${option.key} preview`}
                           className="mt-2 rounded w-24 h-24 border"
                         />
