@@ -19,6 +19,7 @@ import {
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
+import ProfileMenu from "../subcomponents/ProfileMenu";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -536,7 +537,7 @@ export const DocumentSidebar = () => {
       <header className="fixed top-0 left-0 right-0 z-20 bg-white shadow-md h-20 flex items-center px-4">
         {/* Header section with title and Create Question Paper button */}
         <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center">
           <button
             onClick={() => navigate("/question-bank")}
             className={`inline-flex items-center ${primaryButtonClass} mr-4`}
@@ -552,6 +553,9 @@ export const DocumentSidebar = () => {
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
           </button>
+          <div style={{marginLeft:'10px'}}>
+          <ProfileMenu />
+          </div>
         </div>
       </header>
 

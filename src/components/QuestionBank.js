@@ -20,6 +20,7 @@ import { uploadToS3 } from "../utils/s3utils";
 import { FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { primaryButtonClass } from "./DocumentList";
+import ProfileMenu from "../subcomponents/ProfileMenu";
 
 const inputClass =
   "w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:border-blue-500";
@@ -276,8 +277,6 @@ const QuestionBank = () => {
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
         }),
-       
-       
       };
 
       if (searchQuery != "") {
@@ -552,7 +551,7 @@ const QuestionBank = () => {
     <div className="min-h-screen relative" style={{ backgroundColor: "white" }}>
       <header className={headerClass}>
         <h2 className="text-2xl font-semibold text-gray-800">Questions</h2>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center">
           <button
             onClick={() => navigate("/question-paper-list")}
             className={`inline-flex items-center ${primaryButtonClass} mr-4`}
@@ -567,6 +566,9 @@ const QuestionBank = () => {
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
           </button>
+          <div style={{ marginLeft: "10px" }}>
+            <ProfileMenu />
+          </div>
         </div>
       </header>
 
