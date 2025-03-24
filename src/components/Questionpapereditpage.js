@@ -319,7 +319,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Changes the question type (MCQ/Descriptive) in the editedQuestion.
+   * Changes the question type (MCQ/Descriptive) in the editedQuestion to a dropdown.
    */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
@@ -630,6 +630,25 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
+   * Checks if the new question form is valid (all mandatory fields filled).
+   */
+  const isNewQuestionValid = () => {
+    const { type, questionText, marks, difficulty, options } = newQuestion;
+    if (!type) return false;
+    if (!questionText.trim()) return false;
+    if (!marks || Number(marks) < 0) return false;
+    if (!difficulty) return false;
+
+    // If it's MCQ, all option texts must be non-empty
+    if (type === "MCQ") {
+      for (let opt of options) {
+        if (!opt.option.trim()) return false;
+      }
+    }
+    return true;
+  };
+
+  /**
    * Handles updates to the new question form fields (including MCQ option text).
    */
   const handleNewQuestionChange = (e, field, index) => {
@@ -658,7 +677,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Handles new question images. Stores the local object URLs in newQuestion.imageUrls.
+   * Handles new question images. Stores the actual File objects in newQuestion.imageUrls.
    */
   const handleQuestionImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -670,17 +689,16 @@ const QuestionPaperEditPage = () => {
 
   /**
    * Handles image upload for an MCQ option in the new question form.
-   * Saves a local preview in the option's imageUrl.
+   * Saves the File object in the option's imageUrl.
    */
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setNewQuestion((prev) => {
       const newOptions = [...prev.options];
       newOptions[index] = {
         ...newOptions[index],
-        file,
+        imageUrl: file,
       };
       return { ...prev, options: newOptions };
     });
@@ -700,37 +718,38 @@ const QuestionPaperEditPage = () => {
    * Uploads images first, then calls the server with the final URLs.
    */
   const handleNewQuestionSubmit = async () => {
+    // Prevent submission if form is invalid
+    if (!isNewQuestionValid()) {
+      alert("Please fill out all mandatory fields before saving.");
+      return;
+    }
+
     try {
       // Upload question-level images
-      let updatedImageUrls = [];
+      let uploadedImageUrls = [];
       if (newQuestion.imageUrls?.length > 0) {
         const uploadedUrls = await Promise.all(
           newQuestion.imageUrls.map(async (file) => {
-            // For a real implementation, we'd store actual File objects
-            // and pass them to uploadToS3. The code below assumes each
-            // item in newQuestion.imageUrls is a File, not just a string.
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               file.name
             }`;
             return await uploadToS3(file, generatedLink);
           })
         );
-        updatedImageUrls = uploadedUrls;
+        uploadedImageUrls = uploadedUrls;
       }
 
       // Upload option images if any
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          // Similar assumption about opt.imageUrl being a File.
           if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               opt.imageUrl.name
             }`;
             const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            // Remove the local reference (we only store the URL in the DB).
-            delete updatedOption.imageUrl;
+            // Remove the local reference
           }
           return updatedOption;
         })
@@ -740,7 +759,7 @@ const QuestionPaperEditPage = () => {
       const payload = {
         ...newQuestion,
         section: sectionForNewQuestion,
-        imageUrls: updatedImageUrls,
+        imageUrls: uploadedImageUrls,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
@@ -984,12 +1003,15 @@ const QuestionPaperEditPage = () => {
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
-                    <input
-                      type="text"
+                    {/* Changed from plain input to a dropdown */}
+                    <select
                       value={editedQuestion.type || ""}
                       onChange={handleTypeChange}
-                      className="w-auto bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
+                      className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                    >
+                      <option value="MCQ">MCQ</option>
+                      <option value="Descriptive">Descriptive</option>
+                    </select>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Difficulty:</span>
@@ -1180,9 +1202,50 @@ const QuestionPaperEditPage = () => {
       {showAddQuestionModal && (
         <div className={modalContainerClass}>
           <div className={modalContentClass}>
-            <h3 className="text-lg font-semibold mb-4">
-              {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
-            </h3>
+            {/* Buttons at the top, so user doesn't have to scroll */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddQuestionModal(false);
+                    setIsEditingNewQuestion(false);
+                    setSectionForNewQuestion(null);
+                    // Reset newQuestion to defaults
+                    setNewQuestion({
+                      type: "MCQ",
+                      questionText: "",
+                      imageUrls: [],
+                      marks: "",
+                      difficulty: "",
+                      options: [
+                        { key: "A", option: "", imageUrl: "" },
+                        { key: "B", option: "", imageUrl: "" },
+                        { key: "C", option: "", imageUrl: "" },
+                        { key: "D", option: "", imageUrl: "" },
+                      ],
+                    });
+                  }}
+                  className="px-3 py-1 border border-black rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewQuestionSubmit}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                  disabled={!isNewQuestionValid()} // disable if form invalid
+                >
+                  {isEditingNewQuestion ? "Update Question" : "Save Question"}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-2">
+              * All fields (except images) are mandatory.
+            </p>
+
             {sectionForNewQuestion && (
               <div className="text-gray-700 mb-2">
                 <strong>Section:</strong> {sectionForNewQuestion}
@@ -1190,7 +1253,9 @@ const QuestionPaperEditPage = () => {
             )}
 
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Question Type</label>
+              <label className="block mb-1 font-medium">
+                Question Type <span className="text-red-500">*</span>
+              </label>
               <select
                 value={newQuestion.type}
                 onChange={(e) => handleNewQuestionChange(e, "type")}
@@ -1202,8 +1267,10 @@ const QuestionPaperEditPage = () => {
             </div>
 
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Question Text</label>
-              <textarea
+              <label className="block mb-1 font-medium">
+                Question Text <span className="text-red-500">*</span>
+              </label>
+              <textarea 
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
                 onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
@@ -1221,19 +1288,19 @@ const QuestionPaperEditPage = () => {
                 Question Images (optional)
               </label>
               <div className="flex flex-wrap gap-2">
-                {newQuestion.imageUrls?.map((url, index) => (
+                {newQuestion.imageUrls?.map((file, index) => (
                   <div key={index} className="relative">
                     <img
-                      src={URL.createObjectURL(url)}
+                      src={URL.createObjectURL(file)}
                       alt={`Question ${index + 1}`}
                       className="w-24 h-24 object-cover rounded border"
                     />
                     <button
                       onClick={() => {
                         setNewQuestion((prev) => {
-                          const updatedImageUrls = [...prev.imageUrls];
-                          updatedImageUrls.splice(index, 1);
-                          return { ...prev, imageUrls: updatedImageUrls };
+                          const updated = [...prev.imageUrls];
+                          updated.splice(index, 1);
+                          return { ...prev, imageUrls: updated };
                         });
                       }}
                       className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
@@ -1261,7 +1328,9 @@ const QuestionPaperEditPage = () => {
 
             {newQuestion.type === "MCQ" && (
               <div className="mb-4">
-                <label className="block mb-1 font-medium">Options</label>
+                <label className="block mb-1 font-medium">
+                  Options <span className="text-red-500">*</span>
+                </label>
                 {newQuestion.options.map((option, index) => (
                   <div key={option.key} className="mb-4 border p-2 rounded">
                     <label className="block text-sm font-medium">
@@ -1275,7 +1344,7 @@ const QuestionPaperEditPage = () => {
                       }
                       onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
                       className="border rounded px-2 py-1 w-full mb-1"
-                      placeholder={`Option ${option.key} text. Use Shift + $ for math.`}
+                      placeholder={`Option ${option.key} text (mandatory). Use Shift + $ for math.`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
                       Preview: {renderTextWithMath(option.option)}
@@ -1305,7 +1374,9 @@ const QuestionPaperEditPage = () => {
 
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
-                <label className="block mb-1 font-medium">Marks</label>
+                <label className="block mb-1 font-medium">
+                  Marks <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -1316,7 +1387,9 @@ const QuestionPaperEditPage = () => {
                 />
               </div>
               <div className="flex-1">
-                <label className="block mb-1 font-medium">Difficulty</label>
+                <label className="block mb-1 font-medium">
+                  Difficulty <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={newQuestion.difficulty}
                   onChange={(e) => handleNewQuestionChange(e, "difficulty")}
@@ -1330,37 +1403,7 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 bg-white p-4">
-              <button
-                onClick={() => {
-                  setShowAddQuestionModal(false);
-                  setIsEditingNewQuestion(false);
-                  setSectionForNewQuestion(null);
-                  setNewQuestion({
-                    type: "MCQ",
-                    questionText: "",
-                    imageUrls: [],
-                    marks: "",
-                    difficulty: "",
-                    options: [
-                      { key: "A", option: "", imageUrl: "" },
-                      { key: "B", option: "", imageUrl: "" },
-                      { key: "C", option: "", imageUrl: "" },
-                      { key: "D", option: "", imageUrl: "" },
-                    ],
-                  });
-                }}
-                className="px-3 py-1 border border-black rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleNewQuestionSubmit}
-                className="px-3 py-1 border border-black rounded bg-black text-white"
-              >
-                {isEditingNewQuestion ? "Update Question" : "Save Question"}
-              </button>
-            </div>
+            {/* The Save/Cancel buttons are already at the top in this modal */}
           </div>
         </div>
       )}
