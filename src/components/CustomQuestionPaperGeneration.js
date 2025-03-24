@@ -643,7 +643,7 @@ export const CustomPaperCreatePage = () => {
       );
       return { ...section, questions: filteredQuestions };
     });
-    return filtered.filter((section) => section.questions.length > 0);
+    return filtered;
   };
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
