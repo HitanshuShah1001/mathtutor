@@ -908,7 +908,7 @@ const QuestionPaperEditPage = () => {
                                     : "bg-white hover:bg-gray-100"
                                 }`}
                               >
-                                <div className="items-center gap-2">
+                                <div className="flex items-center gap-2">
                                   <span
                                     className="font-semibold"
                                     style={{ marginRight: 5 }}
@@ -926,7 +926,7 @@ const QuestionPaperEditPage = () => {
                                         toggleOptionalSelection(question.id, e)
                                       }
                                       onClick={(e) => e.stopPropagation()}
-                                      style={{ marginRight: 4 }}
+                                      
                                     />
                                   )}
                                   {renderTruncatedTextWithMath(
@@ -1049,7 +1049,7 @@ const QuestionPaperEditPage = () => {
                   <label className="font-semibold mb-2 block">
                     Question Images:
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mt-3">
                     {editedQuestion.imageUrls?.map((url, index) => (
                       <div key={index} className="relative">
                         <img

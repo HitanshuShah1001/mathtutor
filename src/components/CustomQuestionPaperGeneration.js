@@ -29,6 +29,7 @@ import {
 } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
+import { modalContainerClass, modalContentClass } from "./QuestionBank";
 
 // --- FilterGroupAccordion Component ---
 const FilterGroupAccordion = ({
@@ -105,7 +106,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     examNames: [],
     questionTypes: [],
   });
-  const [searchTerm, setSearchTerm] = useState("");
   const [cursor, setCursor] = useState(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
   const scrollContainerRef = useRef(null);
@@ -197,7 +197,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
           questionTypes: filters.questionTypes,
         }),
         ...(cursor && { cursor }),
-        ...(searchTerm && { search: searchTerm }),
       };
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
@@ -247,7 +246,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 
   useEffect(() => {
     fetchQuestions(true);
-  }, [filters, searchTerm]);
+  }, [filters]);
 
   const toggleSelect = (id) => {
     setSelectedQuestions((prev) =>
@@ -497,10 +496,10 @@ export const CustomPaperCreatePage = () => {
 
   // State to hold paper details (sections array)
   const [sections, setSections] = useState([]);
+  const [questionImageUrls, setQuestionImageUrls] = useState([]);
   // States for question editing
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
-  const [questionImageFile, setQuestionImageFile] = useState(null);
   // Search state for left panel
   const [searchTerm, setSearchTerm] = useState("");
   // Modal for adding a new question (for a section)
@@ -510,7 +509,7 @@ export const CustomPaperCreatePage = () => {
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
-    imageUrl: "",
+    imageUrlS: [],
     marks: "",
     difficulty: "",
     options: [
@@ -527,6 +526,7 @@ export const CustomPaperCreatePage = () => {
   // Panel resizing state
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
+  const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
   // Modal for importing questions from question bank
   const [showBankModal, setShowBankModal] = useState({
     visible: false,
@@ -575,13 +575,13 @@ export const CustomPaperCreatePage = () => {
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    setQuestionImageFile(null);
+    setQuestionImageUrls([]);
   };
 
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
-        questionImageFile !== null
+        questionImageUrls.length > 0
       : false;
 
   // =============== RENDERING MATH UTILS ===============
@@ -706,20 +706,33 @@ export const CustomPaperCreatePage = () => {
 
   // ======================= IMAGE HANDLERS (EDIT) =======================
   const handleQuestionImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) setQuestionImageFile(file);
+    const files = Array.from(e.target.files);
+    setQuestionImageUrls((prev) => [...prev, ...files]);
   };
-  const handleDeleteQuestionImage = () => {
-    setQuestionImageFile(null);
-    setEditedQuestion((prev) => ({ ...prev, imageUrl: "" }));
+
+  const handleDeleteQuestionImage = (index) => {
+    setEditedQuestion((prev) => {
+      const updatedImageUrls = [...prev.imageUrls];
+      updatedImageUrls.splice(index, 1);
+      return { ...prev, imageUrls: updatedImageUrls };
+    });
   };
-  const handleDiscardQuestionImage = () => {
-    setQuestionImageFile(null);
+
+  const handleDiscardQuestionImage = (index) => {
+    setQuestionImageUrls((prev) => {
+      const updatedFiles = [...prev];
+      updatedFiles.splice(index, 1);
+      return updatedFiles;
+    });
   };
+
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
-      updatedOptions[index] = { ...updatedOptions[index], imageFile: file };
+      updatedOptions[index] = {
+        ...updatedOptions[index],
+        imageUrl: file,
+      };
       return { ...prev, options: updatedOptions };
     });
   };
@@ -727,15 +740,15 @@ export const CustomPaperCreatePage = () => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
       delete updatedOptions[index].imageUrl;
-      delete updatedOptions[index].imageFile;
       return { ...prev, options: updatedOptions };
     });
   };
+
   const handleDiscardOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
-      if (updatedOptions[index].imageFile) {
-        delete updatedOptions[index].imageFile;
+      if (updatedOptions[index].imageUrl) {
+        delete updatedOptions[index].imageUrl;
       }
       return { ...prev, options: updatedOptions };
     });
@@ -744,30 +757,34 @@ export const CustomPaperCreatePage = () => {
   // ======================= SAVE (EDITED) QUESTION =======================
   const handleSave = async () => {
     try {
-      let updatedImageUrl = editedQuestion.imageUrl || "";
-      if (questionImageFile) {
-        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-          questionImageFile.name
-        }`;
-        updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
+      let updatedImageUrls = editedQuestion.imageUrls || [];
+      if (questionImageUrls.length > 0) {
+        const uploadedUrls = await Promise.all(
+          questionImageUrls.map(async (file) => {
+            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+              file.name
+            }`;
+            return await uploadToS3(file, generatedLink);
+          })
+        );
+        updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
       }
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
-          let updatedOpt = { ...opt };
-          if (opt.imageFile) {
+          let updatedOption = { ...opt };
+          if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
+              opt.imageUrl.name
             }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
-            updatedOpt.imageUrl = uploadedUrl;
-            delete updatedOpt.imageFile;
+            const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
+            updatedOption.imageUrl = uploadedUrl;
           }
-          return updatedOpt;
+          return updatedOption;
         })
       );
       const finalQuestion = {
         ...editedQuestion,
-        imageUrl: updatedImageUrl,
+        imageUrls: updatedImageUrls,
         options: updatedOptions,
         difficulty: editedQuestion.difficulty?.toLowerCase(),
       };
@@ -784,7 +801,7 @@ export const CustomPaperCreatePage = () => {
       await fetchQuestionPaperDetails();
       setOriginalQuestion(null);
       setEditedQuestion(null);
-      setQuestionImageFile(null);
+      setQuestionImageUrls([]);
     } catch (error) {
       console.error("Error saving question:", error);
       alert("Error saving question.");
@@ -851,10 +868,11 @@ export const CustomPaperCreatePage = () => {
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
     setShowAddQuestionModal(true);
+    setIsEditingNewQuestion(false);
     setNewQuestion({
       type: "MCQ",
       questionText: "",
-      imageUrl: "",
+      imageUrls: [],
       marks: "",
       difficulty: "",
       options: [
@@ -883,16 +901,22 @@ export const CustomPaperCreatePage = () => {
     // Optional logic for SHIFT+$ or similar
   };
 
+  /**
+   * Handles new question images. Stores the actual File objects in newQuestion.imageUrls.
+   */
   const handleQuestionImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    console.log(newQuestion, "NEW QUESTION THAT CAME");
     setNewQuestion((prev) => ({
       ...prev,
-      imageFile: file,
-      imageUrl: URL.createObjectURL(file),
+      imageUrls: [...prev.imageUrls, ...files],
     }));
   };
 
+  /**
+   * Handles image upload for an MCQ option in the new question form.
+   * Saves the File object in the option's imageUrl.
+   */
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -900,8 +924,7 @@ export const CustomPaperCreatePage = () => {
       const newOptions = [...prev.options];
       newOptions[index] = {
         ...newOptions[index],
-        imageFile: file,
-        imageUrl: URL.createObjectURL(file),
+        imageUrl: file,
       };
       return { ...prev, options: newOptions };
     });
@@ -964,63 +987,48 @@ export const CustomPaperCreatePage = () => {
     setShowBankModal({ visible: false, sectionName: null });
   };
 
-  const handleDeleteSection = async ({ sectionName }) => {
-    const updatedSections = sections.filter(
-      (section) => section.name !== sectionName
-    );
-    setSections(updatedSections);
-    const payload = {
-      id: questionPaperId,
-      sections: updatedSections,
-    };
-    const response = await postRequest(
-      `${BASE_URL_API}/questionPaper/update`,
-      payload
-    );
-    if (response.success) {
-      await fetchQuestionPaperDetails();
-    } else {
-      alert("Failed to mark questions as optional.");
-    }
-  };
-
   // ======================= NEW QUESTION SUBMISSION (Existing Flow) =======================
   const handleNewQuestionSubmit = async () => {
     try {
-      let uploadedQuestionImageUrl = newQuestion.imageUrl || "";
-      if (newQuestion.imageFile) {
-        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-          newQuestion.imageFile.name
-        }`;
-        uploadedQuestionImageUrl = await uploadToS3(
-          newQuestion.imageFile,
-          generatedLink
+      let uploadedImageUrls = [];
+      if (newQuestion.imageUrls?.length > 0) {
+        const uploadedUrls = await Promise.all(
+          newQuestion.imageUrls.map(async (file) => {
+            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+              file.name
+            }`;
+            return await uploadToS3(file, generatedLink);
+          })
         );
+        uploadedImageUrls = uploadedUrls;
       }
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
-          const updatedOpt = { ...opt };
-          if (opt.imageFile) {
+          let updatedOption = { ...opt };
+          if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
+              opt.imageUrl.name
             }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
-            updatedOpt.imageUrl = uploadedUrl;
-            delete updatedOpt.imageFile;
+            const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
+            updatedOption.imageUrl = uploadedUrl;
+            // Remove the local reference
           }
-          return updatedOpt;
+          return updatedOption;
         })
       );
       const orderIndex = calculateNextOrderIndex(sectionForNewQuestion);
       let createQuestionBody = {
         ...newQuestion,
-        imageUrl: uploadedQuestionImageUrl,
+        imageUrls: uploadedImageUrls,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
       };
+      if (newQuestion.type !== "MCQ") {
+        delete createQuestionBody.options;
+      }
       await postRequest(`${BASE_URL_API}/question/upsert`, createQuestionBody);
       await fetchQuestionPaperDetails();
       setShowAddQuestionModal(false);
@@ -1049,6 +1057,22 @@ export const CustomPaperCreatePage = () => {
       ...prev,
       [sectionIndex]: !prev[sectionIndex],
     }));
+  };
+
+  const isNewQuestionValid = () => {
+    const { type, questionText, marks, difficulty, options } = newQuestion;
+    if (!type) return false;
+    if (!questionText.trim()) return false;
+    if (!marks || Number(marks) < 0) return false;
+    if (!difficulty) return false;
+
+    // If it's MCQ, all option texts must be non-empty
+    if (type === "MCQ") {
+      for (let opt of options) {
+        if (!opt.option.trim()) return false;
+      }
+    }
+    return true;
   };
 
   return (
@@ -1128,20 +1152,6 @@ export const CustomPaperCreatePage = () => {
                   >
                     Import questions
                   </button>
-                  {/* Uncomment below if section deletion is needed */}
-                  {/*
-                  {sections.length >= 2 && (
-                    <button
-                      onClick={() =>
-                        handleDeleteSection({ sectionName: section.name })
-                      }
-                      className="p-2 rounded bg-red-500 text-white flex items-center justify-center"
-                      title="Delete this section"
-                    >
-                      <Trash size={16} className="text-white" />
-                    </button>
-                  )}
-                  */}
                 </div>
               </div>
               {!collapsedSections[sectionIndex] && (
@@ -1185,12 +1195,10 @@ export const CustomPaperCreatePage = () => {
                                       onClick={(e) => e.stopPropagation()}
                                     />
                                   )}
-                                  <span>
-                                    {renderTruncatedTextWithMath(
-                                      question.questionText,
-                                      60
-                                    )}
-                                  </span>
+                                  {renderTruncatedTextWithMath(
+                                    question.questionText,
+                                    60
+                                  )}
                                   {question.optionalGroupId && (
                                     <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
                                       Optional
@@ -1259,12 +1267,14 @@ export const CustomPaperCreatePage = () => {
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Type:</span>
-                    <input
-                      type="text"
+                    <select
                       value={editedQuestion.type || ""}
                       onChange={handleTypeChange}
-                      className="w-auto bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
+                      className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                    >
+                      <option value="MCQ">MCQ</option>
+                      <option value="Descriptive">Descriptive</option>
+                    </select>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Difficulty:</span>
@@ -1296,80 +1306,56 @@ export const CustomPaperCreatePage = () => {
                     onChange={handleQuestionTextChange}
                   />
                 </div>
-                <div className="mt-4 flex items-start gap-2">
-                  <span className="font-semibold">Question Image:</span>
-                  {editedQuestion.imageUrl || questionImageFile ? (
-                    <div className="flex items-center gap-2 ml-4">
-                      <img
-                        src={
-                          questionImageFile
-                            ? URL.createObjectURL(questionImageFile)
-                            : editedQuestion.imageUrl
-                        }
-                        alt="Question"
-                        className="max-w-xs"
-                        style={{ height: 32, width: 32 }}
-                      />
-                      {questionImageFile ? (
-                        <>
-                          <button
-                            onClick={handleDiscardQuestionImage}
-                            className="px-2 py-1 bg-gray-200 rounded text-sm"
-                          >
-                            Discard
-                          </button>
-                          <button
-                            onClick={handleDeleteQuestionImage}
-                            className="px-2 py-1 bg-red-200 rounded text-sm"
-                          >
-                            Remove
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <label
-                            htmlFor="question-image-input"
-                            className="cursor-pointer"
-                          >
-                            <ImageIcon
-                              size={20}
-                              className="text-gray-500 hover:text-gray-700"
-                            />
-                          </label>
-                          <button
-                            onClick={handleDeleteQuestionImage}
-                            className="px-2 py-1 bg-red-200 rounded text-sm"
-                          >
-                            Remove
-                          </button>
-                        </>
-                      )}
-                      <input
-                        id="question-image-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQuestionImageChange}
-                      />
-                    </div>
-                  ) : (
+                <div className="my-4">
+                  <label className="font-semibold mb-2 block">
+                    Question Images:
+                  </label>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {editedQuestion.imageUrls?.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Question ${index + 1}`}
+                          className="object-cover rounded border h-24"
+                        />
+                        <button
+                          onClick={() => handleDeleteQuestionImage(index)}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <Trash size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    {questionImageUrls.map((file, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`New Image ${index + 1}`}
+                          className="h-24 object-cover rounded border"
+                        />
+                        <button
+                          onClick={() => handleDiscardQuestionImage(index)}
+                          className="absolute top-0 right-0 bg-gray-500 text-white rounded-full p-1"
+                        >
+                          <Trash size={12} />
+                        </button>
+                      </div>
+                    ))}
                     <label
                       htmlFor="question-image-input"
-                      className="cursor-pointer"
+                      className="cursor-pointer flex items-center justify-center w-24 h-24 border-2 border-dashed rounded"
                     >
-                      <ImageIcon
-                        size={20}
-                        className="text-gray-500 hover:text-gray-700"
-                      />
+                      <Plus size={24} className="text-gray-500" />
                       <input
                         id="question-image-input"
                         type="file"
                         accept="image/*"
                         className="hidden"
                         onChange={handleQuestionImageChange}
+                        multiple
                       />
                     </label>
-                  )}
+                  </div>
                 </div>
               </div>
               {isEditingMath && (
@@ -1396,66 +1382,40 @@ export const CustomPaperCreatePage = () => {
                             handleOptionChange(idx, e.target.value)
                           }
                         />
-                        {opt.imageUrl || opt.imageFile ? (
+                        {opt.imageUrl ? (
+                          // If opt.imageUrl is set, we show the image.
                           <div className="flex items-center gap-2 ml-2">
                             <img
                               src={
-                                opt.imageFile
-                                  ? URL.createObjectURL(opt.imageFile)
-                                  : opt.imageUrl
+                                typeof opt.imageUrl === "string"
+                                  ? opt.imageUrl
+                                  : URL.createObjectURL(opt.imageUrl)
                               }
                               alt={`Option ${opt.key}`}
-                              className="max-w-[50px]"
+                              className="h-24"
                             />
-                            {opt.imageFile ? (
-                              <>
-                                <button
-                                  onClick={() => handleDiscardOptionImage(idx)}
-                                  className="px-2 py-1 bg-gray-200 rounded text-sm"
-                                  title="Discard new image"
-                                >
-                                  Discard
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </>
+                            {typeof opt.imageUrl === "string" ? (
+                              // Existing image: user can remove it
+                              <button
+                                onClick={() => handleDeleteOptionImage(idx)}
+                                className="px-2 py-1 bg-red-200 rounded text-sm"
+                                title="Remove Option Image"
+                              >
+                                <Trash size={16} />
+                              </button>
                             ) : (
-                              <>
-                                <label
-                                  htmlFor={`option-image-${idx}`}
-                                  className="cursor-pointer"
-                                  title="Change Option Image"
-                                >
-                                  <ImageIcon
-                                    size={20}
-                                    className="text-gray-500 hover:text-gray-700"
-                                  />
-                                </label>
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </>
+                              // Newly uploaded image: user can discard
+                              <button
+                                onClick={() => handleDiscardOptionImage(idx)}
+                                className="px-2 py-1 bg-gray-200 rounded text-sm"
+                                title="Discard new image"
+                              >
+                                Discard
+                              </button>
                             )}
-                            <input
-                              id={`option-image-${idx}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleOptionImageChange(idx, e.target.files[0])
-                              }
-                            />
                           </div>
                         ) : (
+                          // No imageUrl -> user can upload
                           <>
                             <label
                               htmlFor={`option-image-${idx}`}
@@ -1501,6 +1461,224 @@ export const CustomPaperCreatePage = () => {
       />
 
       {/* ===================== NEW SECTION CREATION MODAL ===================== */}
+      {showAddQuestionModal && (
+        <div className={modalContainerClass}>
+          <div className={modalContentClass}>
+            {/* Buttons at the top, so user doesn't have to scroll */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddQuestionModal(false);
+                    setIsEditingNewQuestion(false);
+                    setSectionForNewQuestion(null);
+                    // Reset newQuestion to defaults
+                    setNewQuestion({
+                      type: "MCQ",
+                      questionText: "",
+                      imageUrls: [],
+                      marks: "",
+                      difficulty: "",
+                      options: [
+                        { key: "A", option: "", imageUrl: "" },
+                        { key: "B", option: "", imageUrl: "" },
+                        { key: "C", option: "", imageUrl: "" },
+                        { key: "D", option: "", imageUrl: "" },
+                      ],
+                    });
+                  }}
+                  className="px-3 py-1 border border-black rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewQuestionSubmit}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                  disabled={!isNewQuestionValid()} // disable if form invalid
+                >
+                  {isEditingNewQuestion ? "Update Question" : "Save Question"}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-2">
+              * All fields (except images) are mandatory.
+            </p>
+
+            {sectionForNewQuestion && (
+              <div className="text-gray-700 mb-2">
+                <strong>Section:</strong> {sectionForNewQuestion}
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">
+                Question Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={newQuestion.type}
+                onChange={(e) => handleNewQuestionChange(e, "type")}
+                className="border rounded px-2 py-1 w-full"
+              >
+                <option value="MCQ">MCQ</option>
+                <option value="Descriptive">DESCRIPTIVE</option>
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">
+                Question Text <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={newQuestion.questionText}
+                onChange={(e) => handleNewQuestionChange(e, "questionText")}
+                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
+                className="border rounded px-2 py-1 w-full"
+                placeholder="Enter question text. Use Shift + $ to add math equations."
+                rows={4}
+              />
+              <div className="mt-2 text-sm text-gray-500">
+                Preview: {renderTextWithMath(newQuestion.questionText)}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">
+                Question Images (optional)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {newQuestion.imageUrls?.map((file, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Question ${index + 1}`}
+                      className="w-24 h-24 object-cover rounded border"
+                    />
+                    <button
+                      onClick={() => {
+                        setNewQuestion((prev) => {
+                          const updated = [...prev.imageUrls];
+                          updated.splice(index, 1);
+                          return { ...prev, imageUrls: updated };
+                        });
+                      }}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label
+                  htmlFor="new-question-image-input"
+                  className="cursor-pointer flex items-center justify-center w-24 h-24 border-2 border-dashed rounded"
+                >
+                  <Plus size={24} className="text-gray-500" />
+                  <input
+                    id="new-question-image-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleQuestionImageUpload}
+                    multiple
+                  />
+                </label>
+              </div>
+            </div>
+
+            {newQuestion.type === "MCQ" && (
+              <div className="mb-4">
+                <label className="block mb-1 font-medium">
+                  Options <span className="text-red-500">*</span>
+                </label>
+                {newQuestion.options.map((option, index) => (
+                  <div key={option.key} className="mb-4 border p-2 rounded">
+                    <label className="block text-sm font-medium">
+                      Option {option.key}
+                    </label>
+                    <input
+                      type="text"
+                      value={option.option}
+                      onChange={(e) =>
+                        handleNewQuestionChange(e, "option", index)
+                      }
+                      onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
+                      className="border rounded px-2 py-1 w-full mb-1"
+                      placeholder={`Option ${option.key} text (mandatory). Use Shift + $ for math.`}
+                    />
+                    <div className="mt-1 text-sm text-gray-500">
+                      Preview: {renderTextWithMath(option.option)}
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium">
+                        Option {option.key} Image (optional)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleOptionImageUpload(e, index)}
+                        className="block"
+                      />
+                      {option.imageUrl && (
+                        <img
+                          src={URL.createObjectURL(option.imageUrl)}
+                          alt={`Option ${option.key} preview`}
+                          className="mt-2 rounded w-24 h-24 border"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-4 mb-4">
+              <div className="flex-1">
+                <label className="block mb-1 font-medium">
+                  Marks <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newQuestion.marks}
+                  onChange={(e) => handleNewQuestionChange(e, "marks")}
+                  className="border rounded px-2 py-1 w-full"
+                  placeholder="e.g. 5"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block mb-1 font-medium">
+                  Difficulty <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newQuestion.difficulty}
+                  onChange={(e) => handleNewQuestionChange(e, "difficulty")}
+                  className="border rounded px-2 py-1 w-full"
+                >
+                  <option value="">Select Difficulty</option>
+                  <option value="EASY">EASY</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="HARD">HARD</option>
+                </select>
+              </div>
+            </div>
+
+            {/* The Save/Cancel buttons are already at the top in this modal */}
+          </div>
+        </div>
+      )}
+
+      {showBankModal.visible && (
+        <QuestionBankModal
+          onClose={() =>
+            setShowBankModal({ visible: false, sectionName: null })
+          }
+          onImport={handleImportQuestions}
+        />
+      )}
+
       {showAddSectionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
@@ -1537,166 +1715,6 @@ export const CustomPaperCreatePage = () => {
                 className="px-3 py-1 border border-black rounded bg-black text-white"
               >
                 Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===================== IMPORT FROM QUESTION BANK MODAL ===================== */}
-      {showBankModal.visible && (
-        <QuestionBankModal
-          onClose={() =>
-            setShowBankModal({ visible: false, sectionName: null })
-          }
-          onImport={handleImportQuestions}
-        />
-      )}
-
-      {/* ===================== ADD NEW QUESTION MODAL ===================== */}
-      {showAddQuestionModal && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
-          <div className="bg-white w-[600px] max-h-[80vh] overflow-auto rounded p-4 relative">
-            <button
-              onClick={() => {
-                setShowAddQuestionModal(false);
-                setSectionForNewQuestion(null);
-              }}
-              className="absolute top-2 right-2 text-black font-bold"
-            >
-              X
-            </button>
-            <h3 className="text-lg font-semibold mb-4 text-black">
-              Add New Question (Section {sectionForNewQuestion})
-            </h3>
-            <div className="mb-4">
-              <label className="block mb-1 font-medium text-black">
-                Question Type
-              </label>
-              <select
-                value={newQuestion.type}
-                onChange={(e) => handleNewQuestionChange(e, "type")}
-                className="border rounded px-2 py-1 w-full"
-              >
-                <option value="MCQ">MCQ</option>
-                <option value="Descriptive">Descriptive</option>
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block mb-1 font-medium text-black">
-                Question Text
-              </label>
-              <textarea
-                value={newQuestion.questionText}
-                onChange={(e) => handleNewQuestionChange(e, "questionText")}
-                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
-                className="border rounded px-2 py-1 w-full"
-                rows={4}
-                placeholder="Enter question text (use $ for math expressions if needed)"
-              />
-              <div className="mt-2 text-sm text-gray-500">
-                Preview: {renderTextWithMath(newQuestion.questionText)}
-              </div>
-            </div>
-            <div className="mb-4 text-black">
-              <label className="block mb-1 font-medium">
-                Question Image (optional)
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleQuestionImageUpload}
-              />
-              {newQuestion.imageUrl && (
-                <img
-                  src={newQuestion.imageUrl}
-                  alt="Preview"
-                  className="mt-2 w-32 h-32 border rounded object-cover"
-                />
-              )}
-            </div>
-            {newQuestion.type === "MCQ" && (
-              <div className="mb-4 text-black">
-                <label className="block mb-1 font-medium">Options</label>
-                {newQuestion.options.map((opt, idx) => (
-                  <div key={opt.key} className="mb-4 border p-2 rounded">
-                    <label className="block text-sm font-medium text-black">
-                      Option {opt.key}
-                    </label>
-                    <input
-                      type="text"
-                      value={opt.option}
-                      onChange={(e) =>
-                        handleNewQuestionChange(e, "option", idx)
-                      }
-                      onKeyDown={(e) => handleMathKeyDown(e, "option", idx)}
-                      className="border rounded px-2 py-1 w-full mb-1"
-                      placeholder={`Option ${opt.key} text`}
-                    />
-                    <div className="mt-1 text-sm text-gray-500">
-                      Preview: {renderTextWithMath(opt.option)}
-                    </div>
-                    <div className="mt-2">
-                      <label className="block text-sm font-medium">
-                        Option {opt.key} Image (optional)
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleOptionImageUpload(e, idx)}
-                        className="block"
-                      />
-                      {opt.imageUrl && (
-                        <img
-                          src={opt.imageUrl}
-                          alt={`Option ${opt.key} preview`}
-                          className="mt-2 rounded w-24 h-24 border"
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-4 mb-4 text-black">
-              <div className="flex-1">
-                <label className="block mb-1 font-medium">Marks</label>
-                <input
-                  type="number"
-                  value={newQuestion.marks}
-                  onChange={(e) => handleNewQuestionChange(e, "marks")}
-                  className="border rounded px-2 py-1 w-full"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block mb-1 font-medium">Difficulty</label>
-                <select
-                  value={newQuestion.difficulty}
-                  onChange={(e) => handleNewQuestionChange(e, "difficulty")}
-                  className="border rounded px-2 py-1 w-full"
-                >
-                  <option value="">Select Difficulty</option>
-                  <option value="EASY">Easy</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HARD">Hard</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-4">
-              <button
-                onClick={() => {
-                  setShowAddQuestionModal(false);
-                  setSectionForNewQuestion(null);
-                }}
-                className="px-3 py-1 border border-black rounded bg-white text-black"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleNewQuestionSubmit}
-                className="px-3 py-1 border border-black rounded bg-black text-white"
-              >
-                Save Question
               </button>
             </div>
           </div>
