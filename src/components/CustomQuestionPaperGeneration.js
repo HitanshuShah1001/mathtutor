@@ -1,7 +1,13 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Trash, Image as ImageIcon, Plus } from "lucide-react";
+import {
+  Trash,
+  Image as ImageIcon,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
@@ -74,8 +80,7 @@ const FilterGroupAccordion = ({
   );
 };
 
-// --- Main Component ---
-
+// --- QuestionBankModal Component ---
 export const QuestionBankModal = ({ onClose, onImport }) => {
   const blackButtonClass =
     "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200";
@@ -491,20 +496,6 @@ export const CustomPaperCreatePage = () => {
   const { questionPaperId } = location.state || {};
 
   // State to hold paper details (sections array)
-  /**
-   * The question-paper object from the backend might look like:
-   * {
-   *   id: 254,
-   *   name: "Dummy",
-   *   grade: 9,
-   *   subject: "Science",
-   *   sections: [
-   *     { name: "A", questions: [ ... ] },
-   *     { name: "B", questions: [ ... ] }
-   *   ]
-   * }
-   */
-  // We'll store the data in 'sections'
   const [sections, setSections] = useState([]);
   // States for question editing
   const [originalQuestion, setOriginalQuestion] = useState(null);
@@ -514,6 +505,7 @@ export const CustomPaperCreatePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   // Modal for adding a new question (for a section)
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
@@ -540,15 +532,11 @@ export const CustomPaperCreatePage = () => {
     visible: false,
     sectionName: null,
   });
-  // NEW: Modal for adding a new section
+  // Modal for adding a new section
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
 
   // ======================= Helper Functions =======================
-
-  // Computes the next alphabetical letter based on current sections.
-  // If sections exist, takes the max letter (by char code) and returns next letter.
-  // If no sections exist, returns "A".
   const getNextSectionLetter = () => {
     if (!sections || sections.length === 0) return "A";
     const letters = sections
@@ -559,13 +547,11 @@ export const CustomPaperCreatePage = () => {
       curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
     );
     const nextCharCode = maxLetter.charCodeAt(0) + 1;
-    if (nextCharCode > "Z".charCodeAt(0)) return "A"; // loop around if needed
+    if (nextCharCode > "Z".charCodeAt(0)) return "A";
     return String.fromCharCode(nextCharCode);
   };
 
   // ======================= API CALLS =======================
-
-  // Fetch question paper details (sections and questions)
   const fetchQuestionPaperDetails = async () => {
     try {
       const response = await getRequest(
@@ -592,7 +578,6 @@ export const CustomPaperCreatePage = () => {
     setQuestionImageFile(null);
   };
 
-  // Are changes made to the question?
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
@@ -895,7 +880,7 @@ export const CustomPaperCreatePage = () => {
   };
 
   const handleMathKeyDown = (e, field, index) => {
-    // Optional logic for SHIFT+$ or something
+    // Optional logic for SHIFT+$ or similar
   };
 
   const handleQuestionImageUpload = (e) => {
@@ -926,15 +911,8 @@ export const CustomPaperCreatePage = () => {
   const calculateNextOrderIndex = (sectionName) => {
     const foundSection = sections.find((sec) => sec.name === sectionName);
     if (!foundSection) return 1;
-    // e.g. length + 1
     return foundSection.questions.length + 1;
   };
-
-  /**
-   * Actually CREATE a new question and then associate it with the paper.
-   * 1) Upsert the question => get questionId
-   * 2) Call /questionPaper/addQuestions with that questionId, specifying orderIndex & section
-   */
 
   // ======================= NEW SECTION CREATION =======================
   const handleAddSection = () => {
@@ -942,11 +920,8 @@ export const CustomPaperCreatePage = () => {
       alert("Please enter a valid section name.");
       return;
     }
-    // Create a new section object locally
     const newSection = { name: newSectionName.trim(), questions: [] };
-    // Update the sections array in local state
     setSections([...sections, newSection]);
-    // Close the new section modal and clear the input
     setShowAddSectionModal(false);
     setNewSectionName("");
   };
@@ -1037,7 +1012,6 @@ export const CustomPaperCreatePage = () => {
         })
       );
       const orderIndex = calculateNextOrderIndex(sectionForNewQuestion);
-
       let createQuestionBody = {
         ...newQuestion,
         imageUrl: uploadedQuestionImageUrl,
@@ -1070,6 +1044,13 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
+  const toggleSectionCollapse = (sectionIndex) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionIndex]: !prev[sectionIndex],
+    }));
+  };
+
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
       {/* ===================== LEFT PANEL (SECTIONS + QUESTIONS) ===================== */}
@@ -1089,7 +1070,6 @@ export const CustomPaperCreatePage = () => {
             />
             <button
               onClick={() => {
-                // Set default new section name based on current sections
                 setNewSectionName(getNextSectionLetter());
                 setShowAddSectionModal(true);
               }}
@@ -1119,6 +1099,17 @@ export const CustomPaperCreatePage = () => {
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => toggleSectionCollapse(sectionIndex)}
+                    className="p-2 rounded flex items-center justify-center bg-black text-white"
+                    title="Toggle section collapse"
+                  >
+                    {collapsedSections[sectionIndex] ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronUp size={16} />
+                    )}
+                  </button>
+                  <button
                     onClick={() => handleAddQuestionForSection(section.name)}
                     className="p-2 rounded bg-black text-white flex items-center justify-center"
                     title="Add a new question to this section"
@@ -1137,7 +1128,9 @@ export const CustomPaperCreatePage = () => {
                   >
                     Import questions
                   </button>
-                  {/* {sections.length >= 2 && (
+                  {/* Uncomment below if section deletion is needed */}
+                  {/*
+                  {sections.length >= 2 && (
                     <button
                       onClick={() =>
                         handleDeleteSection({ sectionName: section.name })
@@ -1147,80 +1140,82 @@ export const CustomPaperCreatePage = () => {
                     >
                       <Trash size={16} className="text-white" />
                     </button>
-                  )} */}
+                  )}
+                  */}
                 </div>
               </div>
-
-              <Droppable droppableId={`${sectionIndex}`}>
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps}>
-                    {section.questions.map((question, index) => {
-                      const isSelected = editedQuestion?.id === question.id;
-                      const questionNumber = index + 1;
-                      return (
-                        <Draggable
-                          key={question.id}
-                          draggableId={`${question.id}`}
-                          index={index}
-                        >
-                          {(dragProvided) => (
-                            <div
-                              ref={dragProvided.innerRef}
-                              {...dragProvided.draggableProps}
-                              {...dragProvided.dragHandleProps}
-                              onClick={() => handleQuestionClick(question)}
-                              className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
-                                isSelected
-                                  ? "bg-blue-50 border-l-4 border-blue-500"
-                                  : "bg-white hover:bg-gray-100"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-gray-700">
-                                  {questionNumber}.
-                                </span>
-                                {question.type !== "MCQ" && (
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedOptionalQuestions.includes(
-                                      question.id
-                                    )}
-                                    onChange={(e) =>
-                                      toggleOptionalSelection(question.id, e)
-                                    }
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                )}
-                                <span>
-                                  {renderTruncatedTextWithMath(
-                                    question.questionText,
-                                    60
-                                  )}
-                                </span>
-                                {question.optionalGroupId && (
-                                  <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                    Optional
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteQuestion(question.id);
-                                }}
-                                className="text-red-500 hover:text-red-700"
+              {!collapsedSections[sectionIndex] && (
+                <Droppable droppableId={`${sectionIndex}`}>
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps}>
+                      {section.questions.map((question, index) => {
+                        const isSelected = editedQuestion?.id === question.id;
+                        const questionNumber = index + 1;
+                        return (
+                          <Draggable
+                            key={question.id}
+                            draggableId={`${question.id}`}
+                            index={index}
+                          >
+                            {(dragProvided) => (
+                              <div
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                {...dragProvided.dragHandleProps}
+                                onClick={() => handleQuestionClick(question)}
+                                className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? "bg-blue-50 border-l-4 border-blue-500"
+                                    : "bg-white hover:bg-gray-100"
+                                }`}
                               >
-                                <Trash size={16} />
-                              </button>
-                            </div>
-                          )}
-                        </Draggable>
-                      );
-                    })}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-gray-700">
+                                    {questionNumber}.
+                                  </span>
+                                  {question.type !== "MCQ" && (
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedOptionalQuestions.includes(
+                                        question.id
+                                      )}
+                                      onChange={(e) =>
+                                        toggleOptionalSelection(question.id, e)
+                                      }
+                                      onClick={(e) => e.stopPropagation()}
+                                    />
+                                  )}
+                                  <span>
+                                    {renderTruncatedTextWithMath(
+                                      question.questionText,
+                                      60
+                                    )}
+                                  </span>
+                                  {question.optionalGroupId && (
+                                    <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                      Optional
+                                    </span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteQuestion(question.id);
+                                  }}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              )}
             </div>
           ))}
         </div>
@@ -1708,15 +1703,15 @@ export const CustomPaperCreatePage = () => {
         </div>
       )}
 
-      {/* ================= IMPORT FROM QUESTION BANK MODAL ================= */}
-      {/* {showBankModal.visible && (
+      {/* Uncomment below if import modal is needed */}
+      {/*
+      {showBankModal.visible && (
         <QuestionBankModal
-          onClose={() =>
-            setShowBankModal({ visible: false, sectionName: null })
-          }
+          onClose={() => setShowBankModal({ visible: false, sectionName: null })}
           onImport={handleImportQuestions}
         />
-      )} */}
+      )}
+      */}
     </div>
   );
 };
