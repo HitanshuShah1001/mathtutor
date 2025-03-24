@@ -530,7 +530,7 @@ const QuestionPaperEditPage = () => {
         payload
       );
       if (response && response.success) {
-        alert("Question upserted successfully!");
+        alert("Question edited successfully!");
       } else {
         alert("Failed to upsert question.");
       }
