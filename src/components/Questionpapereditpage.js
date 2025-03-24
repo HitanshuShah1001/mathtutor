@@ -22,7 +22,7 @@ const QuestionPaperEditPage = () => {
   const [sections, setSections] = useState([]);
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
-  const [questionImageFiles, setQuestionImageFiles] = useState([]);
+  const [questionImageUrls, setQuestionImageUrls] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
@@ -135,13 +135,13 @@ const QuestionPaperEditPage = () => {
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    setQuestionImageFiles([]);
+    setQuestionImageUrls([]);
   };
 
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
-        questionImageFiles.length > 0
+        questionImageUrls.length > 0
       : false;
 
   const renderTextWithMath = (text) => {
@@ -157,7 +157,6 @@ const QuestionPaperEditPage = () => {
   };
 
   const renderTruncatedTextWithMath = (text, maxLength = 200) => {
-    console.log(text, "text that came");
     if (!text) return null;
     let truncated = text;
     if (text.length > maxLength) {
@@ -271,14 +270,14 @@ const QuestionPaperEditPage = () => {
       if (resp?.success) {
         alert("Imported questions successfully!");
         await fetchQuestionPaperDetails();
+        setShowBankModal({ visible: false, sectionName: null });
       } else {
-        alert("Failed to import questions.");
+        alert(resp?.message || "Failed to import questions");
       }
     } catch (err) {
       console.error("Error importing questions:", err);
       alert("Error importing questions.");
     }
-    setShowBankModal({ visible: false, sectionName: null });
   };
 
   const handleDifficultyChange = (e) => {
@@ -310,7 +309,7 @@ const QuestionPaperEditPage = () => {
 
   const handleQuestionImageChange = (e) => {
     const files = Array.from(e.target.files);
-    setQuestionImageFiles(files);
+    setQuestionImageUrls((prev) => [...prev, ...files]);
   };
 
   const handleDeleteQuestionImage = (index) => {
@@ -322,7 +321,7 @@ const QuestionPaperEditPage = () => {
   };
 
   const handleDiscardQuestionImage = (index) => {
-    setQuestionImageFiles((prev) => {
+    setQuestionImageUrls((prev) => {
       const updatedFiles = [...prev];
       updatedFiles.splice(index, 1);
       return updatedFiles;
@@ -334,7 +333,7 @@ const QuestionPaperEditPage = () => {
       const updatedOptions = [...(prev.options || [])];
       updatedOptions[index] = {
         ...updatedOptions[index],
-        imageFile: file,
+        imageUrl: file,
       };
       return { ...prev, options: updatedOptions };
     });
@@ -344,7 +343,6 @@ const QuestionPaperEditPage = () => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
       delete updatedOptions[index].imageUrl;
-      delete updatedOptions[index].imageFile;
       return { ...prev, options: updatedOptions };
     });
   };
@@ -352,8 +350,8 @@ const QuestionPaperEditPage = () => {
   const handleDiscardOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
-      if (updatedOptions[index].imageFile) {
-        delete updatedOptions[index].imageFile;
+      if (updatedOptions[index].imageUrl) {
+        delete updatedOptions[index].imageUrl;
       }
       return { ...prev, options: updatedOptions };
     });
@@ -362,9 +360,9 @@ const QuestionPaperEditPage = () => {
   const handleSave = async () => {
     try {
       let updatedImageUrls = editedQuestion.imageUrls || [];
-      if (questionImageFiles.length > 0) {
+      if (questionImageUrls.length > 0) {
         const uploadedUrls = await Promise.all(
-          questionImageFiles.map(async (file) => {
+          questionImageUrls.map(async (file) => {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               file.name
             }`;
@@ -377,13 +375,13 @@ const QuestionPaperEditPage = () => {
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          if (opt.imageFile) {
+          if (opt.imageUrl) {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
+              opt.imageUrl.name
             }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+            const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            delete updatedOption.imageFile;
+            delete updatedOption.imageUrl;
           }
           return updatedOption;
         })
@@ -420,7 +418,7 @@ const QuestionPaperEditPage = () => {
       await fetchQuestionPaperDetails();
       setOriginalQuestion(null);
       setEditedQuestion(null);
-      setQuestionImageFiles([]);
+      setQuestionImageUrls([]);
     } catch (error) {
       console.error("Error upserting question:", error);
       alert("Error upserting question.");
@@ -525,15 +523,16 @@ const QuestionPaperEditPage = () => {
   };
 
   const handleQuestionImageUpload = (e) => {
+    console.log(e);
     const files = Array.from(e.target.files);
     const imageUrls = files.map((file) => URL.createObjectURL(file));
     setNewQuestion((prev) => ({
       ...prev,
-      imageFiles: files,
       imageUrls: [...prev.imageUrls, ...imageUrls],
     }));
   };
 
+  console.log(newQuestion, "new question");
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -542,7 +541,6 @@ const QuestionPaperEditPage = () => {
       const newOptions = [...prev.options];
       newOptions[index] = {
         ...newOptions[index],
-        imageFile: file,
         imageUrl,
       };
       return { ...prev, options: newOptions };
@@ -558,9 +556,9 @@ const QuestionPaperEditPage = () => {
   const handleNewQuestionSubmit = async () => {
     try {
       let updatedImageUrls = newQuestion.imageUrls || [];
-      if (newQuestion.imageFiles?.length > 0) {
+      if (newQuestion.imageUrls?.length > 0) {
         const uploadedUrls = await Promise.all(
-          newQuestion.imageFiles.map(async (file) => {
+          newQuestion.imageUrls.map(async (file) => {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
               file.name
             }`;
@@ -573,13 +571,13 @@ const QuestionPaperEditPage = () => {
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          if (opt.imageFile) {
+          if (opt.imageUrl) {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
+              opt.imageUrl.name
             }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+            const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            delete updatedOption.imageFile;
+            delete updatedOption.imageUrl;
           }
           return updatedOption;
         })
@@ -890,11 +888,12 @@ const QuestionPaperEditPage = () => {
                         </button>
                       </div>
                     ))}
-                    {questionImageFiles.map((file, index) => (
+                    {questionImageUrls.map((file, index) => (
                       <div key={index} className="relative">
                         <img
                           src={URL.createObjectURL(file)}
                           alt={`New Image ${index + 1}`}
+                          
                           className="h-24 object-cover rounded border"
                         />
                         <button
@@ -948,18 +947,14 @@ const QuestionPaperEditPage = () => {
                             handleOptionChange(idx, e.target.value)
                           }
                         />
-                        {opt.imageUrl || opt.imageFile ? (
+                        {opt.imageUrl ? (
                           <div className="flex items-center gap-2 ml-2">
                             <img
-                              src={
-                                opt.imageFile
-                                  ? URL.createObjectURL(opt.imageFile)
-                                  : opt.imageUrl
-                              }
+                              src={opt.imageUrl}
                               alt={`Option ${opt.key}`}
                               style={{ height: "64px" }}
                             />
-                            {opt.imageFile ? (
+                            {opt.imageUrl ? (
                               <>
                                 <button
                                   onClick={() => handleDiscardOptionImage(idx)}
@@ -1105,27 +1100,6 @@ const QuestionPaperEditPage = () => {
                         });
                       }}
                       className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
-                    >
-                      <Trash size={12} />
-                    </button>
-                  </div>
-                ))}
-                {newQuestion.imageFiles?.map((file, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`New Image ${index + 1}`}
-                      className="w-24 h-24 object-cover rounded border"
-                    />
-                    <button
-                      onClick={() => {
-                        setNewQuestion((prev) => {
-                          const updatedFiles = [...prev.imageFiles];
-                          updatedFiles.splice(index, 1);
-                          return { ...prev, imageFiles: updatedFiles };
-                        });
-                      }}
-                      className="absolute top-0 right-0 bg-gray-500 text-white rounded-full p-1"
                     >
                       <Trash size={12} />
                     </button>

@@ -276,8 +276,13 @@ const QuestionBank = () => {
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
         }),
-        name: searchQuery,
+       
+       
       };
+
+      if (searchQuery != "") {
+        payload.name = searchQuery;
+      }
 
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,

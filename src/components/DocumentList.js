@@ -241,7 +241,7 @@ export const DocumentSidebar = () => {
    * so the documents returned already match the selected filter criteria.
    */
   const fetchDocuments = async (isInitialLoad = false) => {
-    console.log('being called',isInitialLoad)
+    console.log("being called", isInitialLoad);
     // Distinguish between initial load and subsequent loads
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
@@ -272,7 +272,9 @@ export const DocumentSidebar = () => {
         );
       // if (filters.questionTypes.length > 0)
       //   requestBody.questionTypes = filters.questionTypes;
-      requestBody.name = searchQuery;
+      if (searchQuery != "") {
+        requestBody.name = searchQuery;
+      }
 
       // Use an API call helper (postRequest) to fetch data
       const data = await postRequest(
@@ -321,7 +323,7 @@ export const DocumentSidebar = () => {
     setHasNextPage(true);
     fetchDocuments(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters,searchQuery]);
+  }, [filters, searchQuery]);
 
   /**
    * checkIfMoreDocumentsNeeded: This function checks if the viewport is larger than the content
@@ -761,16 +763,17 @@ export const DocumentSidebar = () => {
       </div>
 
       {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
+      {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative">
+          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative flex flex-col">
             <button
               onClick={() => setModalVisible(false)}
               className={`absolute top-4 right-4 ${modalButtonClass}`}
             >
               Close
             </button>
-            <div className="p-4">
+            <div className="p-4 flex flex-col h-full">
               <div className="flex gap-4 mb-4">
                 <button
                   onClick={() => setModalActiveTab("question")}
@@ -799,19 +802,20 @@ export const DocumentSidebar = () => {
                     </button>
                   )}
               </div>
-              {/* DocumentViewer displays the HTML version of the document */}
-              <DocumentViewer
-                documentUrl={
-                  modalActiveTab === "question"
-                    ? modalDocument.questionPaperLink
-                    : modalDocument.solutionLink
-                }
-                name={`${modalDocument.name} - ${
-                  modalActiveTab === "question"
-                    ? "Question Paper"
-                    : "Answer Sheet"
-                }`}
-              />
+              <div className="flex-1 overflow-auto h-0 min-h-0">
+                <DocumentViewer
+                  documentUrl={
+                    modalActiveTab === "question"
+                      ? modalDocument.questionPaperLink
+                      : modalDocument.solutionLink
+                  }
+                  name={`${modalDocument.name} - ${
+                    modalActiveTab === "question"
+                      ? "Question Paper"
+                      : "Answer Sheet"
+                  }`}
+                />
+              </div>
             </div>
           </div>
         </div>

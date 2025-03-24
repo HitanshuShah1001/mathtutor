@@ -20,10 +20,11 @@ import GenerateQuestionPaper from "./components/Questionpaper";
 import QuestionBank from "./components/QuestionBank";
 import QuestionPaperEditPage from "./components/Questionpapereditpage";
 import { CustomPaperCreatePage } from "./components/CustomQuestionPaperGeneration";
+import BulkQuestionForm from "./components/BulkQuestionForm";
 
 function App() {
   const { USER, ACCESS_KEY } = getDataFromLocalStorage() || {};
-  
+
   return (
     <MathJaxContext>
       <AuthProvider>
@@ -77,6 +78,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CustomPaperCreatePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bulkupload"
+              element={
+                <ProtectedRoute>
+                  <BulkQuestionForm />
                 </ProtectedRoute>
               }
             />

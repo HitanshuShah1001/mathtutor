@@ -975,11 +975,12 @@ export const CustomPaperCreatePage = () => {
         `${BASE_URL_API}/questionPaper/addQuestions`,
         body
       );
+      console.log(resp, "response");
       if (resp?.success) {
         alert("Imported questions successfully!");
         await fetchQuestionPaperDetails();
       } else {
-        alert("Failed to import questions.");
+        alert(resp?.message || "Failed to import questions");
       }
     } catch (err) {
       console.error("Error importing questions:", err);
