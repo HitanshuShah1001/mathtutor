@@ -94,7 +94,6 @@ const GenerateQuestionPaper = () => {
   // --- Functions
   const calculateTotalConfiguredMarks = () => {
     let totalMarks = 0;
-
     Object.values(topicsConfig).forEach((config) => {
       // Add MCQ marks
       const mcqCount =
@@ -112,7 +111,6 @@ const GenerateQuestionPaper = () => {
         });
       }
     });
-
     setConfiguredMarks(totalMarks);
     return totalMarks;
   };
@@ -416,6 +414,15 @@ const GenerateQuestionPaper = () => {
     );
   }, [topicsConfig, topics, customTopic, marks, configuredMarks]);
 
+  // Only allow blueprint creation/updating if all required fields are set
+  // and at least one topic is configured in the breakdown.
+  const canSaveBlueprint =
+    title &&
+    standard &&
+    subject &&
+    marks &&
+    Object.keys(topicsConfig).length > 0;
+
   return (
     <div className={containerClass}>
       <CustomAlert
@@ -522,10 +529,7 @@ const GenerateQuestionPaper = () => {
                 ))}
               </select>
             </div>
-            {/* 
-               Only show relevant subjects from "allTopics" that actually
-               have the chosen standard 
-            */}
+            {/* Only show relevant subjects from "allTopics" that have the chosen standard */}
             <div className={formGroupClass}>
               <label className={labelClass}>
                 Subject <span className="text-red-500">*</span>
@@ -614,21 +618,19 @@ const GenerateQuestionPaper = () => {
                 ? "Generating..."
                 : "Generate Question Paper"}
             </button>
-            <button
-              className={`${actionButtonClass} btn-hover`}
-              onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
-              disabled={
-                !standard ||
-                !subject ||
-                isLoading ||
-                isMarksExceeded ||
-                !title ||
-                !marks ||
-                configuredMarks !== parseInt(marks)
-              }
-            >
-              {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
-            </button>
+            {canSaveBlueprint && (
+              <button
+                className={`${actionButtonClass} btn-hover`}
+                onClick={hasLoadedBlueprint ? updateBlueprint : saveBlueprint}
+                disabled={
+                  isLoading ||
+                  isMarksExceeded ||
+                  configuredMarks !== parseInt(marks)
+                }
+              >
+                {hasLoadedBlueprint ? "Update Blueprint" : "Save BluePrint"}
+              </button>
+            )}
           </div>
         </div>
 
