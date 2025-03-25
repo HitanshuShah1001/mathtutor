@@ -528,6 +528,7 @@ export const DocumentSidebar = () => {
     return subject.charAt(0).toUpperCase() + subject.slice(1);
   };
 
+
   // ----------------------------
   // Render
   // ----------------------------
@@ -553,8 +554,8 @@ export const DocumentSidebar = () => {
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
           </button>
-          <div style={{marginLeft:'10px'}}>
-          <ProfileMenu />
+          <div style={{ marginLeft: "10px" }}>
+            <ProfileMenu />
           </div>
         </div>
       </header>
