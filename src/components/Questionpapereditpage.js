@@ -90,6 +90,33 @@ const QuestionPaperEditPage = () => {
   const [isResizing, setIsResizing] = useState(false);
 
   /**
+   * Helper function to group questions by their optionalGroupId.
+   * Questions without an optionalGroupId each become their own group.
+   */
+  const groupQuestions = (questions) => {
+    const groups = [];
+    const seen = new Set();
+
+    questions.forEach((q) => {
+      // If question has an optionalGroupId, group them
+      if (q.optionalGroupId) {
+        if (!seen.has(q.optionalGroupId)) {
+          const grouped = questions.filter(
+            (x) => x.optionalGroupId === q.optionalGroupId
+          );
+          groups.push({ groupId: q.optionalGroupId, questions: grouped });
+          seen.add(q.optionalGroupId);
+        }
+      } else {
+        // If no optionalGroupId, it's alone in its group
+        groups.push({ groupId: null, questions: [q] });
+      }
+    });
+
+    return groups;
+  };
+
+  /**
    * Returns the next alphabet letter for naming a new section.
    * If no sections exist, returns "A".
    * If there's at least one, finds the highest letter and returns the next letter.
@@ -224,7 +251,7 @@ const QuestionPaperEditPage = () => {
   /**
    * Renders truncated question text with math. Only shows up to maxLength characters.
    */
-  const renderTruncatedTextWithMath = (text, maxLength = 200) => {
+  const renderTruncatedTextWithMath = (text, maxLength = 600) => {
     if (!text) return null;
     let truncated = text;
     if (text.length > maxLength) {
@@ -319,7 +346,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Changes the question type (MCQ/Descriptive) in the editedQuestion to a dropdown.
+   * Changes the question type (MCQ/Descriptive) in the editedQuestion via a dropdown.
    */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
@@ -749,7 +776,6 @@ const QuestionPaperEditPage = () => {
             }`;
             const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            // Remove the local reference
           }
           return updatedOption;
         })
@@ -810,6 +836,7 @@ const QuestionPaperEditPage = () => {
           className="border-r p-4 overflow-y-auto"
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
+          {/* --Search Box-- */}
           <div className="mb-4">
             <input
               type="text"
@@ -820,6 +847,7 @@ const QuestionPaperEditPage = () => {
             />
           </div>
 
+          {/* --Add New Section Button-- */}
           <div className="mb-4" style={{ width: "100%" }}>
             <button
               onClick={() => {
@@ -833,6 +861,7 @@ const QuestionPaperEditPage = () => {
             </button>
           </div>
 
+          {/* --Mark as Optional Button (only if exactly 2 selected)-- */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -845,6 +874,7 @@ const QuestionPaperEditPage = () => {
             </div>
           )}
 
+          {/* --Sections & Questions-- */}
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
               <div className="flex items-center justify-between mb-2">
@@ -884,79 +914,151 @@ const QuestionPaperEditPage = () => {
                 </div>
               </div>
 
+              {/* Collapsible Section */}
               {!collapsedSections[sectionIndex] && (
                 <Droppable droppableId={`${sectionIndex}`}>
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps}>
-                      {section.questions.map((question, index) => {
-                        const isSelected = editedQuestion?.id === question.id;
-                        return (
-                          <Draggable
-                            key={question.id}
-                            draggableId={`${question.id}`}
-                            index={index}
-                          >
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                onClick={() => handleQuestionClick(question)}
-                                className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? "bg-blue-50 border-l-4 border-blue-500"
-                                    : "bg-white hover:bg-gray-100"
-                                }`}
+                  {(provided) => {
+                    // Group questions by optionalGroupId
+                    const groupedQuestions = groupQuestions(section.questions);
+                    return (
+                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                        {groupedQuestions.map((group, groupIndex) => {
+                          // If a group has more than one question, show them together with "OR"
+                          if (group.questions.length > 1) {
+                            return (
+                              <Draggable
+                                key={group.groupId}
+                                draggableId={group.groupId}
+                                index={groupIndex}
                               >
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="font-semibold"
-                                    style={{ marginRight: 5 }}
+                                {(provided) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className="mb-3"
                                   >
-                                    {index + 1}.
-                                  </span>
-
-                                  {question.type !== "MCQ" && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedOptionalQuestions.includes(
-                                        question.id
+                                    <div className="flex flex-col items-center">
+                                      {group.questions.map((q, idx) => (
+                                        <React.Fragment key={q.id}>
+                                          <div
+                                            className="flex items-center gap-2 p-3 rounded shadow cursor-pointer transition-colors border-l-4 border-blue-500 w-full"
+                                            onClick={() =>
+                                              handleQuestionClick(q)
+                                            }
+                                          >
+                                            <span
+                                              className="font-semibold"
+                                              style={{ marginRight: 5 }}
+                                            >
+                                              {groupIndex + 1}.
+                                            </span>
+                                            {q.type !== "MCQ" && (
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedOptionalQuestions.includes(
+                                                  q.id
+                                                )}
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                                onChange={(e) =>
+                                                  toggleOptionalSelection(
+                                                    q.id,
+                                                    e
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {renderTruncatedTextWithMath(
+                                              q.questionText,
+                                              600
+                                            )}
+                                          </div>
+                                          {/* Insert an OR between each question */}
+                                          {idx < group.questions.length - 1 && (
+                                            <div className="w-full text-center text-xs font-semibold text-gray-500 my-1">
+                                              OR
+                                            </div>
+                                          )}
+                                        </React.Fragment>
+                                      ))}
+                                      {/* <div className="mt-1">
+                                        <span className="text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                          Optional
+                                        </span>
+                                      </div> */}
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          } else {
+                            // Single (non-optional) or only one question in that optional group
+                            const q = group.questions[0];
+                            return (
+                              <Draggable
+                                key={q.id}
+                                draggableId={`${q.id}`}
+                                index={groupIndex}
+                              >
+                                {(provided) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={() => handleQuestionClick(q)}
+                                    className="flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors bg-white hover:bg-gray-100"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="font-semibold"
+                                        style={{ marginRight: 5 }}
+                                      >
+                                        {groupIndex + 1}.
+                                      </span>
+                                      {/* Optional selection for non-MCQs, example usage */}
+                                      {q.type !== "MCQ" && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedOptionalQuestions.includes(
+                                            q.id
+                                          )}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onChange={(e) =>
+                                            toggleOptionalSelection(q.id, e)
+                                          }
+                                        />
                                       )}
-                                      onChange={(e) =>
-                                        toggleOptionalSelection(question.id, e)
-                                      }
-                                      onClick={(e) => e.stopPropagation()}
-                                      
-                                    />
-                                  )}
-                                  {renderTruncatedTextWithMath(
-                                    question.questionText,
-                                    200
-                                  )}
-                                  {question.optionalGroupId && (
-                                    <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                      Optional
-                                    </span>
-                                  )}
-                                </div>
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteQuestion(question.id);
-                                  }}
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </div>
-                            )}
-                          </Draggable>
-                        );
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
+                                      {renderTruncatedTextWithMath(
+                                        q.questionText,
+                                        600
+                                      )}
+                                      {q.optionalGroupId && (
+                                        <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                          Optional
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteQuestion(q.id);
+                                      }}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash size={16} />
+                                    </button>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          }
+                        })}
+                        {provided.placeholder}
+                      </div>
+                    );
+                  }}
                 </Droppable>
               )}
             </div>
@@ -998,116 +1100,116 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-start gap-4">
-              <div className="md:w-2/3">
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Type:</span>
-                    {/* Changed from plain input to a dropdown */}
-                    <select
-                      value={editedQuestion.type || ""}
-                      onChange={handleTypeChange}
-                      className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    >
-                      <option value="MCQ">MCQ</option>
-                      <option value="Descriptive">Descriptive</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Difficulty:</span>
-                    <input
-                      type="text"
-                      value={editedQuestion.difficulty || ""}
-                      onChange={handleDifficultyChange}
-                      className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Marks:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={editedQuestion.marks || ""}
-                      onChange={handleMarksChange}
-                      className="w-auto bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="font-semibold mb-2 block">
-                    Edit Question Text:
-                  </label>
-                  <textarea
-                    className="w-full p-2 border rounded min-h-[100px]"
-                    value={editedQuestion.questionText}
-                    onChange={handleQuestionTextChange}
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label className="font-semibold mb-2 block">
-                    Question Images:
-                  </label>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {editedQuestion.imageUrls?.map((url, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={url}
-                          alt={`Question ${index + 1}`}
-                          className="object-cover rounded border h-24"
-                        />
-                        <button
-                          onClick={() => handleDeleteQuestionImage(index)}
-                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
-                        >
-                          <Trash size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    {questionImageUrls.map((file, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`New Image ${index + 1}`}
-                          className="h-24 object-cover rounded border"
-                        />
-                        <button
-                          onClick={() => handleDiscardQuestionImage(index)}
-                          className="absolute top-0 right-0 bg-gray-500 text-white rounded-full p-1"
-                        >
-                          <Trash size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    <label
-                      htmlFor="question-image-input"
-                      className="cursor-pointer flex items-center justify-center w-24 h-24 border-2 border-dashed rounded"
-                    >
-                      <Plus size={24} className="text-gray-500" />
-                      <input
-                        id="question-image-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQuestionImageChange}
-                        multiple
-                      />
-                    </label>
-                  </div>
-                </div>
+            {/* Question Type, Difficulty, Marks */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Type:</span>
+                <select
+                  value={editedQuestion.type || ""}
+                  onChange={handleTypeChange}
+                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                >
+                  <option value="MCQ">MCQ</option>
+                  <option value="Descriptive">Descriptive</option>
+                </select>
               </div>
-
-              {isEditingMath && (
-                <div className="md:w-1/2 border-l pl-4">
-                  <h3 className="font-semibold mb-2">Math Preview</h3>
-                  <div className="bg-gray-50 p-3 rounded">
-                    {renderTextWithMath(editedQuestion.questionText)}
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Difficulty:</span>
+                <input
+                  type="text"
+                  value={editedQuestion.difficulty || ""}
+                  onChange={handleDifficultyChange}
+                  className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Marks:</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={editedQuestion.marks || ""}
+                  onChange={handleMarksChange}
+                  className="w-auto bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                />
+              </div>
             </div>
 
+            {/* Question Text */}
+            <div className="mt-4">
+              <label className="font-semibold mb-2 block">
+                Edit Question Text:
+              </label>
+              <textarea
+                className="w-full p-2 border rounded min-h-[100px]"
+                value={editedQuestion.questionText || ""}
+                onChange={handleQuestionTextChange}
+              />
+            </div>
+
+            {/* Images */}
+            <div className="mt-4">
+              <label className="font-semibold mb-2 block">
+                Question Images:
+              </label>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {editedQuestion.imageUrls?.map((url, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={url}
+                      alt={`Question ${index + 1}`}
+                      className="object-cover rounded border h-24"
+                    />
+                    <button
+                      onClick={() => handleDeleteQuestionImage(index)}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                ))}
+                {questionImageUrls.map((file, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`New Image ${index + 1}`}
+                      className="h-24 object-cover rounded border"
+                    />
+                    <button
+                      onClick={() => handleDiscardQuestionImage(index)}
+                      className="absolute top-0 right-0 bg-gray-500 text-white rounded-full p-1"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label
+                  htmlFor="question-image-input"
+                  className="cursor-pointer flex items-center justify-center w-24 h-24 border-2 border-dashed rounded"
+                >
+                  <Plus size={24} className="text-gray-500" />
+                  <input
+                    id="question-image-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleQuestionImageChange}
+                    multiple
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Math Preview (if question includes $) */}
+            {isEditingMath && (
+              <div className="border-l pl-4 mt-4">
+                <h3 className="font-semibold mb-2">Math Preview</h3>
+                <div className="bg-gray-50 p-3 rounded">
+                  {renderTextWithMath(editedQuestion.questionText)}
+                </div>
+              </div>
+            )}
+
+            {/* MCQ Options */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
@@ -1124,8 +1226,8 @@ const QuestionPaperEditPage = () => {
                               handleOptionChange(idx, e.target.value)
                             }
                           />
+                          {/* Option Image Handling */}
                           {opt.imageUrl ? (
-                            // If opt.imageUrl is set, we show the image.
                             <div className="flex items-center gap-2 ml-2">
                               <img
                                 src={
@@ -1157,7 +1259,6 @@ const QuestionPaperEditPage = () => {
                               )}
                             </div>
                           ) : (
-                            // No imageUrl -> user can upload
                             <>
                               <label
                                 htmlFor={`option-image-${idx}`}
@@ -1184,6 +1285,7 @@ const QuestionPaperEditPage = () => {
                             </>
                           )}
                         </div>
+                        {/* Math Preview for Option */}
                         {opt.option && opt.option.includes("$") && (
                           <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
                             {renderTextWithMath(opt.option)}
@@ -1199,10 +1301,10 @@ const QuestionPaperEditPage = () => {
         )}
       </div>
 
+      {/* Add Question Modal */}
       {showAddQuestionModal && (
         <div className={modalContainerClass}>
           <div className={modalContentClass}>
-            {/* Buttons at the top, so user doesn't have to scroll */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">
                 {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
@@ -1270,7 +1372,7 @@ const QuestionPaperEditPage = () => {
               <label className="block mb-1 font-medium">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea 
+              <textarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
                 onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
@@ -1402,12 +1504,12 @@ const QuestionPaperEditPage = () => {
                 </select>
               </div>
             </div>
-
-            {/* The Save/Cancel buttons are already at the top in this modal */}
+            {/* The Save/Cancel buttons are at the top for this modal */}
           </div>
         </div>
       )}
 
+      {/* Question Bank Modal */}
       {showBankModal.visible && (
         <QuestionBankModal
           onClose={() =>
@@ -1417,6 +1519,7 @@ const QuestionPaperEditPage = () => {
         />
       )}
 
+      {/* Add Section Modal */}
       {showAddSectionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
