@@ -37,6 +37,21 @@ export const modalContainerClass =
 export const modalContentClass =
   "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
 
+// Add your subject options here
+const subjectOptions = [
+  "maths",
+  "science",
+  "ss",
+  "english",
+  "grammar",
+  "evs",
+  "accounts",
+  "economics",
+  "spcc",
+  "bo",
+  "statistics",
+];
+
 // Helper function to render text with inline math
 const renderTextWithMath = (text) => {
   const parts = text?.split("$");
@@ -153,12 +168,13 @@ const QuestionBank = () => {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // The question structure
+  // The question structure, including new fields: subject, chapter, grade
   const [newQuestion, setNewQuestion] = useState({
+    subject: "",
+    chapter: "",
+    grade: "",
     type: "MCQ",
     questionText: "",
-    // Instead of storing final URLs here, we can store an array of
-    // either existing string URLs or newly selected File objects
     imageUrls: [],
     marks: "",
     difficulty: "",
@@ -368,6 +384,9 @@ const QuestionBank = () => {
   const openAddQuestionModal = () => {
     setIsEditing(false);
     setNewQuestion({
+      subject: "",
+      chapter: "",
+      grade: "",
       type: "MCQ",
       questionText: "",
       imageUrls: [],
@@ -385,6 +404,7 @@ const QuestionBank = () => {
 
   /**
    * Handle "Edit Question" button – sets up the selected question in newQuestion.
+   * (In a real app, you might also have "subject", "chapter", "grade" stored for each question.)
    */
   const handleEditQuestion = () => {
     const selectedIds = Object.keys(selected).filter((id) => selected[id]);
@@ -395,10 +415,13 @@ const QuestionBank = () => {
       );
       if (questionToEdit) {
         setNewQuestion({
+          // If your DB has subject/chapter/grade stored, set them here
+          subject: questionToEdit.subject || "",
+          chapter: questionToEdit.chapter || "",
+          grade: questionToEdit.grade || "",
           id: questionToEdit.id,
           type: questionToEdit.type,
           questionText: questionToEdit.questionText,
-          // Here we keep existing images as an array of strings
           imageUrls: questionToEdit.imageUrls || [],
           marks: questionToEdit.marks,
           difficulty: questionToEdit.difficulty.toUpperCase(),
@@ -432,45 +455,27 @@ const QuestionBank = () => {
     ) : null;
   };
 
-  // SHIFT + $ insertion
+  // SHIFT + $ insertion – optional logic
   const MATH_MARKER = "\u200B";
   const handleMathKeyDown = (e, field, index = null) => {
-    if (e.metaKey) {
-      e.preventDefault();
-      const { selectionStart, selectionEnd, value } = e.target;
-      const newValue =
-        value.slice(0, selectionStart) +
-        MATH_MARKER +
-        value.slice(selectionEnd);
-      if (field === "questionText") {
-        setNewQuestion((prev) => ({ ...prev, questionText: newValue }));
-      } else if (field === "option" && index !== null) {
-        setNewQuestion((prev) => {
-          const options = [...prev.options];
-          options[index] = { ...options[index], option: newValue };
-          return { ...prev, options };
-        });
-      }
-    }
+    // Only do something if you want SHIFT + $ or META + $ etc.
+    // For simplicity, let's keep it a no-op or a placeholder:
   };
 
   /**
    * Generic text change for newQuestion fields and MCQ options.
    */
   const handleNewQuestionChange = (e, field, index = null) => {
-    if (
-      field === "questionText" ||
-      field === "marks" ||
-      field === "difficulty" ||
-      field === "type"
-    ) {
-      setNewQuestion((prev) => ({ ...prev, [field]: e.target.value }));
-    } else if (field === "option" && index !== null) {
+    if (field === "option" && index !== null) {
+      // MCQ option text
       setNewQuestion((prev) => {
         const options = [...prev.options];
         options[index] = { ...options[index], option: e.target.value };
         return { ...prev, options };
       });
+    } else {
+      // All other normal fields
+      setNewQuestion((prev) => ({ ...prev, [field]: e.target.value }));
     }
   };
 
@@ -481,8 +486,6 @@ const QuestionBank = () => {
   const handleQuestionImageChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
-    // We push each File object to the imageUrls array
     setNewQuestion((prev) => ({
       ...prev,
       imageUrls: [...prev.imageUrls, ...files],
@@ -508,7 +511,6 @@ const QuestionBank = () => {
 
     setNewQuestion((prev) => {
       const options = [...prev.options];
-      // If there's an existing string, we overwrite it in local state
       options[index] = { ...options[index], imageUrl: file };
       return { ...prev, options };
     });
@@ -526,12 +528,30 @@ const QuestionBank = () => {
   };
 
   /**
+   * Check if the mandatory fields are filled:
+   *   type, difficulty, marks, questionText
+   */
+  const isFormValid = () => {
+    const { type, difficulty, marks, questionText } = newQuestion;
+    if (!type || !difficulty || !marks || !questionText.trim()) {
+      return false;
+    }
+    return true;
+  };
+
+  /**
    * Final submission:
    *  1) Upload any newly added Files to S3
    *  2) Merge them into final URLs
    *  3) Upsert the question in the DB
    */
   const handleNewQuestionSubmit = async () => {
+    // If mandatory fields missing, don't proceed
+    if (!isFormValid()) {
+      alert("Please fill in all mandatory fields before saving.");
+      return;
+    }
+
     try {
       // 1) Process question-level images
       let finalImageUrls = [];
@@ -573,9 +593,13 @@ const QuestionBank = () => {
         );
       }
 
-      // Build final payload
+      // 3) Build final payload
+      // Convert subject, chapter, grade to lowercase
       const payload = {
         ...newQuestion,
+        subject: newQuestion.subject?.toLowerCase(),
+        chapter: newQuestion.chapter?.toLowerCase(),
+        grade: newQuestion.grade?.toLowerCase(),
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
@@ -591,7 +615,7 @@ const QuestionBank = () => {
         payload.id = newQuestion.id;
       }
 
-      // 3) Upsert question in DB
+      // 4) Upsert question in DB
       const response = await postRequest(
         `${BASE_URL_API}/question/upsert`,
         payload
@@ -606,10 +630,13 @@ const QuestionBank = () => {
         alert("Failed to upsert question.");
       }
 
-      // Reset local states
+      // 5) Reset local states
       setShowAddQuestionModal(false);
       setIsEditing(false);
       setNewQuestion({
+        subject: "",
+        chapter: "",
+        grade: "",
         type: "MCQ",
         questionText: "",
         imageUrls: [],
@@ -882,6 +909,20 @@ const QuestionBank = () => {
                       )}
 
                       <div className="mt-2 text-sm text-gray-600">
+                        {question.subject && (
+                          <span className="mr-2">
+                            Subject: {question.subject}
+                          </span>
+                        )}
+                        {question.chapter && (
+                          <span className="mr-2">
+                            Chapter: {question.chapter}
+                          </span>
+                        )}
+                        {question.grade && (
+                          <span className="mr-2">Grade: {question.grade}</span>
+                        )}
+                        <br />
                         Marks: {question.marks} | Type: {question.type} |
                         Difficulty: {question.difficulty}
                       </div>
@@ -909,18 +950,104 @@ const QuestionBank = () => {
       {showAddQuestionModal && (
         <div className={modalContainerClass}>
           <div className={modalContentClass}>
-            <h3 className="text-lg font-semibold mb-4">
-              {isEditing ? "Edit Question" : "Add New Question"}
-            </h3>
+            {/* Buttons at the top */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {isEditing ? "Edit Question" : "Add New Question"}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddQuestionModal(false);
+                    setIsEditing(false);
+                    // Reset newQuestion
+                    setNewQuestion({
+                      subject: "",
+                      chapter: "",
+                      grade: "",
+                      type: "MCQ",
+                      questionText: "",
+                      imageUrls: [],
+                      marks: "",
+                      difficulty: "",
+                      options: [
+                        { key: "A", option: "", imageUrl: "" },
+                        { key: "B", option: "", imageUrl: "" },
+                        { key: "C", option: "", imageUrl: "" },
+                        { key: "D", option: "", imageUrl: "" },
+                      ],
+                    });
+                  }}
+                  className="px-3 py-1 border border-black rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewQuestionSubmit}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                  disabled={!isFormValid()}
+                >
+                  {isEditing ? "Update" : "Save"} Question
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Fields marked with (<span className="text-red-500">*</span>) are
+              mandatory.
+            </p>
+
+            {/* Subject */}
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Subject</label>
+              <select
+                value={newQuestion.subject}
+                onChange={(e) => handleNewQuestionChange(e, "subject")}
+                className={inputClass}
+              >
+                <option value="">Select Subject (optional)</option>
+                {subjectOptions.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub.charAt(0).toUpperCase() + sub.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Chapter */}
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Chapter</label>
+              <input
+                type="text"
+                value={newQuestion.chapter}
+                onChange={(e) => handleNewQuestionChange(e, "chapter")}
+                className={inputClass}
+                placeholder="Enter Chapter (optional)"
+              />
+            </div>
+
+            {/* Grade */}
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Grade</label>
+              <input
+                type="text"
+                value={newQuestion.grade}
+                onChange={(e) => handleNewQuestionChange(e, "grade")}
+                className={inputClass}
+                placeholder="Enter Grade (optional)"
+              />
+            </div>
 
             {/* Question Type */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Question Type</label>
+              <label className="block mb-1 font-medium">
+                Question Type <span className="text-red-500">*</span>
+              </label>
               <select
                 value={newQuestion.type}
                 onChange={(e) => handleNewQuestionChange(e, "type")}
                 className={inputClass}
               >
+                <option value="">Select Type</option>
                 {questionTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -931,7 +1058,9 @@ const QuestionBank = () => {
 
             {/* Question Text */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Question Text</label>
+              <label className="block mb-1 font-medium">
+                Question Text <span className="text-red-500">*</span>
+              </label>
               <textarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
@@ -1059,10 +1188,12 @@ const QuestionBank = () => {
               </div>
             )}
 
-            {/* Marks & Difficulty */}
+            {/* Marks & Difficulty (both mandatory) */}
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
-                <label className="block mb-1 font-medium">Marks</label>
+                <label className="block mb-1 font-medium">
+                  Marks <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={newQuestion.marks}
                   onChange={(e) => handleNewQuestionChange(e, "marks")}
@@ -1077,7 +1208,9 @@ const QuestionBank = () => {
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block mb-1 font-medium">Difficulty</label>
+                <label className="block mb-1 font-medium">
+                  Difficulty <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={newQuestion.difficulty}
                   onChange={(e) => handleNewQuestionChange(e, "difficulty")}
@@ -1091,38 +1224,6 @@ const QuestionBank = () => {
                   ))}
                 </select>
               </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-4 bg-white p-4">
-              <button
-                onClick={() => {
-                  setShowAddQuestionModal(false);
-                  setIsEditing(false);
-                  setNewQuestion({
-                    type: "MCQ",
-                    questionText: "",
-                    imageUrls: [],
-                    marks: "",
-                    difficulty: "",
-                    options: [
-                      { key: "A", option: "", imageUrl: "" },
-                      { key: "B", option: "", imageUrl: "" },
-                      { key: "C", option: "", imageUrl: "" },
-                      { key: "D", option: "", imageUrl: "" },
-                    ],
-                  });
-                }}
-                className={blackButtonClass}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleNewQuestionSubmit}
-                className={blackButtonClass}
-              >
-                {isEditing ? "Update Question" : "Save Question"}
-              </button>
             </div>
           </div>
         </div>

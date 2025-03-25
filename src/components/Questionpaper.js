@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ChatHeader } from "../subcomponents/ChatHeader";
 import { allTopics } from "../constants/allTopics";
 import { ACCESS_KEY, BASE_URL_API } from "../constants/constants";
@@ -15,7 +15,7 @@ import {
   reorderQuestionsByType,
 } from "../utils/generateJsonToPassToReceiveJson";
 
-// Extracted Tailwind CSS class constants for consistency
+// --- Some reused Tailwind classes
 const containerClass = "p-4 fade-in";
 const cardClass = "bg-white rounded-lg shadow p-4 fade-in";
 const cardTitleClass = "text-2xl font-semibold mb-4 text-gray-800";
@@ -61,14 +61,19 @@ const GenerateQuestionPaper = () => {
   const [bluePrintId, setBluePrintId] = useState(null);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
-  // Calculate total configured marks whenever topicsConfig changes
-  useEffect(() => {
-    calculateTotalConfiguredMarks();
-  }, [topicsConfig]);
+  // 1) Dynamically figure out which subjects have the given standard
+  const subjectOptions = useMemo(() => {
+    if (!standard) return [];
+    // Return only those subjects from allTopics that have a sub-object for this standard.
+    return Object.entries(allTopics)
+      .filter(([subjectKey, subjectValue]) => subjectValue[standard])
+      .map(([subjectKey]) => subjectKey);
+  }, [standard]);
 
+  // 2) Whenever standard & subject are set, update the topics from allTopics
   useEffect(() => {
     if (standard && subject) {
-      const topicList = allTopics[subject][standard] || [];
+      const topicList = allTopics?.[subject]?.[standard] || [];
       setTopics(topicList);
       if (!hasLoadedBlueprint) {
         setTopicsConfig({});
@@ -81,7 +86,12 @@ const GenerateQuestionPaper = () => {
     }
   }, [subject, standard, hasLoadedBlueprint]);
 
-  // Function to calculate total configured marks
+  // 3) Calculate total configured marks whenever topicsConfig changes
+  useEffect(() => {
+    calculateTotalConfiguredMarks();
+  }, [topicsConfig]);
+
+  // --- Functions
   const calculateTotalConfiguredMarks = () => {
     let totalMarks = 0;
 
@@ -185,6 +195,26 @@ const GenerateQuestionPaper = () => {
     });
   };
 
+  const handleAddDescriptiveQuestion = (topic) => {
+    setTopicsConfig((prev) => {
+      const newDescConfig = [
+        ...(prev[topic].descriptiveQuestionConfig || []),
+        {
+          marks: "",
+          difficulty: "",
+          noOfQuestions: "",
+        },
+      ];
+      return {
+        ...prev,
+        [topic]: {
+          ...prev[topic],
+          descriptiveQuestionConfig: newDescConfig,
+        },
+      };
+    });
+  };
+
   const isMarksExceeded = configuredMarks > parseInt(marks);
 
   function convertToBluePrintCompatibleFormat() {
@@ -226,73 +256,6 @@ const GenerateQuestionPaper = () => {
       alert("Blueprint updated successfully");
     }
   };
-
-  const RenderTopicSelection = useCallback(() => {
-    const renderContent = marks
-      ? `${configuredMarks} / ${marks}`
-      : configuredMarks;
-    return (
-      <div className={formGroupClass}>
-        <div className="flex items-center mb-2">
-          <span
-            className={`font-bold ${
-              configuredMarks > parseInt(marks) ? "text-gray-400" : "text-black"
-            }`}
-          >
-            Configured Marks: {renderContent}
-          </span>
-          {configuredMarks > parseInt(marks) && (
-            <span className="text-gray-400 text-sm ml-2">
-              (Exceeds total marks!)
-            </span>
-          )}
-        </div>
-        <label className={labelClass}>Select Topics</label>
-        <div className="flex flex-col md:flex-row md:items-center gap-2">
-          <select
-            className={selectClass}
-            onChange={(e) => {
-              if (e.target.value) handleAddTopicFromDropdown(e.target.value);
-            }}
-          >
-            <option value="">Choose a Topic</option>
-            {topics.map((t, idx) => (
-              <option key={idx} value={t} disabled={!!topicsConfig[t]}>
-                {t} {topicsConfig[t] ? "✓" : ""}
-              </option>
-            ))}
-          </select>
-          <div className="flex">
-            <button
-              className={`${actionButtonClass} ml-2`}
-              onClick={handleAddCustomTopic}
-            >
-              +
-            </button>
-          </div>
-        </div>
-        {Object.keys(topicsConfig).length > 0 && (
-          <div className="mt-2 flex flex-wrap">
-            {Object.keys(topicsConfig).map((topic) => (
-              <div
-                key={topic}
-                className={chipClass}
-                style={{ borderRadius: 4 }}
-              >
-                {topic}
-                <button
-                  className={chipRemoveButtonClass}
-                  onClick={() => handleRemoveTopic(topic)}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }, [topicsConfig, topics, customTopic, marks, configuredMarks]);
 
   const fetchBlueprints = async () => {
     setIsLoadingBlueprints(true);
@@ -355,9 +318,7 @@ const GenerateQuestionPaper = () => {
     const blueprint = reorderQuestionsByType(
       generateQuestionsArray(topicsConfig)
     );
-    const myHeaders = new Headers();
-    myHeaders.append("Content-Type", "application/json");
-    myHeaders.append("Authorization", localStorage.getItem(ACCESS_KEY));
+
     const body = JSON.stringify({
       subject,
       grade: parseInt(standard),
@@ -370,11 +331,10 @@ const GenerateQuestionPaper = () => {
       numberOfSets: numberOfSets ? parseInt(numberOfSets) : 1,
     });
     try {
-      const response = await postRequestWithoutStringified(
+      await postRequestWithoutStringified(
         `${BASE_URL_API}/questionPaper/generate`,
         body
       );
-      console.log(response, "respo");
     } catch (e) {
       console.error(e);
     } finally {
@@ -382,25 +342,79 @@ const GenerateQuestionPaper = () => {
     }
   };
 
-  const handleAddDescriptiveQuestion = (topic) => {
-    setTopicsConfig((prev) => {
-      const newDescConfig = [
-        ...(prev[topic].descriptiveQuestionConfig || []),
-        {
-          marks: "",
-          difficulty: "",
-          noOfQuestions: "",
-        },
-      ];
-      return {
-        ...prev,
-        [topic]: {
-          ...prev[topic],
-          descriptiveQuestionConfig: newDescConfig,
-        },
-      };
-    });
-  };
+  const RenderTopicSelection = useCallback(() => {
+    const renderContent = marks
+      ? `${configuredMarks} / ${marks}`
+      : configuredMarks;
+    return (
+      <div className={formGroupClass}>
+        <div className="flex items-center mb-2">
+          <span
+            className={`font-bold ${
+              configuredMarks > parseInt(marks) ? "text-gray-400" : "text-black"
+            }`}
+          >
+            Configured Marks: {renderContent}
+          </span>
+          {configuredMarks > parseInt(marks) && (
+            <span className="text-gray-400 text-sm ml-2">
+              (Exceeds total marks!)
+            </span>
+          )}
+        </div>
+        <label className={labelClass}>Select Topics</label>
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
+          <select
+            className={selectClass}
+            onChange={(e) => {
+              if (e.target.value) handleAddTopicFromDropdown(e.target.value);
+            }}
+          >
+            <option value="">Choose a Topic</option>
+            {topics.map((t, idx) => (
+              <option key={idx} value={t} disabled={!!topicsConfig[t]}>
+                {t} {topicsConfig[t] ? "✓" : ""}
+              </option>
+            ))}
+          </select>
+          <div className="flex">
+            <input
+              type="text"
+              placeholder="Custom topic..."
+              className={inputClass}
+              value={customTopic}
+              onChange={(e) => setCustomTopic(e.target.value)}
+            />
+            <button
+              className={`${actionButtonClass} ml-2`}
+              onClick={handleAddCustomTopic}
+            >
+              +
+            </button>
+          </div>
+        </div>
+        {Object.keys(topicsConfig).length > 0 && (
+          <div className="mt-2 flex flex-wrap">
+            {Object.keys(topicsConfig).map((topic) => (
+              <div
+                key={topic}
+                className={chipClass}
+                style={{ borderRadius: 4 }}
+              >
+                {topic}
+                <button
+                  className={chipRemoveButtonClass}
+                  onClick={() => handleRemoveTopic(topic)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }, [topicsConfig, topics, customTopic, marks, configuredMarks]);
 
   return (
     <div className={containerClass}>
@@ -409,8 +423,6 @@ const GenerateQuestionPaper = () => {
         onClose={() => setIsAlertModalOpen(false)}
         message="Thank you for initiating the question paper generation. You will be notified as soon as the process is complete."
       />
-
-      {/* Wrap the ChatHeader in a white background and pass prop to hide analyse reports */}
 
       <ChatHeader
         title="Generate Question Paper"
@@ -465,6 +477,7 @@ const GenerateQuestionPaper = () => {
       </Blueprintmodal>
 
       <div className="flex flex-col md:flex-row gap-6">
+        {/* Left Column: Exam Details */}
         <div className="md:w-1/2" style={{ marginTop: 8 }}>
           <div className={cardClass}>
             <h2 className={cardTitleClass}>Exam Details</h2>
@@ -497,6 +510,7 @@ const GenerateQuestionPaper = () => {
                 value={standard}
                 onChange={(e) => {
                   setHasLoadedBlueprint(false);
+                  setSubject(""); // reset subject whenever standard changes
                   setStandard(e.target.value);
                 }}
               >
@@ -508,6 +522,10 @@ const GenerateQuestionPaper = () => {
                 ))}
               </select>
             </div>
+            {/* 
+               Only show relevant subjects from "allTopics" that actually
+               have the chosen standard 
+            */}
             <div className={formGroupClass}>
               <label className={labelClass}>
                 Subject <span className="text-red-500">*</span>
@@ -519,10 +537,14 @@ const GenerateQuestionPaper = () => {
                   setHasLoadedBlueprint(false);
                   setSubject(e.target.value);
                 }}
+                disabled={!standard} // disable if no standard chosen
               >
                 <option value="">Select Subject</option>
-                <option value="Science">Science</option>
-                <option value="Maths">Maths</option>
+                {subjectOptions.map((optionSubject) => (
+                  <option key={optionSubject} value={optionSubject}>
+                    {optionSubject}
+                  </option>
+                ))}
               </select>
             </div>
             <div className={formGroupClass}>
@@ -565,10 +587,12 @@ const GenerateQuestionPaper = () => {
                 className={inputClass}
                 value={anyotherQuery}
                 onChange={(e) => setAnyOtherQuery(e.target.value)}
-                placeholder="e.g. Mark problems as section A"
+                placeholder="e.g. Mark problems as Section A"
               />
             </div>
           </div>
+
+          {/* Bottom left buttons */}
           <div className="mt-6 flex gap-4">
             <button
               className={`${actionButtonClass} btn-hover`}
@@ -607,11 +631,17 @@ const GenerateQuestionPaper = () => {
             </button>
           </div>
         </div>
+
+        {/* Right Column: Topic Configuration */}
         {marks && (
           <div className="md:w-1/2">
             <div className={cardClass}>
               <h2 className={cardTitleClass}>Topic Configuration</h2>
+
+              {/* Topic Selection */}
               {topics.length > 0 && <RenderTopicSelection />}
+
+              {/* If any topic was selected, we render the configuration details */}
               {Object.keys(topicsConfig).length > 0 && (
                 <div className="space-y-4">
                   {Object.entries(topicsConfig).map(([topic, config]) => (
@@ -630,6 +660,8 @@ const GenerateQuestionPaper = () => {
                           Remove
                         </button>
                       </div>
+
+                      {/* MCQ Config */}
                       <div className={gridThreeClass}>
                         <div className="flex flex-col">
                           <label className="text-sm text-gray-800 mb-1">
@@ -680,6 +712,8 @@ const GenerateQuestionPaper = () => {
                           />
                         </div>
                       </div>
+
+                      {/* Descriptive config */}
                       {config.descriptiveQuestionConfig &&
                         config.descriptiveQuestionConfig.length > 0 && (
                           <div className="mt-4">
@@ -768,12 +802,14 @@ const GenerateQuestionPaper = () => {
                             )}
                           </div>
                         )}
+
+                      {/* Add new descriptive config */}
                       <div className="mt-2">
                         <button
                           className={`${actionButtonClass} btn-hover`}
                           onClick={() => handleAddDescriptiveQuestion(topic)}
                         >
-                          +
+                          + Descriptive Q
                         </button>
                       </div>
                     </div>
@@ -784,8 +820,6 @@ const GenerateQuestionPaper = () => {
           </div>
         )}
       </div>
-
-      {/* Bottom action buttons arranged horizontally */}
     </div>
   );
 };
