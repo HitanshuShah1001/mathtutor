@@ -219,7 +219,7 @@ const GenerateQuestionPaper = () => {
     let blueprint = {
       name: title,
       grade: parseInt(standard),
-      subject,
+      subject:subject.toLowerCase(),
       totalMarks: parseInt(marks),
     };
     let breakdown = [];
@@ -235,7 +235,8 @@ const GenerateQuestionPaper = () => {
     const res = await putRequest(`${BASE_URL_API}/blueprint/create`, {
       blueprint,
     });
-    if (!res.success) {
+    console.log(res,"response that came");
+    if (!res?.success) {
       alert(res.message ?? "Some Error Occurred");
     } else {
       alert("Blueprint saved successfully");
