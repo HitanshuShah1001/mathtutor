@@ -569,16 +569,7 @@ export const DocumentSidebar = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
-            <div className="mb-4">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                placeholder="Search question papers..."
-              />
-            </div>
-
+            
             {/* Selected Filters Chips */}
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
