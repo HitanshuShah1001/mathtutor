@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/img-redundant-alt */
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Trash,
   Image as ImageIcon,
@@ -12,11 +12,13 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { BASE_URL_API } from "../constants/constants";
+import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
+import RichTextEditor from "./Texteditor";
+import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 /**
  * Main component for editing a question paper.
@@ -89,6 +91,7 @@ const QuestionPaperEditPage = () => {
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
 
+  const navigate = useNavigate();
   /**
    * Helper function to group questions by their optionalGroupId.
    * Questions without an optionalGroupId each become their own group.
@@ -202,6 +205,11 @@ const QuestionPaperEditPage = () => {
       if (response.success) {
         setSections(response.questionPaper.sections || []);
       } else {
+        if (response.message === INVALID_TOKEN) {
+          removeDataFromLocalStorage();
+          navigate("/login");
+          return;
+        }
         console.error("Failed to fetch question paper details:", response);
       }
     } catch (error) {
@@ -337,12 +345,8 @@ const QuestionPaperEditPage = () => {
   /**
    * Updates the question text in the editedQuestion state.
    */
-  const handleQuestionTextChange = (e) => {
-    const newText = e.target.value;
-    setEditedQuestion((prev) => ({
-      ...prev,
-      questionText: newText,
-    }));
+  const handleQuestionTextChange = (content) => {
+    setEditedQuestion((prev) => ({ ...prev, questionText: content }));
   };
 
   /**
@@ -1139,8 +1143,8 @@ const QuestionPaperEditPage = () => {
               <label className="font-semibold mb-2 block">
                 Edit Question Text:
               </label>
-              <textarea
-                className="w-full p-2 border rounded min-h-[100px]"
+
+              <RichTextEditor
                 value={editedQuestion.questionText || ""}
                 onChange={handleQuestionTextChange}
               />

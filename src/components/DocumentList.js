@@ -13,6 +13,7 @@ import {
   marksOptions,
   types,
   BASE_URL_API,
+  INVALID_TOKEN,
 } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
@@ -283,10 +284,7 @@ export const DocumentSidebar = () => {
 
       // Check if API returned an error about the token; if so, reset local storage and navigate to login
       if (data.message) {
-        if (
-          data.message === "Invalid or expired access token" ||
-          data.message === "Access token is required"
-        ) {
+        if (data.message === INVALID_TOKEN) {
           removeDataFromLocalStorage();
           navigate("/login");
           return;

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Trash,
   Image as ImageIcon,
@@ -20,6 +20,7 @@ import {
   examNames,
   examYears,
   grades,
+  INVALID_TOKEN,
   marksOptions,
   questionTypes,
   shifts,
@@ -30,6 +31,7 @@ import {
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
+import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 // --- FilterGroupAccordion Component ---
 const FilterGroupAccordion = ({
@@ -83,6 +85,7 @@ const FilterGroupAccordion = ({
 
 // --- QuestionBankModal Component ---
 export const QuestionBankModal = ({ onClose, onImport }) => {
+  
   const blackButtonClass =
     "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200";
   // Questions and selection states
@@ -493,7 +496,7 @@ export const CustomPaperCreatePage = () => {
   const location = useLocation();
   // Retrieve questionPaperId passed via navigate state
   const { questionPaperId } = location.state || {};
-
+  const navigate = useNavigate();
   // State to hold paper details (sections array)
   const [sections, setSections] = useState([]);
   const [questionImageUrls, setQuestionImageUrls] = useState([]);
@@ -560,6 +563,11 @@ export const CustomPaperCreatePage = () => {
       if (response?.success) {
         setSections(response.questionPaper.sections || []);
       } else {
+        if (response.message === INVALID_TOKEN) {
+          removeDataFromLocalStorage();
+          navigate("/login");
+          return;
+        }
         console.error("Failed to fetch question paper details:", response);
       }
     } catch (error) {
@@ -1112,6 +1120,29 @@ export const CustomPaperCreatePage = () => {
     }));
   };
 
+  const groupQuestions = (questions) => {
+    const groups = [];
+    const seen = new Set();
+
+    questions.forEach((q) => {
+      // If question has an optionalGroupId, group them
+      if (q.optionalGroupId) {
+        if (!seen.has(q.optionalGroupId)) {
+          const grouped = questions.filter(
+            (x) => x.optionalGroupId === q.optionalGroupId
+          );
+          groups.push({ groupId: q.optionalGroupId, questions: grouped });
+          seen.add(q.optionalGroupId);
+        }
+      } else {
+        // If no optionalGroupId, it's alone in its group
+        groups.push({ groupId: null, questions: [q] });
+      }
+    });
+
+    return groups;
+  };
+
   const isNewQuestionValid = () => {
     const { type, questionText, marks, difficulty, options } = newQuestion;
     if (!type) return false;
@@ -1209,72 +1240,148 @@ export const CustomPaperCreatePage = () => {
               </div>
               {!collapsedSections[sectionIndex] && (
                 <Droppable droppableId={`${sectionIndex}`}>
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps}>
-                      {section.questions.map((question, index) => {
-                        const isSelected = editedQuestion?.id === question.id;
-                        const questionNumber = index + 1;
-                        return (
-                          <Draggable
-                            key={question.id}
-                            draggableId={`${question.id}`}
-                            index={index}
-                          >
-                            {(dragProvided) => (
-                              <div
-                                ref={dragProvided.innerRef}
-                                {...dragProvided.draggableProps}
-                                {...dragProvided.dragHandleProps}
-                                onClick={() => handleQuestionClick(question)}
-                                className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? "bg-blue-50 border-l-4 border-blue-500"
-                                    : "bg-white hover:bg-gray-100"
-                                }`}
+                  {(provided) => {
+                    // Group questions by optionalGroupId
+                    const groupedQuestions = groupQuestions(section.questions);
+                    return (
+                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                        {groupedQuestions.map((group, groupIndex) => {
+                          // If a group has more than one question, show them together with "OR"
+                          if (group.questions.length > 1) {
+                            return (
+                              <Draggable
+                                key={group.groupId}
+                                draggableId={group.groupId}
+                                index={groupIndex}
                               >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-gray-700">
-                                    {questionNumber}.
-                                  </span>
-                                  {question.type !== "MCQ" && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedOptionalQuestions.includes(
-                                        question.id
+                                {(provided) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className="mb-3"
+                                  >
+                                    <div className="flex flex-col items-center">
+                                      {group.questions.map((q, idx) => (
+                                        <React.Fragment key={q.id}>
+                                          <div
+                                            className="flex items-center gap-2 p-3 rounded shadow cursor-pointer transition-colors border-l-4 border-blue-500 w-full"
+                                            onClick={() =>
+                                              handleQuestionClick(q)
+                                            }
+                                          >
+                                            <span
+                                              className="font-semibold"
+                                              style={{ marginRight: 5 }}
+                                            >
+                                              {groupIndex + 1}.
+                                            </span>
+                                            {q.type !== "MCQ" && (
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedOptionalQuestions.includes(
+                                                  q.id
+                                                )}
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                                onChange={(e) =>
+                                                  toggleOptionalSelection(
+                                                    q.id,
+                                                    e
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {renderTruncatedTextWithMath(
+                                              q.questionText,
+                                              600
+                                            )}
+                                          </div>
+                                          {/* Insert an OR between each question */}
+                                          {idx < group.questions.length - 1 && (
+                                            <div className="w-full text-center text-xs font-semibold text-gray-500 my-1">
+                                              OR
+                                            </div>
+                                          )}
+                                        </React.Fragment>
+                                      ))}
+                                      {/* <div className="mt-1">
+                                        <span className="text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                          Optional
+                                        </span>
+                                      </div> */}
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          } else {
+                            // Single (non-optional) or only one question in that optional group
+                            const q = group.questions[0];
+                            return (
+                              <Draggable
+                                key={q.id}
+                                draggableId={`${q.id}`}
+                                index={groupIndex}
+                              >
+                                {(provided) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={() => handleQuestionClick(q)}
+                                    className="flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors bg-white hover:bg-gray-100"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="font-semibold"
+                                        style={{ marginRight: 5 }}
+                                      >
+                                        {groupIndex + 1}.
+                                      </span>
+                                      {/* Optional selection for non-MCQs, example usage */}
+                                      {q.type !== "MCQ" && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedOptionalQuestions.includes(
+                                            q.id
+                                          )}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onChange={(e) =>
+                                            toggleOptionalSelection(q.id, e)
+                                          }
+                                        />
                                       )}
-                                      onChange={(e) =>
-                                        toggleOptionalSelection(question.id, e)
-                                      }
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  )}
-                                  {renderTruncatedTextWithMath(
-                                    question.questionText,
-                                    60
-                                  )}
-                                  {question.optionalGroupId && (
-                                    <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                      Optional
-                                    </span>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteQuestion(question.id);
-                                  }}
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </div>
-                            )}
-                          </Draggable>
-                        );
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
+                                      {renderTruncatedTextWithMath(
+                                        q.questionText,
+                                        600
+                                      )}
+                                      {q.optionalGroupId && (
+                                        <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                          Optional
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteQuestion(q.id);
+                                      }}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash size={16} />
+                                    </button>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          }
+                        })}
+                        {provided.placeholder}
+                      </div>
+                    );
+                  }}
                 </Droppable>
               )}
             </div>
