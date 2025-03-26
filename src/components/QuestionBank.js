@@ -98,7 +98,7 @@ const FilterGroupAccordion = ({
                 }}
                 className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
                   isSelected
-                    ? "bg-blue-600 text-white"
+                    ? "bg-black text-white"
                     : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                 }`}
               >
@@ -740,7 +740,7 @@ const QuestionBank = () => {
                 values.map((val) => (
                   <span
                     key={`${key}-${val}`}
-                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-blue-600 text-white rounded-full text-sm"
+                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-black text-white rounded-full text-sm"
                   >
                     {val}
                     <button

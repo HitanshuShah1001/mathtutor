@@ -10,10 +10,8 @@ import {
   shifts,
   streams,
   examNames,
-  questionTypes,
   marksOptions,
   types,
-  difficulties,
   BASE_URL_API,
 } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
@@ -73,7 +71,7 @@ const FilterGroupAccordion = ({
                 }}
                 className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
                   isSelected
-                    ? "bg-blue-600 text-white"
+                    ? "bg-black text-white"
                     : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                 }`}
               >
@@ -528,7 +526,6 @@ export const DocumentSidebar = () => {
     return subject.charAt(0).toUpperCase() + subject.slice(1);
   };
 
-
   // ----------------------------
   // Render
   // ----------------------------
@@ -569,14 +566,14 @@ export const DocumentSidebar = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
-            
+
             {/* Selected Filters Chips */}
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
                 values.map((val) => (
                   <span
                     key={`${key}-${val}`}
-                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-blue-600 text-white rounded-full text-sm"
+                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-black text-white rounded-full text-sm"
                   >
                     {val}
                     <button
