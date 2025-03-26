@@ -290,7 +290,7 @@ export const streams = ["science", "commerce"];
 
 export const examNames = ["gseb", "gujcet", "jee"];
 
-export const questionTypes = ["MCQ", "Descriptive"];
+export const questionTypes = ["mcq", "Descriptive"];
 
 // Other filter arrays that were already defined in your UI snippet
 export const marksOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];

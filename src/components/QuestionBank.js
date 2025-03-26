@@ -688,7 +688,12 @@ const QuestionBank = () => {
       if (response.id) {
         // Navigate to your custom question paper generation page
         navigate("/custom-question-paper-generation", {
-          state: { questionPaperId: response.id },
+          state: {
+            questionPaperId: response.id,
+            name: customPaperName,
+            grade: customPaperGrade,
+            subject: customPaperSubject,
+          },
         });
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");

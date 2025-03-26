@@ -85,7 +85,6 @@ const FilterGroupAccordion = ({
 
 // --- QuestionBankModal Component ---
 export const QuestionBankModal = ({ onClose, onImport }) => {
-  
   const blackButtonClass =
     "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200";
   // Questions and selection states
@@ -495,7 +494,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 export const CustomPaperCreatePage = () => {
   const location = useLocation();
   // Retrieve questionPaperId passed via navigate state
-  const { questionPaperId } = location.state || {};
+  const { questionPaperId, name, grade, subject } = location.state || {};
   const navigate = useNavigate();
   // State to hold paper details (sections array)
   const [sections, setSections] = useState([]);
@@ -853,6 +852,8 @@ export const CustomPaperCreatePage = () => {
         ...finalQuestion,
         questionPaperId: parseInt(questionPaperId),
         id: finalQuestion.id,
+        grade,
+        subject,
       });
       if (response && response.success) {
         alert("Question updated successfully!");

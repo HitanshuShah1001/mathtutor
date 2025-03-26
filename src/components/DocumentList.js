@@ -440,7 +440,12 @@ export const DocumentSidebar = () => {
       const response = await postRequest(url, body);
       if (response.id) {
         navigate("/custom-question-paper-generation", {
-          state: { questionPaperId: response.id },
+          state: {
+            questionPaperId: response.id,
+            name: customPaperName,
+            grade: customPaperGrade,
+            subject: customPaperSubject,
+          },
         });
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
