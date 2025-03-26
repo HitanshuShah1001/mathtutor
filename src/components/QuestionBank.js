@@ -27,7 +27,7 @@ const inputClass =
 const blackButtonClass =
   "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200 mr-2";
 const primaryButtonClass =
-  "inline-flex items-center px-4 py-2 bg-[#323232] text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200 mr-2";
+  "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200 mr-2";
 export const headerClass =
   "fixed top-0 left-0 right-0 z-20 bg-white shadow-md h-20 flex items-center px-4";
 const commonButtonClass =
