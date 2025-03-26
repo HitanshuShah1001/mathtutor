@@ -294,8 +294,6 @@ export const allTopics = {
       "Mensuration",
       "Algebra",
       "Ratio and Proportion",
-      "Symmetry",
-      "Practical Geometry",
     ],
     7: [
       "Integers",

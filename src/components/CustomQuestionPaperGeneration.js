@@ -658,18 +658,71 @@ export const CustomPaperCreatePage = () => {
   };
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;
+
+    // Find the section that contains both selected questions.
+    // (If they are not in the same section, you might show an alert.)
+    const targetSectionIndex = sections.findIndex((section) =>
+      selectedOptionalQuestions.every((id) =>
+        section.questions.some((q) => q.id === id)
+      )
+    );
+
+    if (targetSectionIndex === -1) {
+      alert("Please select two questions from the same section.");
+      return;
+    }
+
+    // Generate a unique group id for the optional pair.
     const optionalGroupId = uuidv4();
-    const updatedSections = sections.map((section) => {
-      const updatedQuestions = section.questions.map((q) =>
-        selectedOptionalQuestions.includes(q.id) ? { ...q, optionalGroupId } : q
-      );
-      return { ...section, questions: updatedQuestions };
-    });
+
+    // Work on the target section only.
+    const section = sections[targetSectionIndex];
+
+    // Sort the questions in the section by orderIndex.
+    let sortedQuestions = [...section.questions].sort(
+      (a, b) => a.orderIndex - b.orderIndex
+    );
+
+    // Get the two selected questions in sorted order.
+    const optionalQuestions = sortedQuestions
+      .filter((q) => selectedOptionalQuestions.includes(q.id))
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+
+    if (optionalQuestions.length !== 2) {
+      alert("Could not find both selected questions in the section.");
+      return;
+    }
+
+    const firstOptional = optionalQuestions[0];
+    const secondOptional = optionalQuestions[1];
+
+    // Remove the second optional question from its original position.
+    sortedQuestions = sortedQuestions.filter((q) => q.id !== secondOptional.id);
+
+    // Find the index of the first optional question in the new array.
+    const firstIndex = sortedQuestions.findIndex(
+      (q) => q.id === firstOptional.id
+    );
+
+    // Insert the second optional question right after the first.
+    sortedQuestions.splice(firstIndex + 1, 0, { ...secondOptional });
+
+    // Now update the orderIndex for all questions in the section sequentially.
+    sortedQuestions = sortedQuestions.map((q, index) => ({
+      ...q,
+      orderIndex: index + 1,
+      // For the two optional questions, assign the same optionalGroupId.
+      ...(selectedOptionalQuestions.includes(q.id) && { optionalGroupId }),
+    }));
+
+    // Replace the target section's questions with the new sorted array.
+    const updatedSections = sections.map((sec, idx) =>
+      idx === targetSectionIndex ? { ...sec, questions: sortedQuestions } : sec
+    );
+
+    // Update state and persist the changes to the server.
     setSections(updatedSections);
-    const payload = {
-      id: questionPaperId,
-      sections: updatedSections,
-    };
+    const payload = { id: questionPaperId, sections: updatedSections };
     const response = await postRequest(
       `${BASE_URL_API}/questionPaper/update`,
       payload
