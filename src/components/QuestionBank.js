@@ -262,7 +262,7 @@ const QuestionBank = () => {
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
     if (scrolledToBottom) {
-      fetchQuestions(false);
+      fetchQuestions(false,cursor);
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
@@ -285,18 +285,18 @@ const QuestionBank = () => {
     setQuestions([]);
     setCursor(undefined);
     setHasNextPage(true);
-    fetchQuestions(true);
+    fetchQuestions(true, undefined);
   }, [filters, searchQuery]);
 
   /**
    * Fetches questions from the server with the current filters/search/cursor.
    */
-  const fetchQuestions = async (isInitialLoad = false) => {
+  const fetchQuestions = async (isInitialLoad = false, customCursor) => {
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
       const queryParams = new URLSearchParams({
         limit: "10",
-        ...(cursor && { cursor }),
+        ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
       });
       const payload = {
         ...(filters.grade.length > 0 && { grades: filters.grade }),
