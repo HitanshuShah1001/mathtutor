@@ -1465,6 +1465,7 @@ export const CustomPaperCreatePage = () => {
                     className="w-full p-2 border rounded min-h-[100px]"
                     value={editedQuestion.questionText}
                     onChange={handleQuestionTextChange}
+                    style={{ whiteSpace: "pre-wrap" }}
                   />
                 </div>
                 <div className="my-4">

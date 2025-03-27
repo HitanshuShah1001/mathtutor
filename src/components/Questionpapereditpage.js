@@ -17,7 +17,6 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
-import RichTextEditor from "./Texteditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 /**
@@ -1144,9 +1143,11 @@ const QuestionPaperEditPage = () => {
                 Edit Question Text:
               </label>
 
-              <RichTextEditor
-                value={editedQuestion.questionText || ""}
+              <textarea
+                className="w-full p-2 border rounded min-h-[100px]"
+                value={editedQuestion.questionText}
                 onChange={handleQuestionTextChange}
+                style={{ whiteSpace: "pre-wrap" }}
               />
             </div>
 

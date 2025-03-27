@@ -426,7 +426,7 @@ const QuestionBank = () => {
           marks: questionToEdit.marks,
           difficulty: questionToEdit.difficulty.toUpperCase(),
           options:
-            questionToEdit.type === "MCQ"
+            questionToEdit.type === "mcq"
               ? questionToEdit.options.map((opt) => ({
                   ...opt,
                   imageUrl: opt.imageUrl || "",
