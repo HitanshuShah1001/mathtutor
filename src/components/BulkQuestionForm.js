@@ -6,11 +6,11 @@ const BulkQuestionForm = () => {
   const initialQuestion = {
     type: "MCQ", // or "Descriptive"
     questionText: "",
-    marks: 0,
+    marks: 1,
     difficulty: "medium",
     chapter: "Sorting Materials Into Groups",
     subject: "Science",
-    grade: 12,
+    grade: 1,
     repositoryType: "exercise",
     exerciseName: "Exercise 1.1",
     textBook: "ncert",
@@ -288,7 +288,7 @@ const BulkQuestionForm = () => {
                 Subject:
                 <input
                   type="text"
-                  value={"english"}
+                  value={question.subject}
                   onChange={(e) =>
                     handleQuestionChange(qIndex, "subject", e.target.value)
                   }
@@ -301,7 +301,7 @@ const BulkQuestionForm = () => {
                 Grade:
                 <input
                   type="number"
-                  value={1}
+                  value={question.grade}
                   onChange={(e) =>
                     handleQuestionChange(qIndex, "grade", Number(e.target.value))
                   }
@@ -344,7 +344,7 @@ const BulkQuestionForm = () => {
                 Text Book:
                 <input
                   type="text"
-                  value={"ncert"}
+                  value={question.textBook}
                   onChange={(e) =>
                     handleQuestionChange(qIndex, "textBook", e.target.value)
                   }
