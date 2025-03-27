@@ -13,7 +13,7 @@ const BulkQuestionForm = () => {
     grade: 12,
     repositoryType: "exercise",
     exerciseName: "Exercise 1.1",
-    textBook: "gseb",
+    textBook: "ncert",
     // For Descriptive questions: multiple images
     imageUrls: [],
     // We'll store the actual file references here so we can upload them:
@@ -38,7 +38,6 @@ const BulkQuestionForm = () => {
     // If type changes from MCQ to Descriptive, clear options.
     if (field === "type" && value === "Descriptive") {
       updated[qIndex].options = [];
-      // Also clear out any MCQ-specific imageFile references
     }
 
     // If type changes to MCQ, reset options if empty.
@@ -110,7 +109,6 @@ const BulkQuestionForm = () => {
           if (question.imageFiles && question.imageFiles.length > 0) {
             const uploadedUrls = await Promise.all(
               question.imageFiles.map(async (file) => {
-                // You can customize the generatedLink
                 const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
                   file.name
                 }`;
@@ -130,15 +128,10 @@ const BulkQuestionForm = () => {
                   const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
                     opt.imageFile.name
                   }`;
-                  const uploadedUrl = await uploadToS3(
-                    opt.imageFile,
-                    generatedLink
-                  );
+                  const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
                   return {
                     ...opt,
-                    // The S3 URL
                     imageUrl: uploadedUrl,
-                    // Remove the file reference from final payload
                     imageFile: undefined,
                   };
                 } else {
@@ -164,18 +157,15 @@ const BulkQuestionForm = () => {
 
       // 2) Submit the final payload
       const payload = { questions: updatedQuestions };
-      const response = await fetch(
-        "http://localhost:3000/question/create-bulk",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWxJZCI6ImhpdGFuc2h1c2hhaDVAZ21haWwuY29tIiwiaWF0IjoxNzQyODE1NDQwLCJleHAiOjE3NDI5MDE4NDB9.rAYPi-ndE5uY04jZsXU6YUXCwNyWDguBxtipjpy8pjE",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch("http://localhost:3000/question/create-bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization:
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWxJZCI6ImhpdGFuc2h1c2hhaDVAZ21haWwuY29tIiwiaWF0IjoxNzQzMTA3Mzg1LCJleHAiOjE3NDMxOTM3ODV9.fAG6_dWv7hpoMWEFwjXXHbo1H0yz69x8mXZeJLCTFd4",
+        },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
@@ -194,7 +184,7 @@ const BulkQuestionForm = () => {
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
+    <div style={{ padding: "0.5rem" }}>
       <h2>Bulk Question Creator</h2>
       <form onSubmit={handleSubmit}>
         {questions.map((question, qIndex) => (
@@ -202,156 +192,204 @@ const BulkQuestionForm = () => {
             key={qIndex}
             style={{
               border: "1px solid #ccc",
-              padding: "1rem",
-              marginBottom: "1rem",
+              padding: "0.5rem",
+              marginBottom: "0.5rem",
             }}
           >
-            <h3>Question {qIndex + 1}</h3>
-
-            {/* Question Type */}
-            <label>
-              Question Type:{" "}
-              <select
-                value={question.type}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "type", e.target.value)
-                }
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <h4 style={{ margin: 0 }}>Question {qIndex + 1}</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  // Optional: remove a question if user wants to
+                  const newQuestions = [...questions];
+                  newQuestions.splice(qIndex, 1);
+                  setQuestions(newQuestions);
+                }}
+                style={{ fontSize: "0.8rem", padding: "0.2rem 0.4rem" }}
               >
-                <option value="MCQ">MCQ</option>
-                <option value="Descriptive">Descriptive</option>
-              </select>
-            </label>
-            <br />
+                Remove
+              </button>
+            </div>
 
-            {/* Question Text */}
-            <label>
-              Question Text:
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "0.5rem",
+              }}
+            >
+              {/* Question Type */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Type:
+                <select
+                  value={question.type}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "type", e.target.value)
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                >
+                  <option value="MCQ">MCQ</option>
+                  <option value="Descriptive">Descriptive</option>
+                </select>
+              </label>
+
+              {/* Marks */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Marks:
+                <input
+                  type="number"
+                  value={question.marks}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "marks", Number(e.target.value))
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+
+              {/* Difficulty */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Difficulty:
+                <select
+                  value={question.difficulty}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "difficulty", e.target.value)
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </label>
+
+              {/* Chapter */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Chapter:
+                <input
+                  type="text"
+                  value={question.chapter}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "chapter", e.target.value)
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+
+              {/* Subject */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Subject:
+                <input
+                  type="text"
+                  value={"english"}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "subject", e.target.value)
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+
+              {/* Grade */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Grade:
+                <input
+                  type="number"
+                  value={1}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "grade", Number(e.target.value))
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+
+              {/* Repository Type */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Repo Type:
+                <input
+                  type="text"
+                  value={question.repositoryType}
+                  onChange={(e) =>
+                    handleQuestionChange(
+                      qIndex,
+                      "repositoryType",
+                      e.target.value
+                    )
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+
+              {/* Exercise Name */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Exercise:
+                <input
+                  type="text"
+                  value={question.exerciseName}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "exerciseName", e.target.value)
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+
+              {/* Text Book */}
+              <label style={{ display: "flex", flexDirection: "column" }}>
+                Text Book:
+                <input
+                  type="text"
+                  value={"ncert"}
+                  onChange={(e) =>
+                    handleQuestionChange(qIndex, "textBook", e.target.value)
+                  }
+                  style={{ fontSize: "0.9rem" }}
+                />
+              </label>
+            </div>
+
+            {/* Question Text (below the grid for better width) */}
+            <div style={{ marginTop: "0.5rem" }}>
+              <label style={{ display: "block", marginBottom: "0.2rem" }}>
+                Question Text:
+              </label>
               <textarea
                 value={question.questionText}
                 onChange={(e) =>
                   handleQuestionChange(qIndex, "questionText", e.target.value)
                 }
-                rows="4"
-                style={{ width: "100%" }}
-                placeholder="Enter question text (use $ to wrap math expressions)"
+                rows="2"
+                style={{ width: "100%", fontSize: "0.9rem" }}
+                placeholder="Use $ for math expressions"
               />
-            </label>
-            <br />
+            </div>
 
-            {/* Marks */}
-            <label>
-              Marks:{" "}
-              <input
-                type="number"
-                value={question.marks}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "marks", Number(e.target.value))
-                }
-              />
-            </label>
-            <br />
-
-            {/* Difficulty */}
-            <label>
-              Difficulty:{" "}
-              <select
-                value={question.difficulty}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "difficulty", e.target.value)
-                }
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </label>
-            <br />
-
-            {/* Chapter */}
-            <label>
-              Chapter:{" "}
-              <input
-                type="text"
-                value={question.chapter}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "chapter", e.target.value)
-                }
-              />
-            </label>
-            <br />
-
-            {/* Subject */}
-            <label>
-              Subject:{" "}
-              <input
-                type="text"
-                value={question.subject}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "subject", e.target.value)
-                }
-              />
-            </label>
-            <br />
-
-            {/* Grade */}
-            <label>
-              Grade:{" "}
-              <input
-                type="number"
-                value={question.grade}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "grade", Number(e.target.value))
-                }
-              />
-            </label>
-            <br />
-
-            {/* Repository Type */}
-            <label>
-              Repository Type:{" "}
-              <input
-                type="text"
-                value={question.repositoryType}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "repositoryType", e.target.value)
-                }
-              />
-            </label>
-            <br />
-
-            {/* Exercise Name */}
-            <label>
-              Exercise Name:{" "}
-              <input
-                type="text"
-                value={question.exerciseName}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "exerciseName", e.target.value)
-                }
-              />
-            </label>
-            <br />
-
-            {/* Text Book */}
-            <label>
-              Text Book:{" "}
-              <input
-                type="text"
-                value={question.textBook}
-                onChange={(e) =>
-                  handleQuestionChange(qIndex, "textBook", e.target.value)
-                }
-              />
-            </label>
-            <br />
-
+            {/* If MCQ, show options; else show image upload */}
             {question.type === "MCQ" ? (
-              <div style={{ marginTop: "1rem" }}>
-                <h4>Options</h4>
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: "0.5rem",
+                }}
+              >
                 {question.options.map((option, oIndex) => (
-                  <div key={oIndex} style={{ marginBottom: "0.5rem" }}>
-                    <label>
-                      Option {option.key}:{" "}
+                  <div
+                    key={oIndex}
+                    style={{
+                      border: "1px solid #ccc",
+                      padding: "0.5rem",
+                      fontSize: "0.9rem",
+                    }}
+                  >
+                    <label style={{ display: "flex", flexDirection: "column" }}>
+                      Option {option.key}
                       <input
                         type="text"
                         value={option.option}
@@ -363,12 +401,18 @@ const BulkQuestionForm = () => {
                             e.target.value
                           )
                         }
-                        placeholder="Enter option text (wrap math with $)"
+                        placeholder="Option text ($ for math)"
+                        style={{ fontSize: "0.9rem" }}
                       />
                     </label>
-                    <br />
-                    <label>
-                      Option Image:{" "}
+                    <label
+                      style={{
+                        display: "block",
+                        marginTop: "0.3rem",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      Option Image:
                       <input
                         type="file"
                         accept="image/*"
@@ -379,15 +423,15 @@ const BulkQuestionForm = () => {
                             e.target.files[0]
                           )
                         }
+                        style={{ fontSize: "0.8rem" }}
                       />
                     </label>
-                    {/* Preview if available */}
                     {option.imageUrl && (
-                      <div style={{ marginTop: "0.5rem" }}>
+                      <div style={{ marginTop: "0.3rem" }}>
                         <img
                           src={option.imageUrl}
                           alt={`Option ${option.key} preview`}
-                          style={{ height: "60px", border: "1px solid #ccc" }}
+                          style={{ height: "50px", border: "1px solid #ccc" }}
                         />
                       </div>
                     )}
@@ -395,25 +439,28 @@ const BulkQuestionForm = () => {
                 ))}
               </div>
             ) : (
-              <div style={{ marginTop: "1rem" }}>
-                <h4>Upload Question Images (multiple allowed)</h4>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) =>
-                    handleDescriptiveImages(qIndex, e.target.files)
-                  }
-                />
+              <div style={{ marginTop: "0.5rem" }}>
+                <label style={{ fontSize: "0.9rem" }}>
+                  Upload Images (multiple):
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) =>
+                      handleDescriptiveImages(qIndex, e.target.files)
+                    }
+                    style={{ fontSize: "0.85rem", marginLeft: "0.5rem" }}
+                  />
+                </label>
                 {question.imageUrls && question.imageUrls.length > 0 && (
-                  <div style={{ marginTop: "0.5rem" }}>
+                  <div style={{ marginTop: "0.3rem" }}>
                     {question.imageUrls.map((url, i) => (
                       <img
                         key={i}
                         src={url}
                         alt={`Question ${qIndex + 1} img ${i}`}
                         style={{
-                          height: "100px",
+                          height: "60px",
                           marginRight: "5px",
                           border: "1px solid #ccc",
                         }}
@@ -425,12 +472,18 @@ const BulkQuestionForm = () => {
             )}
           </div>
         ))}
-        <button type="button" onClick={addNewQuestion}>
-          Add Another Question
-        </button>
-        <br />
-        <br />
-        <button type="submit">Submit Bulk Questions</button>
+        <div style={{ marginTop: "0.5rem" }}>
+          <button
+            type="button"
+            onClick={addNewQuestion}
+            style={{ fontSize: "0.9rem", marginRight: "1rem" }}
+          >
+            Add Another Question
+          </button>
+          <button type="submit" style={{ fontSize: "0.9rem" }}>
+            Submit Bulk Questions
+          </button>
+        </div>
       </form>
     </div>
   );

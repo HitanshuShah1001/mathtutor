@@ -599,7 +599,7 @@ const QuestionBank = () => {
         ...newQuestion,
         subject: newQuestion.subject?.toLowerCase(),
         chapter: newQuestion.chapter?.toLowerCase(),
-        grade: newQuestion.grade?.toLowerCase(),
+        grade: newQuestion.grade,
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
