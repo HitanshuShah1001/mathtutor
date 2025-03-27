@@ -74,13 +74,14 @@ const VerifyOtp = () => {
         setUser(user);
         setIsAuthenticated(true);
         navigate(PAPER_GENERATION, { replace: true });
-      } else {
-        // Otherwise, navigate to update-user-details page for additional registration
-        addDataToLocalStorage({ accessToken });
-        navigate("/update-user-details", {
-          state: { firstTime: true, id: user?.id },
-        });
       }
+      // } else {
+      //   // Otherwise, navigate to update-user-details page for additional registration
+      //   addDataToLocalStorage({ accessToken });
+      //   navigate("/update-user-details", {
+      //     state: { firstTime: true, id: user?.id },
+      //   });
+      // }
     } else {
       console.log(isValidAndData.data.config);
       setError(isValidAndData?.data?.response?.data?.message);

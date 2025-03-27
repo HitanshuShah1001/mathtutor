@@ -1,20 +1,4 @@
-/**
- * This file defines the DocumentSidebar component which serves as a filterable document
- * list and includes functionality for creating, viewing, editing, and deleting question
- * papers. The component also includes a modal-based viewer for viewing question papers
- *
- * Overall Flow:
- * 1. We have filter accordions on the left to filter the list of question papers from an API.
- * 2. As a user scrolls, more documents are fetched and appended (infinite scroll).
- * 3. Users can view, edit, or delete documents.
- * 4. There’s a modal-based flow that allows for creating new question papers – either AI-generated
- *    or completely custom (manually built).
- * 5. When a document is viewed, the code fetches its HTML version from the server and displays it
- *    in a modal. A solution link can also be viewed if available.
- * 6. The entire file focuses on user-friendly UI interactions (accordions, modals, infinite scrolling).
- */
-
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { FileText, DownloadIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,20 +10,20 @@ import {
   shifts,
   streams,
   examNames,
-  questionTypes,
   marksOptions,
   types,
-  difficulties,
   BASE_URL_API,
+  INVALID_TOKEN,
 } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
+import ProfileMenu from "../subcomponents/ProfileMenu";
 
 /**
  * Reusable styling classes for various buttons and input fields.
  */
-const primaryButtonClass =
+export const primaryButtonClass =
   "px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors";
 const commonButtonClass =
   "px-4 py-2 bg-black text-white font-semibold rounded hover:bg-black transition-colors";
@@ -88,7 +72,7 @@ const FilterGroupAccordion = ({
                 }}
                 className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
                   isSelected
-                    ? "bg-blue-600 text-white"
+                    ? "bg-black text-white"
                     : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                 }`}
               >
@@ -115,6 +99,7 @@ const FilterGroupAccordion = ({
  */
 export const DocumentSidebar = () => {
   const navigate = useNavigate();
+  const documentListRef = useRef(null);
 
   // ----------------------------
   // Document and pagination state
@@ -124,6 +109,11 @@ export const DocumentSidebar = () => {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // New search query state
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
 
   // ----------------------------
   // Filter state
@@ -196,12 +186,13 @@ export const DocumentSidebar = () => {
     questionTypes: false,
   });
 
+  // Attach the mousemove and mouseup event listeners when dragging
   /**
    * filterGroups: This array of objects maps each category's label, key, and possible values.
    * We iterate over these to create multiple FilterGroupAccordion components.
    */
   const filterGroups = [
-    { label: "Grade", key: "grade", values: grades.map((g) => `Grade ${g}`) },
+    { label: "Grade", key: "grade", values: grades },
     { label: "Subject", key: "subject", values: subjects },
     { label: "Exam Day", key: "examDays", values: examDays },
     { label: "Exam Month", key: "examMonths", values: examMonths },
@@ -211,8 +202,8 @@ export const DocumentSidebar = () => {
     { label: "Exam Name", key: "examNames", values: examNames },
     { label: "Marks", key: "marks", values: marksOptions },
     { label: "Type", key: "types", values: types },
-    { label: "Difficulty", key: "difficulties", values: difficulties },
-    { label: "Question Type", key: "questionTypes", values: questionTypes },
+    // { label: "Difficulty", key: "difficulties", values: difficulties },
+    // { label: "Question Type", key: "questionTypes", values: questionTypes },
   ];
 
   /**
@@ -250,19 +241,20 @@ export const DocumentSidebar = () => {
    * so the documents returned already match the selected filter criteria.
    */
   const fetchDocuments = async (isInitialLoad = false) => {
+    console.log("being called", isInitialLoad);
     // Distinguish between initial load and subsequent loads
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
       // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
         limit: "10",
-        ...(cursor && { cursor }),
+        ...(cursor && !isInitialLoad && { cursor }),
       });
 
       // Prepare request body from filters
       const requestBody = {};
-      if (filters.grade.length > 0) requestBody.grade = filters.grade;
-      if (filters.subject.length > 0) requestBody.subject = filters.subject;
+      if (filters.grade.length > 0) requestBody.grades = filters.grade;
+      if (filters.subject.length > 0) requestBody.subjects = filters.subject;
       if (filters.examDays.length > 0) requestBody.examDays = filters.examDays;
       if (filters.examMonths.length > 0)
         requestBody.examMonths = filters.examMonths;
@@ -278,8 +270,11 @@ export const DocumentSidebar = () => {
         requestBody.difficulties = filters.difficulties.map((d) =>
           d.toLowerCase()
         );
-      if (filters.questionTypes.length > 0)
-        requestBody.questionTypes = filters.questionTypes;
+      // if (filters.questionTypes.length > 0)
+      //   requestBody.questionTypes = filters.questionTypes;
+      if (searchQuery != "") {
+        requestBody.name = searchQuery;
+      }
 
       // Use an API call helper (postRequest) to fetch data
       const data = await postRequest(
@@ -289,16 +284,14 @@ export const DocumentSidebar = () => {
 
       // Check if API returned an error about the token; if so, reset local storage and navigate to login
       if (data.message) {
-        if (
-          data.message === "Invalid or expired access token" ||
-          data.message === "Access token is required"
-        ) {
+        if (data.message === INVALID_TOKEN) {
           removeDataFromLocalStorage();
           navigate("/login");
           return;
         }
       }
 
+      console.log(data, "data");
       // If successful, update documents and pagination state
       if (data.success && data.questionPapers) {
         isInitialLoad
@@ -327,7 +320,31 @@ export const DocumentSidebar = () => {
     setHasNextPage(true);
     fetchDocuments(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, searchQuery]);
+
+  /**
+   * checkIfMoreDocumentsNeeded: This function checks if the viewport is larger than the content
+   * and loads more documents if needed.
+   */
+
+  const checkIfMoreDocumentsNeeded = useCallback(() => {
+    if (!hasNextPage || infiniteLoading || loading) return;
+
+    if (documentListRef.current) {
+      const documentListHeight = documentListRef.current.offsetHeight;
+      const viewportHeight = window.innerHeight;
+      const headerHeight = 80; // 80px for the header
+
+      // If the document list doesn't fill the viewport (with some buffer),
+      // and we have more documents to load, then load more
+      if (
+        documentListHeight < viewportHeight - headerHeight - 10 &&
+        hasNextPage
+      ) {
+        fetchDocuments(false);
+      }
+    }
+  }, [hasNextPage, infiniteLoading, loading]);
 
   /**
    * handleInfiniteScroll: This function runs on the window scroll event.
@@ -340,7 +357,16 @@ export const DocumentSidebar = () => {
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
     if (scrolledToBottom) fetchDocuments(false);
-  }, [hasNextPage, infiniteLoading, loading, cursor]);
+  }, [hasNextPage, infiniteLoading, loading]);
+
+  // Initial check after documents load or resize
+  useEffect(() => {
+    checkIfMoreDocumentsNeeded();
+    // Add resize event listener to check if more documents are needed when window is resized
+    window.addEventListener("resize", checkIfMoreDocumentsNeeded);
+    return () =>
+      window.removeEventListener("resize", checkIfMoreDocumentsNeeded);
+  }, [documents, checkIfMoreDocumentsNeeded]);
 
   // Attach scroll listener on mount and clean up on unmount
   useEffect(() => {
@@ -414,7 +440,12 @@ export const DocumentSidebar = () => {
       const response = await postRequest(url, body);
       if (response.id) {
         navigate("/custom-question-paper-generation", {
-          state: { questionPaperId: response.id },
+          state: {
+            questionPaperId: response.id,
+            name: customPaperName,
+            grade: customPaperGrade,
+            subject: customPaperSubject,
+          },
         });
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
@@ -429,7 +460,6 @@ export const DocumentSidebar = () => {
       setErrorMessage("Something went wrong while creating the paper.");
     }
   };
-
   /**
    * downloadAllSetPDFs: For a multi-set question paper, each set can have its own link.
    * This function opens each link, loads it, prints as a PDF, and then closes the window.
@@ -508,7 +538,15 @@ export const DocumentSidebar = () => {
       <header className="fixed top-0 left-0 right-0 z-20 bg-white shadow-md h-20 flex items-center px-4">
         {/* Header section with title and Create Question Paper button */}
         <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center">
+          <button
+            onClick={() => navigate("/question-bank")}
+            className={`inline-flex items-center ${primaryButtonClass} mr-4`}
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Question Bank
+          </button>
+
           <button
             onClick={handleCreatePaper}
             className={`inline-flex items-center ${primaryButtonClass}`}
@@ -516,6 +554,9 @@ export const DocumentSidebar = () => {
             <FileText className="w-4 h-4 mr-2" />
             Create Question Paper
           </button>
+          <div style={{ marginLeft: "10px" }}>
+            <ProfileMenu />
+          </div>
         </div>
       </header>
 
@@ -528,13 +569,14 @@ export const DocumentSidebar = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
+
             {/* Selected Filters Chips */}
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
                 values.map((val) => (
                   <span
                     key={`${key}-${val}`}
-                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-blue-600 text-white rounded-full text-sm"
+                    className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-black text-white rounded-full text-sm"
                   >
                     {val}
                     <button
@@ -612,7 +654,7 @@ export const DocumentSidebar = () => {
               <p className="ml-4 text-gray-600">Loading documents...</p>
             </div>
           ) : (
-            <div>
+            <div ref={documentListRef}>
               {documents?.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500">
@@ -633,7 +675,9 @@ export const DocumentSidebar = () => {
                         </h3>
                         <p className="text-sm text-gray-500">
                           {getCapitalSubjectName({ subject: doc.subject })} •
-                          Grade {doc.grade}
+                          Grade {doc.grade} • Status :-{" "}
+                          {doc.status.charAt(0).toUpperCase() +
+                            doc.status.slice(1)}
                         </p>
                         {/* <p className="text-sm text-gray-500">
                           Created on{" "}
@@ -715,16 +759,17 @@ export const DocumentSidebar = () => {
       </div>
 
       {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
+      {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white w-11/12 h-[90vh] overflow-auto rounded-lg shadow-xl relative">
+          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative flex flex-col">
             <button
               onClick={() => setModalVisible(false)}
               className={`absolute top-4 right-4 ${modalButtonClass}`}
             >
               Close
             </button>
-            <div className="p-4">
+            <div className="p-4 flex flex-col h-full">
               <div className="flex gap-4 mb-4">
                 <button
                   onClick={() => setModalActiveTab("question")}
@@ -753,25 +798,24 @@ export const DocumentSidebar = () => {
                     </button>
                   )}
               </div>
-              {/* DocumentViewer displays the HTML version of the document */}
-              <DocumentViewer
-                documentUrl={
-                  modalActiveTab === "question"
-                    ? modalDocument.questionPaperLink
-                    : modalDocument.solutionLink
-                }
-                name={`${modalDocument.name} - ${
-                  modalActiveTab === "question"
-                    ? "Question Paper"
-                    : "Answer Sheet"
-                }`}
-              />
+              <div className="flex-1 overflow-auto h-0 min-h-0">
+                <DocumentViewer
+                  documentUrl={
+                    modalActiveTab === "question"
+                      ? modalDocument.questionPaperLink
+                      : modalDocument.solutionLink
+                  }
+                  name={`${modalDocument.name} - ${
+                    modalActiveTab === "question"
+                      ? "Question Paper"
+                      : "Answer Sheet"
+                  }`}
+                />
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Dialog for choosing between AI-generated or Custom Paper creation */}
       {showPaperDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div

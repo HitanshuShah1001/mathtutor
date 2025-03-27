@@ -15,7 +15,7 @@ const DocumentViewer = ({ documentUrl, name }) => {
       // Fetch the complete HTML content (which should include <head> and the MathJax script)
       const response = await fetch(documentUrl);
       const htmlContent = await response.text();
-      console.log(htmlContent, "html content that was received");
+      setTimeout(5000)
       // Open a new window and write the full HTML content into it.
       const printWindow = window.open("", "_blank");
       printWindow.document.open();
@@ -51,7 +51,7 @@ const DocumentViewer = ({ documentUrl, name }) => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-13rem)] bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between items-center p-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800">{name}</h3>
         <div className="flex gap-2">

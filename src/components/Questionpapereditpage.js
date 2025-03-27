@@ -1,24 +1,6 @@
-/**
- * This file defines the QuestionPaperEditPage component, which provides a comprehensive
- * interface for editing a question paper. It supports:
- * - Creating new sections
- * - Adding questions within sections
- * - Editing and deleting existing questions
- * - Drag-and-drop reordering of questions
- * - Marking certain questions as optional
- * - Importing questions from a question bank
- *
- * MAIN FLOW:
- * 1. The page fetches the existing sections (and their questions) for a given question paper (docId).
- * 2. Users can add sections, add new questions, or modify/delete existing ones.
- * 3. A drag-and-drop functionality (react-beautiful-dnd) allows rearranging questions in a section.
- * 4. Users can mark exactly two non-MCQ questions as optional, grouping them together via an `optionalGroupId`.
- * 5. A right panel displays detailed editing controls for the currently selected question (clicked on the left list).
- * 6. The user can also resize the panels by dragging a horizontal handle between the left and right sections.
- */
-
+/* eslint-disable jsx-a11y/img-redundant-alt */
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Trash,
   Image as ImageIcon,
@@ -30,56 +12,57 @@ import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { BASE_URL_API } from "../constants/constants";
+import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
+import RichTextEditor from "./Texteditor";
+import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 
 /**
- * Main component that orchestrates the UI and logic for editing a question paper.
- * Allows adding/editing/deleting questions and sections, drag-and-drop reordering,
- * marking optional questions, and more.
+ * Main component for editing a question paper.
+ * Allows adding sections, adding/editing questions within each section,
+ * handling question images, optionally marking questions as optional, and more.
  */
 const QuestionPaperEditPage = () => {
-  // Retrieve questionPaperId from route params
   const { docId: questionPaperId } = useParams();
 
-  // ---------------------------------------
-  // State management
-  // ---------------------------------------
-  // sections: an array of objects, each containing a 'name' and an array of 'questions'
+  // State to hold the sections of the question paper
   const [sections, setSections] = useState([]);
 
-  // originalQuestion: The question object as it originally existed (before edits).
-  // editedQuestion: The question object that the user is currently editing.
+  // The original question (before editing)
   const [originalQuestion, setOriginalQuestion] = useState(null);
+
+  // The edited question (after making changes)
   const [editedQuestion, setEditedQuestion] = useState(null);
 
-  // questionImageFile: If a new image is uploaded for a question, store the File object here.
-  const [questionImageFile, setQuestionImageFile] = useState(null);
+  // Local state for newly selected question images (not yet saved)
+  const [questionImageUrls, setQuestionImageUrls] = useState([]);
 
-  // searchTerm: For filtering the question list on the left panel by question text
+  // Search term for filtering questions in the left panel
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Modals and related states:
-  // - showAddQuestionModal: Toggles the form for adding a new question
-  // - isEditingNewQuestion: True if we're editing a just-created question instead of an existing one
-  // - sectionForNewQuestion: The section name where a new question is being added
-  // - showBankModal: Manages visibility for importing questions from a question bank
+  // Controls visibility of the "Add Question" modal
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+
+  // Indicates if we're editing (rather than creating) a new question
   const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
+
+  // Stores the section name for which we are adding a new question
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
+
+  // Controls visibility of the question bank modal
   const [showBankModal, setShowBankModal] = useState({
     visible: false,
     sectionName: null,
   });
 
-  // newQuestion: Template for a newly created question, including type, text, options, etc.
+  // Object that holds the data for a brand-new question to be added
   const [newQuestion, setNewQuestion] = useState({
     type: "MCQ",
     questionText: "",
-    imageUrl: "",
+    imageUrls: [],
     marks: "",
     difficulty: "",
     options: [
@@ -90,30 +73,56 @@ const QuestionPaperEditPage = () => {
     ],
   });
 
-  // For managing the creation of a new section:
-  // - showAddSectionModal: Toggle the modal for new section creation
-  // - newSectionName: Controlled input state for the new section's name
+  // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+
+  // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
 
-  // selectedOptionalQuestions: For tracking which questions (2 at a time) are selected
-  // to be marked as optional
+  // Stores question IDs which are selected to be marked as optional
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
   );
 
-  // collapsedSections: Object storing boolean collapse states for each section, keyed by index
+  // Keeps track of which sections are currently collapsed in the left panel
   const [collapsedSections, setCollapsedSections] = useState({});
 
-  // ---------------------------------------
-  // Panel resizing state
-  // ---------------------------------------
+  // Manages the left panel's width for resizing
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
 
+  const navigate = useNavigate();
   /**
-   * Helper function to get the next alphabetical letter for naming a new section:
-   * e.g., if existing sections are A, B, C, it returns D.
+   * Helper function to group questions by their optionalGroupId.
+   * Questions without an optionalGroupId each become their own group.
+   */
+  const groupQuestions = (questions) => {
+    const groups = [];
+    const seen = new Set();
+
+    questions.forEach((q) => {
+      // If question has an optionalGroupId, group them
+      if (q.optionalGroupId) {
+        if (!seen.has(q.optionalGroupId)) {
+          const grouped = questions.filter(
+            (x) => x.optionalGroupId === q.optionalGroupId
+          );
+          groups.push({ groupId: q.optionalGroupId, questions: grouped });
+          seen.add(q.optionalGroupId);
+        }
+      } else {
+        // If no optionalGroupId, it's alone in its group
+        groups.push({ groupId: null, questions: [q] });
+      }
+    });
+
+    return groups;
+  };
+
+  /**
+   * Returns the next alphabet letter for naming a new section.
+   * If no sections exist, returns "A".
+   * If there's at least one, finds the highest letter and returns the next letter.
    */
   const getNextSectionLetter = () => {
     if (!sections || sections.length === 0) return "A";
@@ -125,43 +134,27 @@ const QuestionPaperEditPage = () => {
       curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
     );
     const nextCharCode = maxLetter.charCodeAt(0) + 1;
-    if (nextCharCode > "Z".charCodeAt(0)) return "A"; // loop if needed
+    if (nextCharCode > "Z".charCodeAt(0)) return "A";
     return String.fromCharCode(nextCharCode);
   };
 
   /**
-   * Handler to add a new section to the question paper.
-   * If successful, the new section is appended and a modal to add a question is optionally triggered.
+   * Handles creating and adding a new section to the local state.
+   * This doesn't persist to the server directly in this function.
    */
-  const handleAddSection = async () => {
+  const handleAddSection = () => {
     if (!newSectionName.trim()) {
       alert("Please enter a valid section name.");
       return;
     }
     const newSection = { name: newSectionName.trim(), questions: [] };
-    const updatedSections = [...sections, newSection];
-    setSections(updatedSections);
-
-    const payload = { id: questionPaperId, sections: updatedSections };
-    const response = await postRequest(
-      `${BASE_URL_API}/questionPaper/update`,
-      payload
-    );
-    if (!response?.success) {
-      alert("Failed to add new section. Please try again.");
-      return;
-    }
-
+    setSections([...sections, newSection]);
     setShowAddSectionModal(false);
     setNewSectionName("");
-
-    // Optionally open the "Add Question" modal right after adding a new section
-    setSectionForNewQuestion(newSection.name);
-    setShowAddQuestionModal(true);
   };
 
   /**
-   * toggleSectionCollapse: Toggles the visual collapse/expand state of a given section by index.
+   * Toggles the collapse/expand state of a given section.
    */
   const toggleSectionCollapse = (sectionIndex) => {
     setCollapsedSections((prev) => ({
@@ -171,9 +164,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Panel resizing hooks:
-   * - On mouse move, if isResizing is true, update leftPanelWidth to the new percentage based on the cursor.
-   * - On mouse up, end the resizing operation.
+   * Handles the mousemove event for resizing the left panel.
    */
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -197,17 +188,14 @@ const QuestionPaperEditPage = () => {
   }, [isResizing]);
 
   /**
-   * handleMouseDown: Sets isResizing to true when the user clicks down on the resize handle.
+   * Initiates resizing when user mouses down on the resize handle.
    */
   const handleMouseDown = () => {
     setIsResizing(true);
   };
 
-  // ---------------------------------------
-  // FETCH/REFRESH QUESTION PAPER
-  // ---------------------------------------
   /**
-   * fetchQuestionPaperDetails: Retrieves the question paper's sections and questions from the server.
+   * Fetches the details of the question paper (sections, questions) from the server.
    */
   const fetchQuestionPaperDetails = async () => {
     try {
@@ -217,6 +205,11 @@ const QuestionPaperEditPage = () => {
       if (response.success) {
         setSections(response.questionPaper.sections || []);
       } else {
+        if (response.message === INVALID_TOKEN) {
+          removeDataFromLocalStorage();
+          navigate("/login");
+          return;
+        }
         console.error("Failed to fetch question paper details:", response);
       }
     } catch (error) {
@@ -224,38 +217,32 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  /**
-   * On mount, fetch the question paper details. Also re-fetch when questionPaperId changes.
-   */
+  // Fetch question paper details on component mount
   useEffect(() => {
     fetchQuestionPaperDetails();
   }, []);
 
-  // ---------------------------------------
-  // EDIT functionalities
-  // ---------------------------------------
   /**
-   * handleQuestionClick: When the user clicks on a question in the left panel,
-   * we store the question as both originalQuestion and editedQuestion (for toggling changes).
+   * When a question is clicked from the left panel, set it as the original and
+   * initialize the editedQuestion with a deep copy.
    */
   const handleQuestionClick = (question) => {
     setOriginalQuestion(question);
     setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    setQuestionImageFile(null);
+    setQuestionImageUrls([]);
   };
 
   /**
-   * isModified: Checks if the currently edited question has any changes compared to the original.
+   * Determines if the current edited question has unsaved changes.
    */
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
-        questionImageFile !== null
+        questionImageUrls.length > 0
       : false;
 
   /**
-   * renderTextWithMath: Splits text by '$' and renders inline math in between.
-   * This is used for live preview of math expressions in the question text.
+   * Splits text on $ signs and renders inline math for every odd segment.
    */
   const renderTextWithMath = (text) => {
     if (!text) return null;
@@ -270,10 +257,9 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * renderTruncatedTextWithMath: Same as renderTextWithMath, but truncates the text to maxLength chars.
-   * Used in the left panel question list.
+   * Renders truncated question text with math. Only shows up to maxLength characters.
    */
-  const renderTruncatedTextWithMath = (text, maxLength = 60) => {
+  const renderTruncatedTextWithMath = (text, maxLength = 600) => {
     if (!text) return null;
     let truncated = text;
     if (text.length > maxLength) {
@@ -290,7 +276,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * getFilteredSections: Filters out questions (and thus sections) that do not match the search term.
+   * Filters the sections by the search term so that only matching questions appear.
    */
   const getFilteredSections = () => {
     const lowerSearch = searchTerm?.toLowerCase();
@@ -300,17 +286,16 @@ const QuestionPaperEditPage = () => {
       );
       return { ...section, questions: filteredQuestions };
     });
-    return filtered.filter((section) => section.questions.length > 0);
+    return filtered;
   };
 
-  /**
-   * visibleSections: The sections that pass the search filter (displayed on the left panel).
-   */
   const visibleSections = getFilteredSections();
+
+  // For showing a live math preview on the right side
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
   /**
-   * toggleOptionalSelection: Allows user to select up to 2 non-MCQ questions to be marked as optional.
+   * Toggles a question's inclusion in the optional selection list (only 2 at a time allowed).
    */
   const toggleOptionalSelection = (questionId, e) => {
     e.stopPropagation();
@@ -327,7 +312,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * handleMarkAsOptional: Groups exactly 2 selected questions under the same `optionalGroupId`.
+   * Marks the selected questions as optional by assigning them the same optionalGroupId.
    */
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;
@@ -357,22 +342,15 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ---------------------------------------
-  // EDIT: changes for question fields
-  // ---------------------------------------
   /**
-   * handleQuestionTextChange: Updates the question text as the user types in the right panel.
+   * Updates the question text in the editedQuestion state.
    */
-  const handleQuestionTextChange = (e) => {
-    const newText = e.target.value;
-    setEditedQuestion((prev) => ({
-      ...prev,
-      questionText: newText,
-    }));
+  const handleQuestionTextChange = (content) => {
+    setEditedQuestion((prev) => ({ ...prev, questionText: content }));
   };
 
   /**
-   * handleTypeChange: Updates the question type (MCQ vs descriptive).
+   * Changes the question type (MCQ/Descriptive) in the editedQuestion via a dropdown.
    */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
@@ -383,8 +361,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * handleImportQuestions: Triggered when user imports selected questions from the bank
-   * to a specific section within the current question paper.
+   * Imports questions from the question bank into the specified section.
    */
   const handleImportQuestions = async (selectedIds) => {
     if (!selectedIds || selectedIds.length === 0) {
@@ -412,18 +389,18 @@ const QuestionPaperEditPage = () => {
       if (resp?.success) {
         alert("Imported questions successfully!");
         await fetchQuestionPaperDetails();
+        setShowBankModal({ visible: false, sectionName: null });
       } else {
-        alert("Failed to import questions.");
+        alert(resp?.message || "Failed to import questions");
       }
     } catch (err) {
       console.error("Error importing questions:", err);
       alert("Error importing questions.");
     }
-    setShowBankModal({ visible: false, sectionName: null });
   };
 
   /**
-   * handleDifficultyChange: Sets the difficulty field of the currently edited question.
+   * Updates the difficulty level of the edited question.
    */
   const handleDifficultyChange = (e) => {
     const newDiff = e.target.value;
@@ -434,7 +411,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * handleMarksChange: Sets the marks field of the currently edited question.
+   * Updates the marks for the edited question.
    */
   const handleMarksChange = (e) => {
     const newMarks = e.target.value;
@@ -445,7 +422,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * handleOptionChange: For MCQ questions, updates the text of a specific option.
+   * Updates the text of one of the MCQ options for the edited question.
    */
   const handleOptionChange = (index, newValue) => {
     setEditedQuestion((prev) => {
@@ -458,111 +435,112 @@ const QuestionPaperEditPage = () => {
     });
   };
 
-  // ---------------------------------------
-  // EDIT: images (question & options)
-  // ---------------------------------------
   /**
-   * handleQuestionImageChange: Stores the File object for the question image being uploaded.
+   * Adds newly selected files to the local questionImageUrls array.
    */
   const handleQuestionImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setQuestionImageFile(file);
-    }
+    const files = Array.from(e.target.files);
+    setQuestionImageUrls((prev) => [...prev, ...files]);
   };
 
   /**
-   * handleDeleteQuestionImage: Clears the existing question image reference.
+   * Removes an existing image from the edited question.
    */
-  const handleDeleteQuestionImage = () => {
-    setQuestionImageFile(null);
-    setEditedQuestion((prev) => ({ ...prev, imageUrl: "" }));
+  const handleDeleteQuestionImage = (index) => {
+    setEditedQuestion((prev) => {
+      const updatedImageUrls = [...prev.imageUrls];
+      updatedImageUrls.splice(index, 1);
+      return { ...prev, imageUrls: updatedImageUrls };
+    });
   };
 
   /**
-   * handleDiscardQuestionImage: Discards the newly selected image (go back to original).
+   * Discards a newly added (but not yet saved) image from local state.
    */
-  const handleDiscardQuestionImage = () => {
-    setQuestionImageFile(null);
+  const handleDiscardQuestionImage = (index) => {
+    setQuestionImageUrls((prev) => {
+      const updatedFiles = [...prev];
+      updatedFiles.splice(index, 1);
+      return updatedFiles;
+    });
   };
 
   /**
-   * handleOptionImageChange: Handles new file upload for a specific MCQ option image.
+   * Handles the event of uploading a new image for one of the MCQ options in the edited question.
    */
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
       updatedOptions[index] = {
         ...updatedOptions[index],
-        imageFile: file,
+        imageUrl: file,
       };
       return { ...prev, options: updatedOptions };
     });
   };
 
   /**
-   * handleDeleteOptionImage: Removes the existing imageUrl and imageFile for a given option.
+   * Removes (existing) or discards (new) an option image from the edited question.
    */
   const handleDeleteOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
       delete updatedOptions[index].imageUrl;
-      delete updatedOptions[index].imageFile;
       return { ...prev, options: updatedOptions };
     });
   };
 
   /**
-   * handleDiscardOptionImage: Discards a newly chosen image file for an option, reverting to the old image.
+   * Removes (existing) or discards (new) an option image from the edited question.
+   * Typically used for newly uploaded images.
    */
   const handleDiscardOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
-      if (updatedOptions[index].imageFile) {
-        delete updatedOptions[index].imageFile;
+      if (updatedOptions[index].imageUrl) {
+        delete updatedOptions[index].imageUrl;
       }
       return { ...prev, options: updatedOptions };
     });
   };
 
-  // ---------------------------------------
-  // Saving / Upserting an existing question
-  // ---------------------------------------
   /**
-   * handleSave: Saves changes to the currently edited question (editedQuestion).
-   * This includes uploading images to S3 if they've changed.
+   * Saves the edited question to the database (upsert). It uploads newly added images first.
    */
   const handleSave = async () => {
     try {
-      let updatedImageUrl = editedQuestion.imageUrl || "";
-      // If a new question image file is selected, upload to S3
-      if (questionImageFile) {
-        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-          questionImageFile.name
-        }`;
-        updatedImageUrl = await uploadToS3(questionImageFile, generatedLink);
+      // Upload newly selected question-level images
+      let updatedImageUrls = editedQuestion.imageUrls || [];
+      if (questionImageUrls.length > 0) {
+        const uploadedUrls = await Promise.all(
+          questionImageUrls.map(async (file) => {
+            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+              file.name
+            }`;
+            return await uploadToS3(file, generatedLink);
+          })
+        );
+        updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
       }
 
-      // For each MCQ option that has a new image file, upload it
+      // Upload newly selected option images
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          if (opt.imageFile) {
+          if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
+              opt.imageUrl.name
             }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+            const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            delete updatedOption.imageFile;
           }
           return updatedOption;
         })
       );
 
-      // Construct the final question payload
       const updatedQuestion = {
         ...editedQuestion,
-        imageUrl: updatedImageUrl,
+        imageUrls: updatedImageUrls,
         options: updatedOptions,
       };
 
@@ -574,7 +552,6 @@ const QuestionPaperEditPage = () => {
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
       }
-      // If not MCQ, remove "options" array from payload
       if (updatedQuestion.type !== "MCQ") {
         delete payload.options;
       }
@@ -584,27 +561,23 @@ const QuestionPaperEditPage = () => {
         payload
       );
       if (response && response.success) {
-        alert("Question upserted successfully!");
+        alert("Question edited successfully!");
       } else {
         alert("Failed to upsert question.");
       }
 
       await fetchQuestionPaperDetails();
-      // Clear editing states
       setOriginalQuestion(null);
       setEditedQuestion(null);
-      setQuestionImageFile(null);
+      setQuestionImageUrls([]);
     } catch (error) {
       console.error("Error upserting question:", error);
       alert("Error upserting question.");
     }
   };
 
-  // ---------------------------------------
-  // DELETE question
-  // ---------------------------------------
   /**
-   * handleDeleteQuestion: Removes a question from the question paper entirely, updating the server.
+   * Deletes a question from the server and updates the local state.
    */
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm("Are you sure you want to delete this question?")) {
@@ -622,7 +595,6 @@ const QuestionPaperEditPage = () => {
           alert("Failed to delete question.");
         }
         await fetchQuestionPaperDetails();
-        // If currently editing the deleted question, clear the editing states
         if (editedQuestion && editedQuestion.id === questionId) {
           setOriginalQuestion(null);
           setEditedQuestion(null);
@@ -634,19 +606,14 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // ---------------------------------------
-  // DRAG & DROP reorder logic
-  // ---------------------------------------
   /**
-   * handleDragEnd: When the user finishes dragging a question, update local section ordering
-   * and notify the server via `questionPaper/update`.
+   * Handles the reorder of questions within the same section via drag-and-drop.
    */
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
 
     if (source.droppableId === destination.droppableId) {
-      // Reorder within the same section
       const sectionIndex = parseInt(source.droppableId, 10);
       const section = sections[sectionIndex];
       const newQuestions = Array.from(section.questions);
@@ -667,16 +634,12 @@ const QuestionPaperEditPage = () => {
       }
       await fetchQuestionPaperDetails();
     } else {
-      // TODO: Implement cross-section drag if needed
+      // Cross-section drag not implemented
     }
   };
 
-  // ---------------------------------------
-  // ADD NEW QUESTION
-  // ---------------------------------------
   /**
-   * handleAddQuestionForSection: Called when user clicks "Add New Question" for a specific section.
-   * Opens the modal to create a new question for that section.
+   * Prepares to add a new question to a specified section.
    */
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
@@ -685,7 +648,7 @@ const QuestionPaperEditPage = () => {
     setNewQuestion({
       type: "MCQ",
       questionText: "",
-      imageUrl: "",
+      imageUrls: [],
       marks: "",
       difficulty: "",
       options: [
@@ -698,8 +661,26 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * handleNewQuestionChange: Updates the newQuestion state as user types in the modal (type, text, marks, etc.).
-   * For MCQ options, we also track the relevant index.
+   * Checks if the new question form is valid (all mandatory fields filled).
+   */
+  const isNewQuestionValid = () => {
+    const { type, questionText, marks, difficulty, options } = newQuestion;
+    if (!type) return false;
+    if (!questionText.trim()) return false;
+    if (!marks || Number(marks) < 0) return false;
+    if (!difficulty) return false;
+
+    // If it's MCQ, all option texts must be non-empty
+    if (type === "MCQ") {
+      for (let opt of options) {
+        if (!opt.option.trim()) return false;
+      }
+    }
+    return true;
+  };
+
+  /**
+   * Handles updates to the new question form fields (including MCQ option text).
    */
   const handleNewQuestionChange = (e, field, index) => {
     const { value } = e.target;
@@ -720,80 +701,85 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * handleMathKeyDown: Optional handler to detect SHIFT + $ for math insertion in new questions or options.
+   * Placeholder for keydown events that handle math input in the new question form.
    */
   const handleMathKeyDown = (e, field, index) => {
     // Implementation detail: optional custom logic
   };
 
   /**
-   * handleQuestionImageUpload: Updates the local state with a file and a preview URL for the new question's image.
+   * Handles new question images. Stores the actual File objects in newQuestion.imageUrls.
    */
   const handleQuestionImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const imageUrl = URL.createObjectURL(file);
-    setNewQuestion((prev) => ({ ...prev, imageFile: file, imageUrl }));
+    const files = Array.from(e.target.files);
+    setNewQuestion((prev) => ({
+      ...prev,
+      imageUrls: [...prev.imageUrls, ...files],
+    }));
   };
 
   /**
-   * handleOptionImageUpload: Similar to handleQuestionImageUpload, but for a specific MCQ option.
+   * Handles image upload for an MCQ option in the new question form.
+   * Saves the File object in the option's imageUrl.
    */
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
-    const imageUrl = URL.createObjectURL(file);
     setNewQuestion((prev) => {
       const newOptions = [...prev.options];
       newOptions[index] = {
         ...newOptions[index],
-        imageFile: file,
-        imageUrl,
+        imageUrl: file,
       };
       return { ...prev, options: newOptions };
     });
   };
 
   /**
-   * calculateOrderIndex: Stub function to decide where to place the new question in order.
-   * Custom logic can be inserted here. For now, returns 1 or a simple value.
+   * Determines the correct order index for a new question in a given section.
    */
   const calculateOrderIndex = (sectionName) => {
     const foundSection = sections.find((sec) => sec.name === sectionName);
     if (!foundSection) return 1;
-    // e.g. length + 1
     return foundSection.questions.length + 1;
   };
 
   /**
-   * handleNewQuestionSubmit: Creates or updates a new question for the currently selected section,
-   * including image uploads if necessary.
+   * Submits the new question form data to the server.
+   * Uploads images first, then calls the server with the final URLs.
    */
   const handleNewQuestionSubmit = async () => {
+    // Prevent submission if form is invalid
+    if (!isNewQuestionValid()) {
+      alert("Please fill out all mandatory fields before saving.");
+      return;
+    }
+
     try {
-      let updatedImageUrl = newQuestion.imageUrl || "";
-      // If a new image is chosen, upload to S3
-      if (newQuestion.imageFile) {
-        const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-          newQuestion.imageFile.name
-        }`;
-        updatedImageUrl = await uploadToS3(
-          newQuestion.imageFile,
-          generatedLink
+      // Upload question-level images
+      let uploadedImageUrls = [];
+      if (newQuestion.imageUrls?.length > 0) {
+        const uploadedUrls = await Promise.all(
+          newQuestion.imageUrls.map(async (file) => {
+            const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
+              file.name
+            }`;
+            return await uploadToS3(file, generatedLink);
+          })
         );
+        uploadedImageUrls = uploadedUrls;
       }
 
-      // Upload images for options if MCQ
+      // Upload option images if any
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
-          if (opt.imageFile) {
+          if (opt.imageUrl && typeof opt.imageUrl !== "string") {
             const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
-              opt.imageFile.name
+              opt.imageUrl.name
             }`;
-            const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+            const uploadedUrl = await uploadToS3(opt.imageUrl, generatedLink);
             updatedOption.imageUrl = uploadedUrl;
-            delete updatedOption.imageFile;
           }
           return updatedOption;
         })
@@ -803,7 +789,7 @@ const QuestionPaperEditPage = () => {
       const payload = {
         ...newQuestion,
         section: sectionForNewQuestion,
-        imageUrl: updatedImageUrl,
+        imageUrls: uploadedImageUrls,
         options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
         questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
@@ -824,14 +810,13 @@ const QuestionPaperEditPage = () => {
       }
 
       await fetchQuestionPaperDetails();
-      // Close modal and reset states
       setShowAddQuestionModal(false);
       setIsEditingNewQuestion(false);
       setSectionForNewQuestion(null);
       setNewQuestion({
         type: "MCQ",
         questionText: "",
-        imageUrl: "",
+        imageUrls: [],
         marks: "",
         difficulty: "",
         options: [
@@ -847,24 +832,15 @@ const QuestionPaperEditPage = () => {
     }
   };
 
-  // -------------------------------------------------------------------------
-  // RENDER
-  // -------------------------------------------------------------------------
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
-      {/* 
-        LEFT PANEL:
-        - Displays sections and their questions.
-        - Includes drag-and-drop and a search bar.
-        - Button for creating a new section.
-        - Option to select exactly 2 non-MCQ questions for optional grouping.
-      */}
+      {/* Left panel with sections and questions */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div
           className="border-r p-4 overflow-y-auto"
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
-          {/* Search input */}
+          {/* --Search Box-- */}
           <div className="mb-4">
             <input
               type="text"
@@ -875,7 +851,7 @@ const QuestionPaperEditPage = () => {
             />
           </div>
 
-          {/* Add New Section Button */}
+          {/* --Add New Section Button-- */}
           <div className="mb-4" style={{ width: "100%" }}>
             <button
               onClick={() => {
@@ -889,8 +865,7 @@ const QuestionPaperEditPage = () => {
             </button>
           </div>
 
-          {/* Mark as optional if exactly 2 selected (non-MCQ). 
-              The button appears only when exactly 2 questions have been selected. */}
+          {/* --Mark as Optional Button (only if exactly 2 selected)-- */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -903,10 +878,9 @@ const QuestionPaperEditPage = () => {
             </div>
           )}
 
-          {/* Display the list of sections (filtered by searchTerm), each with a question list */}
+          {/* --Sections & Questions-- */}
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading with toggles to collapse and to add/import questions */}
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
                 <div className="flex items-center gap-2">
@@ -944,75 +918,151 @@ const QuestionPaperEditPage = () => {
                 </div>
               </div>
 
-              {/* If the section is not collapsed, display its droppable question list */}
+              {/* Collapsible Section */}
               {!collapsedSections[sectionIndex] && (
                 <Droppable droppableId={`${sectionIndex}`}>
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps}>
-                      {section.questions.map((question, index) => {
-                        const isSelected = editedQuestion?.id === question.id;
-                        return (
-                          <Draggable
-                            key={question.id}
-                            draggableId={`${question.id}`}
-                            index={index}
-                          >
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                onClick={() => handleQuestionClick(question)}
-                                className={`flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors ${
-                                  isSelected
-                                    ? "bg-blue-50 border-l-4 border-blue-500"
-                                    : "bg-white hover:bg-gray-100"
-                                }`}
+                  {(provided) => {
+                    // Group questions by optionalGroupId
+                    const groupedQuestions = groupQuestions(section.questions);
+                    return (
+                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                        {groupedQuestions.map((group, groupIndex) => {
+                          // If a group has more than one question, show them together with "OR"
+                          if (group.questions.length > 1) {
+                            return (
+                              <Draggable
+                                key={group.groupId}
+                                draggableId={group.groupId}
+                                index={groupIndex}
                               >
-                                <div className="items-center gap-2">
-                                  {/* Check box for optional selection (non-MCQ only) */}
-                                  {question.type !== "MCQ" && (
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedOptionalQuestions.includes(
-                                        question.id
+                                {(provided) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className="mb-3"
+                                  >
+                                    <div className="flex flex-col items-center">
+                                      {group.questions.map((q, idx) => (
+                                        <React.Fragment key={q.id}>
+                                          <div
+                                            className="flex items-center gap-2 p-3 rounded shadow cursor-pointer transition-colors border-l-4 border-blue-500 w-full"
+                                            onClick={() =>
+                                              handleQuestionClick(q)
+                                            }
+                                          >
+                                            <span
+                                              className="font-semibold"
+                                              style={{ marginRight: 5 }}
+                                            >
+                                              {groupIndex + 1}.
+                                            </span>
+                                            {q.type !== "MCQ" && (
+                                              <input
+                                                type="checkbox"
+                                                checked={selectedOptionalQuestions.includes(
+                                                  q.id
+                                                )}
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                                onChange={(e) =>
+                                                  toggleOptionalSelection(
+                                                    q.id,
+                                                    e
+                                                  )
+                                                }
+                                              />
+                                            )}
+                                            {renderTruncatedTextWithMath(
+                                              q.questionText,
+                                              600
+                                            )}
+                                          </div>
+                                          {/* Insert an OR between each question */}
+                                          {idx < group.questions.length - 1 && (
+                                            <div className="w-full text-center text-xs font-semibold text-gray-500 my-1">
+                                              OR
+                                            </div>
+                                          )}
+                                        </React.Fragment>
+                                      ))}
+                                      {/* <div className="mt-1">
+                                        <span className="text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                          Optional
+                                        </span>
+                                      </div> */}
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          } else {
+                            // Single (non-optional) or only one question in that optional group
+                            const q = group.questions[0];
+                            return (
+                              <Draggable
+                                key={q.id}
+                                draggableId={`${q.id}`}
+                                index={groupIndex}
+                              >
+                                {(provided) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    onClick={() => handleQuestionClick(q)}
+                                    className="flex justify-between items-center p-3 mb-3 rounded shadow cursor-pointer transition-colors bg-white hover:bg-gray-100"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="font-semibold"
+                                        style={{ marginRight: 5 }}
+                                      >
+                                        {groupIndex + 1}.
+                                      </span>
+                                      {/* Optional selection for non-MCQs, example usage */}
+                                      {q.type !== "MCQ" && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedOptionalQuestions.includes(
+                                            q.id
+                                          )}
+                                          onClick={(e) => e.stopPropagation()}
+                                          onChange={(e) =>
+                                            toggleOptionalSelection(q.id, e)
+                                          }
+                                        />
                                       )}
-                                      onChange={(e) =>
-                                        toggleOptionalSelection(question.id, e)
-                                      }
-                                      onClick={(e) => e.stopPropagation()}
-                                      style={{ marginRight: 4 }}
-                                    />
-                                  )}
-                                  {renderTruncatedTextWithMath(
-                                    question.questionText,
-                                    60
-                                  )}
-                                  {/* If the question belongs to an optional group, show a badge */}
-                                  {question.optionalGroupId && (
-                                    <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                      Optional
-                                    </span>
-                                  )}
-                                </div>
-                                {/* Delete button for the question */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteQuestion(question.id);
-                                  }}
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </div>
-                            )}
-                          </Draggable>
-                        );
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
+                                      {renderTruncatedTextWithMath(
+                                        q.questionText,
+                                        600
+                                      )}
+                                      {q.optionalGroupId && (
+                                        <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
+                                          Optional
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteQuestion(q.id);
+                                      }}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash size={16} />
+                                    </button>
+                                  </div>
+                                )}
+                              </Draggable>
+                            );
+                          }
+                        })}
+                        {provided.placeholder}
+                      </div>
+                    );
+                  }}
                 </Droppable>
               )}
             </div>
@@ -1020,32 +1070,29 @@ const QuestionPaperEditPage = () => {
         </div>
       </DragDropContext>
 
-      {/* Resize handle between left and right panels */}
+      {/* Resizable divider */}
       <div
         onMouseDown={handleMouseDown}
         style={{ width: "5px", cursor: "col-resize" }}
         className="bg-gray-300"
       />
 
-      {/* RIGHT PANEL: Editing a selected question */}
+      {/* Right panel for question editing */}
       <div
-        className="p-4 overflow-hidden"
+        className="p-4 overflow-y-auto"
         style={{ width: `${100 - leftPanelWidth}%`, minWidth: "50%" }}
       >
-        {/* If no question is selected, prompt user to select a question. Otherwise, show the editor. */}
         {!originalQuestion ? (
           <div className="text-gray-500">Select a question to edit</div>
         ) : (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              {/* Badge for optional question */}
               {editedQuestion?.optionalGroupId && (
                 <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
                   Optional
                 </span>
               )}
-              {/* If there are unsaved changes, show a "Save" button */}
               {isModified && (
                 <button
                   onClick={handleSave}
@@ -1057,172 +1104,155 @@ const QuestionPaperEditPage = () => {
               )}
             </div>
 
-            {/* Main editing layout (question details on the left, math preview on the right if needed) */}
-            <div className="flex flex-col md:flex-row md:items-start gap-4">
-              <div className="md:w-2/3">
-                {/* Display question type, difficulty, and marks as inline editable fields */}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Type:</span>
-                    <input
-                      type="text"
-                      value={editedQuestion.type || ""}
-                      onChange={handleTypeChange}
-                      className="w-auto bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Difficulty:</span>
-                    <input
-                      type="text"
-                      value={editedQuestion.difficulty || ""}
-                      onChange={handleDifficultyChange}
-                      className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Marks:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={editedQuestion.marks || ""}
-                      onChange={handleMarksChange}
-                      className="w-auto bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Question text editor */}
-                <div className="mt-4">
-                  <label className="font-semibold mb-2 block">
-                    Edit Question Text:
-                  </label>
-                  <textarea
-                    className="w-full p-2 border rounded min-h-[100px]"
-                    value={editedQuestion.questionText}
-                    onChange={handleQuestionTextChange}
-                  />
-                </div>
-
-                {/* Question image upload and preview */}
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="font-semibold">Question Image:</span>
-                  {editedQuestion.imageUrl || questionImageFile ? (
-                    <div className="flex items-center gap-2 ml-2">
-                      <img
-                        src={
-                          questionImageFile
-                            ? URL.createObjectURL(questionImageFile)
-                            : editedQuestion.imageUrl
-                        }
-                        alt="Question"
-                        className="max-w-xs"
-                        style={{ height: 64, width: 64 }}
-                      />
-                      {questionImageFile ? (
-                        <>
-                          <button
-                            onClick={handleDiscardQuestionImage}
-                            className="px-2 py-1 bg-gray-200 rounded text-sm"
-                          >
-                            Discard
-                          </button>
-                          <button
-                            onClick={handleDeleteQuestionImage}
-                            className="px-2 py-1 bg-red-200 rounded text-sm"
-                          >
-                            Remove
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <label
-                            htmlFor="question-image-input"
-                            className="cursor-pointer"
-                          >
-                            <ImageIcon
-                              size={20}
-                              className="text-gray-500 hover:text-gray-700"
-                            />
-                          </label>
-                          <button
-                            onClick={handleDeleteQuestionImage}
-                            className="px-2 py-1 bg-red-200 rounded text-sm"
-                          >
-                            Remove
-                          </button>
-                        </>
-                      )}
-                      <input
-                        id="question-image-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQuestionImageChange}
-                      />
-                    </div>
-                  ) : (
-                    <label
-                      htmlFor="question-image-input"
-                      className="cursor-pointer"
-                    >
-                      <ImageIcon
-                        size={20}
-                        className="text-gray-500 hover:text-gray-700"
-                      />
-                      <input
-                        id="question-image-input"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQuestionImageChange}
-                      />
-                    </label>
-                  )}
-                </div>
+            {/* Question Type, Difficulty, Marks */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Type:</span>
+                <select
+                  value={editedQuestion.type || ""}
+                  onChange={handleTypeChange}
+                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                >
+                  <option value="MCQ">MCQ</option>
+                  <option value="Descriptive">Descriptive</option>
+                </select>
               </div>
-
-              {/* Live preview of math, if the question text contains LaTeX placeholders */}
-              {isEditingMath && (
-                <div className="md:w-1/2 border-l pl-4">
-                  <h3 className="font-semibold mb-2">Math Preview</h3>
-                  <div className="bg-gray-50 p-3 rounded">
-                    {renderTextWithMath(editedQuestion.questionText)}
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Difficulty:</span>
+                <input
+                  type="text"
+                  value={editedQuestion.difficulty || ""}
+                  onChange={handleDifficultyChange}
+                  className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Marks:</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={editedQuestion.marks || ""}
+                  onChange={handleMarksChange}
+                  className="w-auto bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                />
+              </div>
             </div>
 
-            {/* MCQ Options section (only if type is MCQ) */}
+            {/* Question Text */}
+            <div className="mt-4">
+              <label className="font-semibold mb-2 block">
+                Edit Question Text:
+              </label>
+
+              <RichTextEditor
+                value={editedQuestion.questionText || ""}
+                onChange={handleQuestionTextChange}
+              />
+            </div>
+
+            {/* Images */}
+            <div className="mt-4">
+              <label className="font-semibold mb-2 block">
+                Question Images:
+              </label>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {editedQuestion.imageUrls?.map((url, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={url}
+                      alt={`Question ${index + 1}`}
+                      className="object-cover rounded border h-24"
+                    />
+                    <button
+                      onClick={() => handleDeleteQuestionImage(index)}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                ))}
+                {questionImageUrls.map((file, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`New Image ${index + 1}`}
+                      className="h-24 object-cover rounded border"
+                    />
+                    <button
+                      onClick={() => handleDiscardQuestionImage(index)}
+                      className="absolute top-0 right-0 bg-gray-500 text-white rounded-full p-1"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label
+                  htmlFor="question-image-input"
+                  className="cursor-pointer flex items-center justify-center w-24 h-24 border-2 border-dashed rounded"
+                >
+                  <Plus size={24} className="text-gray-500" />
+                  <input
+                    id="question-image-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleQuestionImageChange}
+                    multiple
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Math Preview (if question includes $) */}
+            {isEditingMath && (
+              <div className="border-l pl-4 mt-4">
+                <h3 className="font-semibold mb-2">Math Preview</h3>
+                <div className="bg-gray-50 p-3 rounded">
+                  {renderTextWithMath(editedQuestion.questionText)}
+                </div>
+              </div>
+            )}
+
+            {/* MCQ Options */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
                 <ul className="list-disc ml-6 mt-2 space-y-3">
-                  {editedQuestion.options.map((opt, idx) => (
-                    <li key={idx} className="ml-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold">{opt.key}.</span>
-                        <textarea
-                          className="w-1/2 p-2 border rounded min-h-[40px]"
-                          value={opt.option || ""}
-                          onChange={(e) =>
-                            handleOptionChange(idx, e.target.value)
-                          }
-                        />
-                        {/* Option image upload, display, and removal */}
-                        {opt.imageUrl || opt.imageFile ? (
-                          <div className="flex items-center gap-2 ml-2">
-                            <img
-                              src={
-                                opt.imageFile
-                                  ? URL.createObjectURL(opt.imageFile)
-                                  : opt.imageUrl
-                              }
-                              alt={`Option ${opt.key}`}
-                              className="max-w-[50px]"
-                            />
-                            {opt.imageFile ? (
-                              <>
+                  {editedQuestion.options.map((opt, idx) => {
+                    return (
+                      <li key={idx} className="ml-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold">{opt.key}.</span>
+                          <textarea
+                            className="w-1/2 p-2 border rounded min-h-[40px]"
+                            value={opt.option || ""}
+                            onChange={(e) =>
+                              handleOptionChange(idx, e.target.value)
+                            }
+                          />
+                          {/* Option Image Handling */}
+                          {opt.imageUrl ? (
+                            <div className="flex items-center gap-2 ml-2">
+                              <img
+                                src={
+                                  typeof opt.imageUrl === "string"
+                                    ? opt.imageUrl
+                                    : URL.createObjectURL(opt.imageUrl)
+                                }
+                                alt={`Option ${opt.key}`}
+                                className="h-24"
+                              />
+                              {typeof opt.imageUrl === "string" ? (
+                                // Existing image: user can remove it
+                                <button
+                                  onClick={() => handleDeleteOptionImage(idx)}
+                                  className="px-2 py-1 bg-red-200 rounded text-sm"
+                                  title="Remove Option Image"
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              ) : (
+                                // Newly uploaded image: user can discard
                                 <button
                                   onClick={() => handleDiscardOptionImage(idx)}
                                   className="px-2 py-1 bg-gray-200 rounded text-sm"
@@ -1230,77 +1260,44 @@ const QuestionPaperEditPage = () => {
                                 >
                                   Discard
                                 </button>
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <label
-                                  htmlFor={`option-image-${idx}`}
-                                  className="cursor-pointer"
-                                  title="Change Option Image"
-                                >
-                                  <ImageIcon
-                                    size={20}
-                                    className="text-gray-500 hover:text-gray-700"
-                                  />
-                                </label>
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              </>
-                            )}
-                            <input
-                              id={`option-image-${idx}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleOptionImageChange(idx, e.target.files[0])
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <label
-                              htmlFor={`option-image-${idx}`}
-                              className="cursor-pointer"
-                              title="Upload Option Image"
-                            >
-                              <ImageIcon
-                                size={20}
-                                className="text-gray-500 hover:text-gray-700"
+                              )}
+                            </div>
+                          ) : (
+                            <>
+                              <label
+                                htmlFor={`option-image-${idx}`}
+                                className="cursor-pointer"
+                                title="Upload Option Image"
+                              >
+                                <ImageIcon
+                                  size={20}
+                                  className="text-gray-500 hover:text-gray-700"
+                                />
+                              </label>
+                              <input
+                                id={`option-image-${idx}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) =>
+                                  handleOptionImageChange(
+                                    idx,
+                                    e.target.files[0]
+                                  )
+                                }
                               />
-                            </label>
-                            <input
-                              id={`option-image-${idx}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleOptionImageChange(idx, e.target.files[0])
-                              }
-                            />
-                          </>
-                        )}
-                      </div>
-                      {/* If the option text contains math ($...$), render a small preview */}
-                      {opt.option && opt.option.includes("$") && (
-                        <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
-                          {renderTextWithMath(opt.option)}
+                            </>
+                          )}
                         </div>
-                      )}
-                    </li>
-                  ))}
+                        {/* Math Preview for Option */}
+                        {opt.option && opt.option.includes("$") && (
+                          <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
+                            {renderTextWithMath(opt.option)}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -1308,25 +1305,63 @@ const QuestionPaperEditPage = () => {
         )}
       </div>
 
-      {/* -----------------------
-          ADD QUESTION MODAL
-      ----------------------- */}
+      {/* Add Question Modal */}
       {showAddQuestionModal && (
         <div className={modalContainerClass}>
           <div className={modalContentClass}>
-            <h3 className="text-lg font-semibold mb-4">
-              {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
-            </h3>
-            {/* Show which section the new question will belong to */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {isEditingNewQuestion ? "Edit Question" : "Add New Question"}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddQuestionModal(false);
+                    setIsEditingNewQuestion(false);
+                    setSectionForNewQuestion(null);
+                    // Reset newQuestion to defaults
+                    setNewQuestion({
+                      type: "MCQ",
+                      questionText: "",
+                      imageUrls: [],
+                      marks: "",
+                      difficulty: "",
+                      options: [
+                        { key: "A", option: "", imageUrl: "" },
+                        { key: "B", option: "", imageUrl: "" },
+                        { key: "C", option: "", imageUrl: "" },
+                        { key: "D", option: "", imageUrl: "" },
+                      ],
+                    });
+                  }}
+                  className="px-3 py-1 border border-black rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleNewQuestionSubmit}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                  disabled={!isNewQuestionValid()} // disable if form invalid
+                >
+                  {isEditingNewQuestion ? "Update Question" : "Save Question"}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-2">
+              * All fields (except images) are mandatory.
+            </p>
+
             {sectionForNewQuestion && (
               <div className="text-gray-700 mb-2">
                 <strong>Section:</strong> {sectionForNewQuestion}
               </div>
             )}
 
-            {/* Question type dropdown */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Question Type</label>
+              <label className="block mb-1 font-medium">
+                Question Type <span className="text-red-500">*</span>
+              </label>
               <select
                 value={newQuestion.type}
                 onChange={(e) => handleNewQuestionChange(e, "type")}
@@ -1337,9 +1372,10 @@ const QuestionPaperEditPage = () => {
               </select>
             </div>
 
-            {/* Question text (supporting math via $ notation) */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Question Text</label>
+              <label className="block mb-1 font-medium">
+                Question Text <span className="text-red-500">*</span>
+              </label>
               <textarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
@@ -1353,30 +1389,54 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-            {/* Question image upload */}
             <div className="mb-4">
               <label className="block mb-1 font-medium">
-                Question Image (optional)
+                Question Images (optional)
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleQuestionImageUpload}
-                className="block"
-              />
-              {newQuestion.imageUrl && (
-                <img
-                  src={newQuestion.imageUrl}
-                  alt="Question preview"
-                  className="mt-2 rounded w-24 h-24 border"
-                />
-              )}
+              <div className="flex flex-wrap gap-2">
+                {newQuestion.imageUrls?.map((file, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Question ${index + 1}`}
+                      className="w-24 h-24 object-cover rounded border"
+                    />
+                    <button
+                      onClick={() => {
+                        setNewQuestion((prev) => {
+                          const updated = [...prev.imageUrls];
+                          updated.splice(index, 1);
+                          return { ...prev, imageUrls: updated };
+                        });
+                      }}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                    >
+                      <Trash size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label
+                  htmlFor="new-question-image-input"
+                  className="cursor-pointer flex items-center justify-center w-24 h-24 border-2 border-dashed rounded"
+                >
+                  <Plus size={24} className="text-gray-500" />
+                  <input
+                    id="new-question-image-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleQuestionImageUpload}
+                    multiple
+                  />
+                </label>
+              </div>
             </div>
 
-            {/* MCQ option fields (only if type is MCQ) */}
             {newQuestion.type === "MCQ" && (
               <div className="mb-4">
-                <label className="block mb-1 font-medium">Options</label>
+                <label className="block mb-1 font-medium">
+                  Options <span className="text-red-500">*</span>
+                </label>
                 {newQuestion.options.map((option, index) => (
                   <div key={option.key} className="mb-4 border p-2 rounded">
                     <label className="block text-sm font-medium">
@@ -1390,7 +1450,7 @@ const QuestionPaperEditPage = () => {
                       }
                       onKeyDown={(e) => handleMathKeyDown(e, "option", index)}
                       className="border rounded px-2 py-1 w-full mb-1"
-                      placeholder={`Option ${option.key} text. Use Shift + $ for math.`}
+                      placeholder={`Option ${option.key} text (mandatory). Use Shift + $ for math.`}
                     />
                     <div className="mt-1 text-sm text-gray-500">
                       Preview: {renderTextWithMath(option.option)}
@@ -1407,7 +1467,7 @@ const QuestionPaperEditPage = () => {
                       />
                       {option.imageUrl && (
                         <img
-                          src={option.imageUrl}
+                          src={URL.createObjectURL(option.imageUrl)}
                           alt={`Option ${option.key} preview`}
                           className="mt-2 rounded w-24 h-24 border"
                         />
@@ -1418,10 +1478,11 @@ const QuestionPaperEditPage = () => {
               </div>
             )}
 
-            {/* Marks and Difficulty inputs */}
             <div className="flex gap-4 mb-4">
               <div className="flex-1">
-                <label className="block mb-1 font-medium">Marks</label>
+                <label className="block mb-1 font-medium">
+                  Marks <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -1432,7 +1493,9 @@ const QuestionPaperEditPage = () => {
                 />
               </div>
               <div className="flex-1">
-                <label className="block mb-1 font-medium">Difficulty</label>
+                <label className="block mb-1 font-medium">
+                  Difficulty <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={newQuestion.difficulty}
                   onChange={(e) => handleNewQuestionChange(e, "difficulty")}
@@ -1445,47 +1508,12 @@ const QuestionPaperEditPage = () => {
                 </select>
               </div>
             </div>
-
-            {/* Modal buttons */}
-            <div className="flex justify-end gap-4 bg-white p-4">
-              <button
-                onClick={() => {
-                  setShowAddQuestionModal(false);
-                  setIsEditingNewQuestion(false);
-                  setSectionForNewQuestion(null);
-                  setNewQuestion({
-                    type: "MCQ",
-                    questionText: "",
-                    imageUrl: "",
-                    marks: "",
-                    difficulty: "",
-                    options: [
-                      { key: "A", option: "", imageUrl: "" },
-                      { key: "B", option: "", imageUrl: "" },
-                      { key: "C", option: "", imageUrl: "" },
-                      { key: "D", option: "", imageUrl: "" },
-                    ],
-                  });
-                }}
-                className="px-3 py-1 border border-black rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleNewQuestionSubmit}
-                className="px-3 py-1 border border-black rounded bg-black text-white"
-              >
-                {isEditingNewQuestion ? "Update Question" : "Save Question"}
-              </button>
-            </div>
+            {/* The Save/Cancel buttons are at the top for this modal */}
           </div>
         </div>
       )}
 
-      {/* 
-        QUESTION BANK MODAL: 
-        Used to import questions from a global bank. 
-      */}
+      {/* Question Bank Modal */}
       {showBankModal.visible && (
         <QuestionBankModal
           onClose={() =>
@@ -1495,9 +1523,7 @@ const QuestionPaperEditPage = () => {
         />
       )}
 
-      {/* -----------------------
-          NEW SECTION CREATION MODAL
-      ----------------------- */}
+      {/* Add Section Modal */}
       {showAddSectionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
