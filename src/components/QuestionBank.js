@@ -20,6 +20,7 @@ import { uploadToS3 } from "../utils/s3utils";
 import { FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProfileMenu from "../subcomponents/ProfileMenu";
+import { renderTextWithMath } from "./RenderTextWithMath";
 
 // Styling constants
 const inputClass =
@@ -52,17 +53,6 @@ const subjectOptions = [
   "statistics",
 ];
 
-// Helper function to render text with inline math
-const renderTextWithMath = (text) => {
-  const parts = text?.split("$");
-  return parts?.map((part, index) =>
-    index % 2 === 1 ? (
-      <InlineMath key={index} math={part} />
-    ) : (
-      <span key={index} style={{whiteSpace:'pre-wrap'}}>{part}</span>
-    )
-  );
-};
 
 // Accordion for filtering
 const FilterGroupAccordion = ({

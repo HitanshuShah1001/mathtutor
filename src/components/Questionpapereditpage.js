@@ -18,6 +18,7 @@ import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
+import { renderTextWithMath } from "./RenderTextWithMath";
 
 /**
  * Main component for editing a question paper.
@@ -240,20 +241,6 @@ const QuestionPaperEditPage = () => {
         questionImageUrls.length > 0
       : false;
 
-  /**
-   * Splits text on $ signs and renders inline math for every odd segment.
-   */
-  const renderTextWithMath = (text) => {
-    if (!text) return null;
-    const parts = text.split("$");
-    return parts.map((part, index) =>
-      index % 2 === 1 ? (
-        <InlineMath key={index} math={part} />
-      ) : (
-        <span key={index}>{part}</span>
-      )
-    );
-  };
 
   /**
    * Renders truncated question text with math. Only shows up to maxLength characters.

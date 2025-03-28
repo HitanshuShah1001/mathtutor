@@ -32,6 +32,7 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
+import { renderTextWithMath, renderTruncatedTextWithMath } from "./RenderTextWithMath";
 
 // --- FilterGroupAccordion Component ---
 const FilterGroupAccordion = ({
@@ -287,19 +288,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     setSelectedQuestions((prev) => prev.filter((id) => id !== questionId));
     // Remove from the question objs
     setSelectedQuestionObjs((prev) => prev.filter((q) => q.id !== questionId));
-  };
-
-  // Render math text
-  const renderTextWithMath = (text) => {
-    if (!text) return null;
-    const parts = text.split("$");
-    return parts.map((part, index) =>
-      index % 2 === 1 ? (
-        <InlineMath key={index} math={part} />
-      ) : (
-        <span key={index}>{part}</span>
-      )
-    );
   };
 
   const resetAllFilters = () => {
@@ -718,35 +706,6 @@ export const CustomPaperCreatePage = () => {
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
         questionImageUrls.length > 0
       : false;
-
-  // =============== RENDERING MATH UTILS ===============
-  const renderTextWithMath = (text) => {
-    if (!text) return null;
-    const parts = text.split("$");
-    return parts.map((part, index) =>
-      index % 2 === 1 ? (
-        <InlineMath key={index} math={part} />
-      ) : (
-        <span key={index}>{part}</span>
-      )
-    );
-  };
-
-  const renderTruncatedTextWithMath = (text, maxLength = 60) => {
-    if (!text) return null;
-    let truncated = text;
-    if (text.length > maxLength) {
-      truncated = text.slice(0, maxLength) + "...";
-    }
-    const parts = truncated.split("$");
-    return parts.map((part, index) =>
-      index % 2 === 1 ? (
-        <InlineMath key={index} math={part} />
-      ) : (
-        <span key={index}>{part}</span>
-      )
-    );
-  };
 
   // ======================= MOUSE EVENTS FOR PANEL RESIZING =======================
   useEffect(() => {
