@@ -240,7 +240,7 @@ export const DocumentSidebar = () => {
    * The function uses the 'filters' state to build a request body for the server,
    * so the documents returned already match the selected filter criteria.
    */
-  const fetchDocuments = async (isInitialLoad = false) => {
+  const fetchDocuments = async (isInitialLoad = false, customCursor) => {
     console.log("being called", isInitialLoad);
     // Distinguish between initial load and subsequent loads
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
@@ -248,7 +248,7 @@ export const DocumentSidebar = () => {
       // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
         limit: "10",
-        ...(cursor && !isInitialLoad && { cursor }),
+        ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
       });
 
       // Prepare request body from filters
@@ -318,9 +318,9 @@ export const DocumentSidebar = () => {
     setDocuments([]);
     setCursor(undefined);
     setHasNextPage(true);
-    fetchDocuments(true);
+    fetchDocuments(true, undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, searchQuery]);
+  }, [filters]);
 
   /**
    * checkIfMoreDocumentsNeeded: This function checks if the viewport is larger than the content
@@ -341,7 +341,7 @@ export const DocumentSidebar = () => {
         documentListHeight < viewportHeight - headerHeight - 10 &&
         hasNextPage
       ) {
-        fetchDocuments(false);
+        fetchDocuments(false, cursor);
       }
     }
   }, [hasNextPage, infiniteLoading, loading]);
@@ -356,7 +356,7 @@ export const DocumentSidebar = () => {
     const scrolledToBottom =
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
-    if (scrolledToBottom) fetchDocuments(false);
+    if (scrolledToBottom) fetchDocuments(false,cursor);
   }, [hasNextPage, infiniteLoading, loading]);
 
   // Initial check after documents load or resize

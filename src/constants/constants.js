@@ -11,8 +11,8 @@ export const difficulty = {
   MEDIUM: "MEDIUM",
   HARD: "HARD",
 };
-export const MCQ = "MCQ";
-export const DESCRIPTIVE = "Descriptive";
+export const MCQ = "mcq";
+export const DESCRIPTIVE = "descriptive";
 export const models = {
   O1_PREVIEW: "o1-preview",
   O1_PREVIEW_2024_09_12: "o1-preview-2024-09-12",
@@ -290,7 +290,7 @@ export const streams = ["science", "commerce"];
 
 export const examNames = ["gseb", "gujcet", "jee"];
 
-export const questionTypes = ["mcq", "Descriptive"];
+export const questionTypes = ["mcq", "descriptive"];
 
 // Other filter arrays that were already defined in your UI snippet
 export const marksOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];

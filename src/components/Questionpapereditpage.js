@@ -17,8 +17,8 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
-import RichTextEditor from "./Texteditor";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
+import { renderTextWithMath } from "./RenderTextWithMath";
 
 /**
  * Main component for editing a question paper.
@@ -60,7 +60,7 @@ const QuestionPaperEditPage = () => {
 
   // Object that holds the data for a brand-new question to be added
   const [newQuestion, setNewQuestion] = useState({
-    type: "MCQ",
+    type: "mcq",
     questionText: "",
     imageUrls: [],
     marks: "",
@@ -241,20 +241,6 @@ const QuestionPaperEditPage = () => {
         questionImageUrls.length > 0
       : false;
 
-  /**
-   * Splits text on $ signs and renders inline math for every odd segment.
-   */
-  const renderTextWithMath = (text) => {
-    if (!text) return null;
-    const parts = text.split("$");
-    return parts.map((part, index) =>
-      index % 2 === 1 ? (
-        <InlineMath key={index} math={part} />
-      ) : (
-        <span key={index}>{part}</span>
-      )
-    );
-  };
 
   /**
    * Renders truncated question text with math. Only shows up to maxLength characters.
@@ -350,7 +336,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Changes the question type (MCQ/Descriptive) in the editedQuestion via a dropdown.
+   * Changes the question type (mcq/Descriptive) in the editedQuestion via a dropdown.
    */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
@@ -422,7 +408,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Updates the text of one of the MCQ options for the edited question.
+   * Updates the text of one of the mcq options for the edited question.
    */
   const handleOptionChange = (index, newValue) => {
     setEditedQuestion((prev) => {
@@ -466,7 +452,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Handles the event of uploading a new image for one of the MCQ options in the edited question.
+   * Handles the event of uploading a new image for one of the mcq options in the edited question.
    */
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
@@ -552,7 +538,7 @@ const QuestionPaperEditPage = () => {
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
       }
-      if (updatedQuestion.type !== "MCQ") {
+      if (updatedQuestion.type !== "mcq") {
         delete payload.options;
       }
 
@@ -646,7 +632,7 @@ const QuestionPaperEditPage = () => {
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
     setNewQuestion({
-      type: "MCQ",
+      type: "mcq",
       questionText: "",
       imageUrls: [],
       marks: "",
@@ -670,8 +656,8 @@ const QuestionPaperEditPage = () => {
     if (!marks || Number(marks) < 0) return false;
     if (!difficulty) return false;
 
-    // If it's MCQ, all option texts must be non-empty
-    if (type === "MCQ") {
+    // If it's mcq, all option texts must be non-empty
+    if (type === "mcq") {
       for (let opt of options) {
         if (!opt.option.trim()) return false;
       }
@@ -680,7 +666,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Handles updates to the new question form fields (including MCQ option text).
+   * Handles updates to the new question form fields (including mcq option text).
    */
   const handleNewQuestionChange = (e, field, index) => {
     const { value } = e.target;
@@ -719,7 +705,7 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
-   * Handles image upload for an MCQ option in the new question form.
+   * Handles image upload for an mcq option in the new question form.
    * Saves the File object in the option's imageUrl.
    */
   const handleOptionImageUpload = (e, index) => {
@@ -790,12 +776,12 @@ const QuestionPaperEditPage = () => {
         ...newQuestion,
         section: sectionForNewQuestion,
         imageUrls: uploadedImageUrls,
-        options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
+        options: newQuestion.type === "mcq" ? updatedOptions : undefined,
         questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
       };
-      if (newQuestion.type !== "MCQ") {
+      if (newQuestion.type !== "mcq") {
         delete payload.options;
       }
 
@@ -814,7 +800,7 @@ const QuestionPaperEditPage = () => {
       setIsEditingNewQuestion(false);
       setSectionForNewQuestion(null);
       setNewQuestion({
-        type: "MCQ",
+        type: "mcq",
         questionText: "",
         imageUrls: [],
         marks: "",
@@ -957,7 +943,7 @@ const QuestionPaperEditPage = () => {
                                             >
                                               {groupIndex + 1}.
                                             </span>
-                                            {q.type !== "MCQ" && (
+                                            {q.type !== "mcq" && (
                                               <input
                                                 type="checkbox"
                                                 checked={selectedOptionalQuestions.includes(
@@ -1022,7 +1008,7 @@ const QuestionPaperEditPage = () => {
                                         {groupIndex + 1}.
                                       </span>
                                       {/* Optional selection for non-MCQs, example usage */}
-                                      {q.type !== "MCQ" && (
+                                      {q.type !== "mcq" && (
                                         <input
                                           type="checkbox"
                                           checked={selectedOptionalQuestions.includes(
@@ -1113,8 +1099,8 @@ const QuestionPaperEditPage = () => {
                   onChange={handleTypeChange}
                   className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                 >
-                  <option value="MCQ">MCQ</option>
-                  <option value="Descriptive">Descriptive</option>
+                  <option value="mcq">mcq</option>
+                  <option value="descriptive">Descriptive</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
@@ -1144,9 +1130,11 @@ const QuestionPaperEditPage = () => {
                 Edit Question Text:
               </label>
 
-              <RichTextEditor
-                value={editedQuestion.questionText || ""}
-                onChange={handleQuestionTextChange}
+              <textarea
+                className="w-full p-2 border rounded min-h-[100px]"
+                value={editedQuestion.questionText}
+                onChange={(e) => handleQuestionTextChange(e.target.value)}
+                style={{ whiteSpace: "pre-wrap" }}
               />
             </div>
 
@@ -1161,7 +1149,7 @@ const QuestionPaperEditPage = () => {
                     <img
                       src={url}
                       alt={`Question ${index + 1}`}
-                      className="object-cover rounded border h-24"
+                      className="object-contain rounded border h-24"
                     />
                     <button
                       onClick={() => handleDeleteQuestionImage(index)}
@@ -1176,7 +1164,7 @@ const QuestionPaperEditPage = () => {
                     <img
                       src={URL.createObjectURL(file)}
                       alt={`New Image ${index + 1}`}
-                      className="h-24 object-cover rounded border"
+                      className="h-24 object-contain rounded border"
                     />
                     <button
                       onClick={() => handleDiscardQuestionImage(index)}
@@ -1213,7 +1201,7 @@ const QuestionPaperEditPage = () => {
               </div>
             )}
 
-            {/* MCQ Options */}
+            {/* mcq Options */}
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
                 <strong>Options</strong>
@@ -1321,7 +1309,7 @@ const QuestionPaperEditPage = () => {
                     setSectionForNewQuestion(null);
                     // Reset newQuestion to defaults
                     setNewQuestion({
-                      type: "MCQ",
+                      type: "mcq",
                       questionText: "",
                       imageUrls: [],
                       marks: "",
@@ -1367,8 +1355,8 @@ const QuestionPaperEditPage = () => {
                 onChange={(e) => handleNewQuestionChange(e, "type")}
                 className="border rounded px-2 py-1 w-full"
               >
-                <option value="MCQ">MCQ</option>
-                <option value="Descriptive">DESCRIPTIVE</option>
+                <option value="mcq">mcq</option>
+                <option value="descriptive">DESCRIPTIVE</option>
               </select>
             </div>
 
@@ -1379,7 +1367,6 @@ const QuestionPaperEditPage = () => {
               <textarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
-                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
                 className="border rounded px-2 py-1 w-full"
                 placeholder="Enter question text. Use Shift + $ to add math equations."
                 rows={4}
@@ -1399,7 +1386,7 @@ const QuestionPaperEditPage = () => {
                     <img
                       src={URL.createObjectURL(file)}
                       alt={`Question ${index + 1}`}
-                      className="w-24 h-24 object-cover rounded border"
+                      className="w-24 h-24 object-contain rounded border"
                     />
                     <button
                       onClick={() => {
@@ -1432,7 +1419,7 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-            {newQuestion.type === "MCQ" && (
+            {newQuestion.type === "mcq" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">
                   Options <span className="text-red-500">*</span>
