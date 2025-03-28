@@ -59,7 +59,7 @@ const renderTextWithMath = (text) => {
     index % 2 === 1 ? (
       <InlineMath key={index} math={part} />
     ) : (
-      <span key={index}>{part}</span>
+      <span key={index} style={{whiteSpace:'pre-wrap'}}>{part}</span>
     )
   );
 };

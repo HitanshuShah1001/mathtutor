@@ -36,3 +36,7 @@
   .bottom-24 {
     bottom: 10rem !important
   }
+
+  .whitespace-pre-wrap {
+    white-space: pre-wrap;
+  }
