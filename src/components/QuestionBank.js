@@ -173,7 +173,7 @@ const QuestionBank = () => {
     subject: "",
     chapter: "",
     grade: "",
-    type: "MCQ",
+    type: "mcq",
     questionText: "",
     imageUrls: [],
     marks: "",
@@ -249,7 +249,7 @@ const QuestionBank = () => {
         documentListHeight < viewportHeight - headerHeight - 10 &&
         hasNextPage
       ) {
-        fetchQuestions(false,cursor);
+        fetchQuestions(false, cursor);
       }
     }
   }, [hasNextPage, infiniteLoading, loading]);
@@ -262,7 +262,7 @@ const QuestionBank = () => {
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
     if (scrolledToBottom) {
-      fetchQuestions(false,cursor);
+      fetchQuestions(false, cursor);
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
@@ -387,7 +387,7 @@ const QuestionBank = () => {
       subject: "",
       chapter: "",
       grade: "",
-      type: "MCQ",
+      type: "mcq",
       questionText: "",
       imageUrls: [],
       marks: "",
@@ -415,16 +415,15 @@ const QuestionBank = () => {
       );
       if (questionToEdit) {
         setNewQuestion({
-          // If your DB has subject/chapter/grade stored, set them here
           subject: questionToEdit.subject || "",
           chapter: questionToEdit.chapter || "",
           grade: questionToEdit.grade || "",
           id: questionToEdit.id,
-          type: questionToEdit.type,
+          type: questionToEdit.type || "", // use the value directly
           questionText: questionToEdit.questionText,
           imageUrls: questionToEdit.imageUrls || [],
-          marks: questionToEdit.marks,
-          difficulty: questionToEdit.difficulty.toUpperCase(),
+          marks: questionToEdit.marks || "",
+          difficulty: questionToEdit.difficulty || "", // remove toUpperCase()
           options:
             questionToEdit.type === "mcq"
               ? questionToEdit.options.map((opt) => ({
@@ -463,11 +462,11 @@ const QuestionBank = () => {
   };
 
   /**
-   * Generic text change for newQuestion fields and MCQ options.
+   * Generic text change for newQuestion fields and mcq options.
    */
   const handleNewQuestionChange = (e, field, index = null) => {
     if (field === "option" && index !== null) {
-      // MCQ option text
+      // mcq option text
       setNewQuestion((prev) => {
         const options = [...prev.options];
         options[index] = { ...options[index], option: e.target.value };
@@ -503,7 +502,7 @@ const QuestionBank = () => {
   };
 
   /**
-   * For each MCQ option, we store a single new File or existing string.
+   * For each mcq option, we store a single new File or existing string.
    */
   const handleOptionImageChange = (e, index) => {
     const file = e.target.files?.[0];
@@ -517,7 +516,7 @@ const QuestionBank = () => {
   };
 
   /**
-   * Remove an existing or newly added option image for a particular MCQ option.
+   * Remove an existing or newly added option image for a particular mcq option.
    */
   const removeOptionImage = (index) => {
     setNewQuestion((prev) => {
@@ -569,9 +568,9 @@ const QuestionBank = () => {
         }
       }
 
-      // 2) Process option images if MCQ
+      // 2) Process option images if mcq
       let finalOptions = [];
-      if (newQuestion.type === "MCQ") {
+      if (newQuestion.type === "mcq") {
         finalOptions = await Promise.all(
           newQuestion.options.map(async (opt) => {
             if (!opt.imageUrl) {
@@ -603,10 +602,10 @@ const QuestionBank = () => {
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
-      if (newQuestion.type === "MCQ") {
+      if (newQuestion.type === "mcq") {
         payload.options = finalOptions;
       } else {
-        // Remove options if not MCQ
+        // Remove options if not mcq
         delete payload.options;
       }
 
@@ -637,7 +636,7 @@ const QuestionBank = () => {
         subject: "",
         chapter: "",
         grade: "",
-        type: "MCQ",
+        type: "mcq",
         questionText: "",
         imageUrls: [],
         marks: "",
@@ -891,8 +890,8 @@ const QuestionBank = () => {
                         </div>
                       )}
 
-                      {/* MCQ Options */}
-                      {question.type === "MCQ" && question.options && (
+                      {/* mcq Options */}
+                      {question.type === "mcq" && question.options && (
                         <div className="ml-4 space-y-2 mt-2">
                           {question.options.map((option) => (
                             <div
@@ -970,7 +969,7 @@ const QuestionBank = () => {
                       subject: "",
                       chapter: "",
                       grade: "",
-                      type: "MCQ",
+                      type: "mcq",
                       questionText: "",
                       imageUrls: [],
                       marks: "",
@@ -1119,8 +1118,8 @@ const QuestionBank = () => {
               )}
             </div>
 
-            {/* MCQ Options */}
-            {newQuestion.type === "MCQ" && (
+            {/* mcq Options */}
+            {newQuestion.type === "mcq" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Options</label>
                 {newQuestion.options.map((option, index) => (
