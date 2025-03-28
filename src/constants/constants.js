@@ -11,8 +11,8 @@ export const difficulty = {
   MEDIUM: "MEDIUM",
   HARD: "HARD",
 };
-export const MCQ = "MCQ";
-export const DESCRIPTIVE = "Descriptive";
+export const MCQ = "mcq";
+export const DESCRIPTIVE = "descriptive";
 export const models = {
   O1_PREVIEW: "o1-preview",
   O1_PREVIEW_2024_09_12: "o1-preview-2024-09-12",

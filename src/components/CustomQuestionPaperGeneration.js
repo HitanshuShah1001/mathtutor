@@ -1484,8 +1484,8 @@ export const CustomPaperCreatePage = () => {
                       onChange={handleTypeChange}
                       className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     >
-                      <option value="MCQ">MCQ</option>
-                      <option value="Descriptive">Descriptive</option>
+                      <option value="mcq">MCQ</option>
+                      <option value="descriptive">Descriptive</option>
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
