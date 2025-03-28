@@ -249,7 +249,7 @@ const QuestionBank = () => {
         documentListHeight < viewportHeight - headerHeight - 10 &&
         hasNextPage
       ) {
-        fetchQuestions(false);
+        fetchQuestions(false,cursor);
       }
     }
   }, [hasNextPage, infiniteLoading, loading]);
@@ -286,7 +286,7 @@ const QuestionBank = () => {
     setCursor(undefined);
     setHasNextPage(true);
     fetchQuestions(true, undefined);
-  }, [filters, searchQuery]);
+  }, [filters]);
 
   /**
    * Fetches questions from the server with the current filters/search/cursor.
