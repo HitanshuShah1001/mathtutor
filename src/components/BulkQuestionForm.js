@@ -8,7 +8,7 @@ const BulkQuestionForm = () => {
     questionText: "",
     marks: 1,
     difficulty: "medium",
-    chapter: "Adjectives",
+    chapter: "Active and passive voice",
     subject: "english", // fixed subject
     grade: 6, // fixed standard is always 6
     repositoryType: "exercise",
@@ -287,7 +287,7 @@ const BulkQuestionForm = () => {
                 Chapter:
                 <input
                   type="text"
-                  value={question.chapter}
+                  value={"Active and passive voice"}
                   onChange={(e) =>
                     handleQuestionChange(qIndex, "chapter", e.target.value)
                   }
@@ -311,7 +311,7 @@ const BulkQuestionForm = () => {
                 Grade:
                 <input
                   type="number"
-                  value={6}
+                  value={7}
                   readOnly
                   style={{ fontSize: "0.9rem" }}
                 />
@@ -371,7 +371,7 @@ const BulkQuestionForm = () => {
                 onChange={(e) =>
                   handleQuestionChange(qIndex, "questionText", e.target.value)
                 }
-                rows="2"
+                rows="8"
                 style={{ width: "100%", fontSize: "0.9rem" }}
                 placeholder="Use $ for math expressions"
               />
