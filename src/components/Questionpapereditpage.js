@@ -1146,7 +1146,7 @@ const QuestionPaperEditPage = () => {
               <textarea
                 className="w-full p-2 border rounded min-h-[100px]"
                 value={editedQuestion.questionText}
-                onChange={handleQuestionTextChange}
+                onChange={(e) => handleQuestionTextChange(e.target.value)}
                 style={{ whiteSpace: "pre-wrap" }}
               />
             </div>
@@ -1162,7 +1162,7 @@ const QuestionPaperEditPage = () => {
                     <img
                       src={url}
                       alt={`Question ${index + 1}`}
-                      className="object-cover rounded border h-24"
+                      className="object-contain rounded border h-24"
                     />
                     <button
                       onClick={() => handleDeleteQuestionImage(index)}
@@ -1177,7 +1177,7 @@ const QuestionPaperEditPage = () => {
                     <img
                       src={URL.createObjectURL(file)}
                       alt={`New Image ${index + 1}`}
-                      className="h-24 object-cover rounded border"
+                      className="h-24 object-contain rounded border"
                     />
                     <button
                       onClick={() => handleDiscardQuestionImage(index)}
@@ -1380,7 +1380,6 @@ const QuestionPaperEditPage = () => {
               <textarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
-                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
                 className="border rounded px-2 py-1 w-full"
                 placeholder="Enter question text. Use Shift + $ to add math equations."
                 rows={4}
@@ -1400,7 +1399,7 @@ const QuestionPaperEditPage = () => {
                     <img
                       src={URL.createObjectURL(file)}
                       alt={`Question ${index + 1}`}
-                      className="w-24 h-24 object-cover rounded border"
+                      className="w-24 h-24 object-contain rounded border"
                     />
                     <button
                       onClick={() => {

@@ -2,19 +2,19 @@ import React, { useState } from "react";
 import { uploadToS3 } from "../utils/s3utils";
 
 const BulkQuestionForm = () => {
-  // Initial question object template.
+  // Initial question object template with fixed grade and subject
   const initialQuestion = {
-    type: "MCQ", // or "Descriptive"
+    type: "mcq", // now lowercase "mcq" by default
     questionText: "",
     marks: 1,
     difficulty: "medium",
-    chapter: "Sorting Materials Into Groups",
-    subject: "Science",
-    grade: 1,
+    chapter: "Adjectives",
+    subject: "english", // fixed subject
+    grade: 6, // fixed standard is always 6
     repositoryType: "exercise",
-    exerciseName: "Exercise 1.1",
+    exerciseName: "",
     textBook: "ncert",
-    // For Descriptive questions: multiple images
+    // For descriptive questions: multiple images
     imageUrls: [],
     // We'll store the actual file references here so we can upload them:
     imageFiles: [],
@@ -35,15 +35,15 @@ const BulkQuestionForm = () => {
     const updated = [...questions];
     updated[qIndex][field] = value;
 
-    // If type changes from MCQ to Descriptive, clear options.
-    if (field === "type" && value === "Descriptive") {
+    // If type changes from mcq to descriptive, clear options.
+    if (field === "type" && value === "descriptive") {
       updated[qIndex].options = [];
     }
 
-    // If type changes to MCQ, reset options if empty.
+    // If type changes to mcq, reset options if empty.
     if (
       field === "type" &&
-      value === "MCQ" &&
+      value === "mcq" &&
       updated[qIndex].options.length === 0
     ) {
       updated[qIndex].options = [
@@ -57,7 +57,7 @@ const BulkQuestionForm = () => {
     setQuestions(updated);
   };
 
-  // Handler to update a specific option in a MCQ question.
+  // Handler to update a specific option in a mcq question.
   const handleOptionChange = (qIndex, optionIndex, field, value) => {
     const updated = [...questions];
     updated[qIndex].options[optionIndex][field] = value;
@@ -79,7 +79,7 @@ const BulkQuestionForm = () => {
     setQuestions(updated);
   };
 
-  // For MCQ options: each option gets only one image.
+  // For mcq options: each option gets only one image.
   const handleOptionImageUpload = (qIndex, optionIndex, file) => {
     const updated = [...questions];
     // For local display
@@ -100,12 +100,12 @@ const BulkQuestionForm = () => {
     e.preventDefault();
 
     try {
-      // 1) For each question, upload images for question + images for each option (if MCQ).
+      // 1) For each question, upload images for question + images for each option (if mcq).
       const updatedQuestions = await Promise.all(
         questions.map(async (question) => {
           let finalImageUrls = [];
 
-          // If there are imageFiles (descriptive or MCQ that stored something?), upload them
+          // If there are imageFiles (descriptive or mcq that stored something?), upload them
           if (question.imageFiles && question.imageFiles.length > 0) {
             const uploadedUrls = await Promise.all(
               question.imageFiles.map(async (file) => {
@@ -118,9 +118,9 @@ const BulkQuestionForm = () => {
             finalImageUrls = [...uploadedUrls];
           }
 
-          // Now handle MCQ option images
+          // Now handle mcq option images
           let finalOptions = [];
-          if (question.type === "MCQ" && question.options?.length > 0) {
+          if (question.type === "mcq" && question.options?.length > 0) {
             finalOptions = await Promise.all(
               question.options.map(async (opt) => {
                 // If the user attached a real file
@@ -128,7 +128,10 @@ const BulkQuestionForm = () => {
                   const generatedLink = `https://tutor-staffroom-files.s3.amazonaws.com/${Date.now()}-${
                     opt.imageFile.name
                   }`;
-                  const uploadedUrl = await uploadToS3(opt.imageFile, generatedLink);
+                  const uploadedUrl = await uploadToS3(
+                    opt.imageFile,
+                    generatedLink
+                  );
                   return {
                     ...opt,
                     imageUrl: uploadedUrl,
@@ -157,15 +160,18 @@ const BulkQuestionForm = () => {
 
       // 2) Submit the final payload
       const payload = { questions: updatedQuestions };
-      const response = await fetch("http://localhost:3000/question/create-bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWxJZCI6ImhpdGFuc2h1c2hhaDVAZ21haWwuY29tIiwiaWF0IjoxNzQzMTA3Mzg1LCJleHAiOjE3NDMxOTM3ODV9.fAG6_dWv7hpoMWEFwjXXHbo1H0yz69x8mXZeJLCTFd4",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "http://localhost:3000/question/create-bulk",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWxJZCI6ImhpdGFuc2h1c2hhaDVAZ21haWwuY29tIiwiaWF0IjoxNzQzMTk0ODExLCJleHAiOjE3NDMyODEyMTF9.Z6jscSBnXn5Vjywu9XDIRWNinpTPxaBC6xdVbB5s-M4",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
@@ -182,6 +188,8 @@ const BulkQuestionForm = () => {
       alert("Failed to submit questions. Check console for details.");
     }
   };
+
+  console.log(questions)
 
   return (
     <div style={{ padding: "0.5rem" }}>
@@ -236,8 +244,8 @@ const BulkQuestionForm = () => {
                   }
                   style={{ fontSize: "0.9rem" }}
                 >
-                  <option value="MCQ">MCQ</option>
-                  <option value="Descriptive">Descriptive</option>
+                  <option value="mcq">mcq</option>
+                  <option value="descriptive">descriptive</option>
                 </select>
               </label>
 
@@ -248,7 +256,11 @@ const BulkQuestionForm = () => {
                   type="number"
                   value={question.marks}
                   onChange={(e) =>
-                    handleQuestionChange(qIndex, "marks", Number(e.target.value))
+                    handleQuestionChange(
+                      qIndex,
+                      "marks",
+                      Number(e.target.value)
+                    )
                   }
                   style={{ fontSize: "0.9rem" }}
                 />
@@ -283,28 +295,24 @@ const BulkQuestionForm = () => {
                 />
               </label>
 
-              {/* Subject */}
+              {/* Subject - Fixed to "Adjectives" */}
               <label style={{ display: "flex", flexDirection: "column" }}>
                 Subject:
                 <input
                   type="text"
-                  value={question.subject}
-                  onChange={(e) =>
-                    handleQuestionChange(qIndex, "subject", e.target.value)
-                  }
+                  value={"english"}
+                  readOnly
                   style={{ fontSize: "0.9rem" }}
                 />
               </label>
 
-              {/* Grade */}
+              {/* Grade - Fixed to 6 */}
               <label style={{ display: "flex", flexDirection: "column" }}>
                 Grade:
                 <input
                   type="number"
-                  value={question.grade}
-                  onChange={(e) =>
-                    handleQuestionChange(qIndex, "grade", Number(e.target.value))
-                  }
+                  value={6}
+                  readOnly
                   style={{ fontSize: "0.9rem" }}
                 />
               </label>
@@ -369,8 +377,8 @@ const BulkQuestionForm = () => {
               />
             </div>
 
-            {/* If MCQ, show options; else show image upload */}
-            {question.type === "MCQ" ? (
+            {/* If mcq, show options; else show image upload */}
+            {question.type === "mcq" ? (
               <div
                 style={{
                   marginTop: "0.5rem",

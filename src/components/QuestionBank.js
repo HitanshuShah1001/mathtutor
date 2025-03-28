@@ -87,7 +87,7 @@ const FilterGroupAccordion = ({
       </div>
       {isOpen && (
         <div className="flex flex-wrap gap-2 pb-3 pt-1 px-1">
-          {values.map((val) => {
+          {values?.map((val) => {
             const isSelected = selectedValues.includes(val);
             return (
               <span
@@ -312,7 +312,7 @@ const QuestionBank = () => {
         ...(filters.marks.length > 0 && { marks: filters.marks }),
         ...(filters.types.length > 0 && { types: filters.types }),
         ...(filters.difficulties.length > 0 && {
-          difficulties: filters.difficulties.map((d) => d.toLowerCase()),
+          difficulties: filters.difficulties?.map((d) => d.toLowerCase()),
         }),
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
@@ -364,7 +364,7 @@ const QuestionBank = () => {
     }
     try {
       await Promise.all(
-        selectedIds.map((id) =>
+        selectedIds?.map((id) =>
           deleteRequest(`${BASE_URL_API}/question/delete`, { id })
         )
       );
@@ -426,7 +426,7 @@ const QuestionBank = () => {
           difficulty: questionToEdit.difficulty || "", // remove toUpperCase()
           options:
             questionToEdit.type === "mcq"
-              ? questionToEdit.options.map((opt) => ({
+              ? questionToEdit.options?.map((opt) => ({
                   ...opt,
                   imageUrl: opt.imageUrl || "",
                 }))
@@ -572,7 +572,7 @@ const QuestionBank = () => {
       let finalOptions = [];
       if (newQuestion.type === "mcq") {
         finalOptions = await Promise.all(
-          newQuestion.options.map(async (opt) => {
+          newQuestion?.options?.map(async (opt) => {
             if (!opt.imageUrl) {
               // No image or user removed it
               return { ...opt, imageUrl: "" };
@@ -741,7 +741,7 @@ const QuestionBank = () => {
             {/* Active filters */}
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
-                values.map((val) => (
+                values?.map((val) => (
                   <span
                     key={`${key}-${val}`}
                     className="inline-flex items-center px-3 py-1 mr-2 mb-2 bg-black text-white rounded-full text-sm"
@@ -780,7 +780,7 @@ const QuestionBank = () => {
                   key: "questionTypes",
                   values: questionTypes,
                 },
-              ].map(({ label, key, values }) => (
+              ]?.map(({ label, key, values }) => (
                 <FilterGroupAccordion
                   key={key}
                   label={label}
@@ -879,12 +879,12 @@ const QuestionBank = () => {
                       {/* Question-level images */}
                       {question.imageUrls && question.imageUrls.length > 0 && (
                         <div className="mb-2 flex flex-wrap gap-2">
-                          {question.imageUrls.map((url, idx) => (
+                          {question?.imageUrls?.map((url, idx) => (
                             <img
                               key={idx}
                               src={url}
                               alt={`Question ${question.id} preview ${idx}`}
-                              className="rounded w-48 h-48 object-cover"
+                              className="rounded h-48 object-contain"
                             />
                           ))}
                         </div>
@@ -893,7 +893,7 @@ const QuestionBank = () => {
                       {/* mcq Options */}
                       {question.type === "mcq" && question.options && (
                         <div className="ml-4 space-y-2 mt-2">
-                          {question.options.map((option) => (
+                          {question?.options?.map((option) => (
                             <div
                               key={option.key}
                               className="flex items-center gap-2"
@@ -904,7 +904,7 @@ const QuestionBank = () => {
                                 <img
                                   src={option.imageUrl}
                                   alt={`Option ${option.key}`}
-                                  className="rounded w-24 h-24 object-cover"
+                                  className="rounded w-24 h-24 object-contain"
                                 />
                               )}
                             </div>
@@ -1009,7 +1009,7 @@ const QuestionBank = () => {
                 className={inputClass}
               >
                 <option value="">Select Subject (optional)</option>
-                {subjectOptions.map((sub) => (
+                {subjectOptions?.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </option>
@@ -1052,7 +1052,7 @@ const QuestionBank = () => {
                 className={inputClass}
               >
                 <option value="">Select Type</option>
-                {questionTypes.map((type) => (
+                {questionTypes?.map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
@@ -1093,7 +1093,7 @@ const QuestionBank = () => {
               {/* Show existing or newly added images */}
               {newQuestion.imageUrls?.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {newQuestion.imageUrls.map((item, idx) => {
+                  {newQuestion?.imageUrls?.map((item, idx) => {
                     // If it's a string, it's an existing URL
                     // If it's a File, we generate a preview
                     const isFile = typeof item !== "string";
@@ -1103,7 +1103,7 @@ const QuestionBank = () => {
                         <img
                           src={src}
                           alt={`Question preview ${idx}`}
-                          className="rounded w-24 h-24 border object-cover"
+                          className="rounded h-24 border object-contain"
                         />
                         <button
                           onClick={() => removeQuestionImage(idx)}
@@ -1122,7 +1122,7 @@ const QuestionBank = () => {
             {newQuestion.type === "mcq" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">Options</label>
-                {newQuestion.options.map((option, index) => (
+                {newQuestion?.options?.map((option, index) => (
                   <div key={option.key} className="mb-4 border p-2 rounded">
                     <label className="block text-sm font-medium">
                       Option {option.key}
@@ -1161,7 +1161,7 @@ const QuestionBank = () => {
                           <img
                             src={option.imageUrl}
                             alt={`Option ${option.key} existing`}
-                            className="mt-2 rounded w-24 h-24 border object-cover"
+                            className="mt-2 rounded h-24 border object-contain"
                           />
                           <button
                             onClick={() => removeOptionImage(index)}
@@ -1176,7 +1176,7 @@ const QuestionBank = () => {
                           <img
                             src={URL.createObjectURL(option.imageUrl)}
                             alt={`Option ${option.key} new`}
-                            className="mt-2 rounded w-24 h-24 border object-cover"
+                            className="mt-2 rounded h-24 border object-contain"
                           />
                           <button
                             onClick={() => removeOptionImage(index)}
@@ -1204,7 +1204,7 @@ const QuestionBank = () => {
                   className={inputClass}
                 >
                   <option value="">Select Marks</option>
-                  {marksOptions.map((mark) => (
+                  {marksOptions?.map((mark) => (
                     <option key={mark} value={mark}>
                       {mark}
                     </option>
@@ -1221,7 +1221,7 @@ const QuestionBank = () => {
                   className={inputClass}
                 >
                   <option value="">Select Difficulty</option>
-                  {difficulties.map((diff) => (
+                  {difficulties?.map((diff) => (
                     <option key={diff} value={diff}>
                       {diff}
                     </option>
@@ -1315,7 +1315,7 @@ const QuestionBank = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
                   <option value="">-- Select Grade --</option>
-                  {grades.map((g) => (
+                  {grades?.map((g) => (
                     <option key={g} value={g}>
                       {g}
                     </option>
@@ -1332,7 +1332,7 @@ const QuestionBank = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
                   <option value="">-- Select Subject --</option>
-                  {subjects.map((sub) => (
+                  {subjects?.map((sub) => (
                     <option key={sub} value={sub}>
                       {sub}
                     </option>
