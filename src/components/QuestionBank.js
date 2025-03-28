@@ -53,7 +53,6 @@ const subjectOptions = [
   "statistics",
 ];
 
-
 // Accordion for filtering
 const FilterGroupAccordion = ({
   label,
@@ -113,7 +112,9 @@ const QuestionBank = () => {
   const [infiniteLoading, setInfiniteLoading] = useState(false);
 
   // For selecting multiple questions to edit or delete
-  const [selected, setSelected] = useState({});
+  const [selected, setSelected] = useState([]);
+  const [selectedQuestionObjs, setSelectedQuestionObjs] = useState([]);
+  const [viewSelected, setViewSelected] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -332,12 +333,25 @@ const QuestionBank = () => {
     }
   };
 
-  // Utility to toggle selection of a question
-  const toggleSelection = (questionId) => {
-    setSelected((prev) => ({
-      ...prev,
-      [questionId]: !prev[questionId],
-    }));
+  const toggleSelection = (id) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+    // Find the question object in the current "questions" array
+    const foundQ = questions.find((q) => q.id === id);
+    if (!foundQ) return; // Shouldn't happen if user is only selecting from the loaded list
+
+    setSelectedQuestionObjs((prev) => {
+      const isAlreadySelected = prev.some((q) => q.id === id);
+      if (isAlreadySelected) {
+        // remove it
+        return prev.filter((q) => q.id !== id);
+      } else {
+        // add it
+        return [...prev, foundQ];
+      }
+    });
   };
 
   // Handles deleting the selected questions
@@ -361,7 +375,7 @@ const QuestionBank = () => {
       setQuestions([]);
       setCursor(undefined);
       setHasNextPage(true);
-      setSelected({});
+      setSelected([]);
       fetchQuestions(true);
     } catch (error) {
       console.error("Error deleting questions:", error);
@@ -638,7 +652,7 @@ const QuestionBank = () => {
           { key: "D", option: "", imageUrl: "" },
         ],
       });
-      setSelected({});
+      setSelected([]);
       setQuestions([]);
       setCursor(undefined);
       setHasNextPage(true);
@@ -648,6 +662,13 @@ const QuestionBank = () => {
       console.error("Error upserting question:", error);
       alert("Error upserting question.");
     }
+  };
+
+  const removeSelectedQuestion = (questionId) => {
+    // De-select from IDs
+    setSelected((prev) => prev.filter((id) => id !== questionId));
+    // Remove from the question objs
+    setSelectedQuestionObjs((prev) => prev.filter((q) => q.id !== questionId));
   };
 
   // ----- CREATE QUESTION PAPER FLOW -----
@@ -782,6 +803,12 @@ const QuestionBank = () => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
+              <button
+                onClick={() => setViewSelected((prev) => !prev)}
+                className={`${blackButtonClass} w-full mt-4`}
+              >
+                {viewSelected ? "Show All" : "Show Selected"}
+              </button>
             </div>
 
             {/* Reset Filters */}
@@ -836,7 +863,92 @@ const QuestionBank = () => {
 
           {/* Questions List */}
           <div className="pt-[72px]">
-            {loading && questions.length === 0 ? (
+            {viewSelected ? (
+              // SHOW SELECTED QUESTIONS
+              selectedQuestionObjs.length === 0 ? (
+                <div className="flex justify-center items-center h-full">
+                  <p className="text-gray-500">No questions selected</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {selectedQuestionObjs.map((question) => (
+                    <div
+                      key={question.id}
+                      className="p-4 border rounded hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="mb-2">
+                            {renderTextWithMath(question.questionText)}
+                          </div>
+                          {question.imageUrl && (
+                            <div className="mt-2 mb-3">
+                              <img
+                                src={question.imageUrl}
+                                alt="Question"
+                                className="max-h-40 object-contain"
+                              />
+                            </div>
+                          )}
+                          {question.type === "mcq" && question.options && (
+                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {question.options.map((option, index) => (
+                                <div key={index} className="flex items-start">
+                                  <span className="font-semibold mr-2">
+                                    {option.key}.
+                                  </span>
+                                  <div>
+                                    {renderTextWithMath(option.option)}
+                                    {option.imageUrl && (
+                                      <img
+                                        src={option.imageUrl}
+                                        alt={`Option ${option.key}`}
+                                        className="mt-1 max-h-20 object-contain"
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end ml-4 space-y-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {question.type}
+                          </span>
+                          {question.difficulty && (
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                question.difficulty.toLowerCase() === "easy"
+                                  ? "bg-green-100 text-green-800"
+                                  : question.difficulty.toLowerCase() ===
+                                    "medium"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {question.difficulty}
+                            </span>
+                          )}
+                          {question.marks && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                              {question.marks} marks
+                            </span>
+                          )}
+                          {/* Remove button instead of checkbox */}
+                          <button
+                            onClick={() => removeSelectedQuestion(question.id)}
+                            className="text-red-500 hover:text-red-700 border rounded px-2 py-1 text-sm"
+                          >
+                            ✕ Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : loading && questions.length === 0 ? (
               <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 <p className="ml-4 text-gray-600">Loading questions...</p>
@@ -856,7 +968,7 @@ const QuestionBank = () => {
                   >
                     <input
                       type="checkbox"
-                      checked={selected[question.id] || false}
+                      checked={selected.includes(question.id)}
                       onChange={() => toggleSelection(question.id)}
                       className="mt-1 mr-3"
                       style={{ height: "20px" }}

@@ -403,7 +403,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                               />
                             </div>
                           )}
-                          {question.type === "MCQ" && question.options && (
+                          {question.type === "mcq" && question.options && (
                             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                               {question.options.map((option, index) => (
                                 <div key={index} className="flex items-start">
@@ -496,7 +496,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                             />
                           </div>
                         )}
-                        {question.type === "MCQ" && question.options && (
+                        {question.type === "mcq" && question.options && (
                           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                             {question.options.map((option, index) => (
                               <div key={index} className="flex items-start">
@@ -625,7 +625,7 @@ export const CustomPaperCreatePage = () => {
   const [collapsedSections, setCollapsedSections] = useState({});
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
   const [newQuestion, setNewQuestion] = useState({
-    type: "MCQ",
+    type: "mcq",
     questionText: "",
     imageUrlS: [],
     marks: "",
@@ -1008,7 +1008,7 @@ export const CustomPaperCreatePage = () => {
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
     setNewQuestion({
-      type: "MCQ",
+      type: "mcq",
       questionText: "",
       imageUrls: [],
       marks: "",
@@ -1147,13 +1147,13 @@ export const CustomPaperCreatePage = () => {
       let createQuestionBody = {
         ...newQuestion,
         imageUrls: uploadedImageUrls,
-        options: newQuestion.type === "MCQ" ? updatedOptions : undefined,
+        options: newQuestion.type === "mcq" ? updatedOptions : undefined,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
       };
-      if (newQuestion.type !== "MCQ") {
+      if (newQuestion.type !== "mcq") {
         delete createQuestionBody.options;
       }
       await postRequest(`${BASE_URL_API}/question/upsert`, createQuestionBody);
@@ -1161,7 +1161,7 @@ export const CustomPaperCreatePage = () => {
       setShowAddQuestionModal(false);
       setSectionForNewQuestion(null);
       setNewQuestion({
-        type: "MCQ",
+        type: "mcq",
         questionText: "",
         imageUrl: "",
         marks: "",
@@ -1213,7 +1213,7 @@ export const CustomPaperCreatePage = () => {
     if (!marks || Number(marks) < 0) return false;
     if (!difficulty) return false;
 
-    if (type === "MCQ") {
+    if (type === "mcq") {
       for (let opt of options) {
         if (!opt.option.trim()) return false;
       }
@@ -1249,7 +1249,7 @@ export const CustomPaperCreatePage = () => {
             </button>
           </div>
 
-          {/* If exactly 2 non-MCQ selected => show Mark as Optional */}
+          {/* If exactly 2 non-mcq selected => show Mark as Optional */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -1336,7 +1336,7 @@ export const CustomPaperCreatePage = () => {
                                             >
                                               {groupIndex + 1}.
                                             </span>
-                                            {q.type !== "MCQ" && (
+                                            {q.type !== "mcq" && (
                                               <input
                                                 type="checkbox"
                                                 checked={selectedOptionalQuestions.includes(
@@ -1393,7 +1393,7 @@ export const CustomPaperCreatePage = () => {
                                       >
                                         {groupIndex + 1}.
                                       </span>
-                                      {q.type !== "MCQ" && (
+                                      {q.type !== "mcq" && (
                                         <input
                                           type="checkbox"
                                           checked={selectedOptionalQuestions.includes(
@@ -1484,7 +1484,7 @@ export const CustomPaperCreatePage = () => {
                       onChange={handleTypeChange}
                       className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                     >
-                      <option value="mcq">MCQ</option>
+                      <option value="mcq">mcq</option>
                       <option value="descriptive">Descriptive</option>
                     </select>
                   </div>
@@ -1684,7 +1684,7 @@ export const CustomPaperCreatePage = () => {
                     setIsEditingNewQuestion(false);
                     setSectionForNewQuestion(null);
                     setNewQuestion({
-                      type: "MCQ",
+                      type: "mcq",
                       questionText: "",
                       imageUrls: [],
                       marks: "",
@@ -1730,7 +1730,7 @@ export const CustomPaperCreatePage = () => {
                 onChange={(e) => handleNewQuestionChange(e, "type")}
                 className="border rounded px-2 py-1 w-full"
               >
-                <option value="MCQ">MCQ</option>
+                <option value="mcq">mcq</option>
                 <option value="DESCRIPTIVE">DESCRIPTIVE</option>
               </select>
             </div>
@@ -1795,7 +1795,7 @@ export const CustomPaperCreatePage = () => {
               </div>
             </div>
 
-            {newQuestion.type === "MCQ" && (
+            {newQuestion.type === "mcq" && (
               <div className="mb-4">
                 <label className="block mb-1 font-medium">
                   Options <span className="text-red-500">*</span>
