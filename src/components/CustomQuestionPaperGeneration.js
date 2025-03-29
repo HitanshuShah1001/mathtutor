@@ -933,7 +933,7 @@ export const CustomPaperCreatePage = () => {
         ...finalQuestion,
         questionPaperId: parseInt(questionPaperId),
         id: finalQuestion.id,
-        grade,
+        grade:parseInt(grade),
         subject,
       });
       if (response && response.success) {
@@ -1182,6 +1182,8 @@ export const CustomPaperCreatePage = () => {
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
+        grade:parseInt(grade),
+        subject
       };
       if (newQuestion.type !== "mcq") {
         delete createQuestionBody.options;

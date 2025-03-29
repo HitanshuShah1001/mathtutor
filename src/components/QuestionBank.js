@@ -352,8 +352,7 @@ const QuestionBank = () => {
 
   // Handles deleting the selected questions
   const handleDeleteQuestions = async () => {
-    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
-    if (selectedIds.length === 0) {
+    if (selected.length === 0) {
       alert("Please select at least one question to delete.");
       return;
     }
@@ -364,7 +363,7 @@ const QuestionBank = () => {
     }
     try {
       await Promise.all(
-        selectedIds?.map((id) =>
+        selected?.map((id) =>
           deleteRequest(`${BASE_URL_API}/question/delete`, { id })
         )
       );
@@ -406,40 +405,38 @@ const QuestionBank = () => {
    * Handle "Edit Question" button – sets up the selected question in newQuestion.
    * (In a real app, you might also have "subject", "chapter", "grade" stored for each question.)
    */
-  const handleEditQuestion = () => {
-    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
-    if (selectedIds.length === 1) {
-      const questionId = selectedIds[0];
-      const questionToEdit = questions.find(
-        (q) => q.id.toString() === questionId.toString()
-      );
-      if (questionToEdit) {
-        setNewQuestion({
-          subject: questionToEdit.subject || "",
-          chapter: questionToEdit.chapter || "",
-          grade: questionToEdit.grade || "",
-          id: questionToEdit.id,
-          type: questionToEdit.type || "", // use the value directly
-          questionText: questionToEdit.questionText,
-          imageUrls: questionToEdit.imageUrls || [],
-          marks: questionToEdit.marks || "",
-          difficulty: questionToEdit.difficulty || "", // remove toUpperCase()
-          options:
-            questionToEdit.type === "mcq"
-              ? questionToEdit.options?.map((opt) => ({
-                  ...opt,
-                  imageUrl: opt.imageUrl || "",
-                }))
-              : [
-                  { key: "A", option: "", imageUrl: "" },
-                  { key: "B", option: "", imageUrl: "" },
-                  { key: "C", option: "", imageUrl: "" },
-                  { key: "D", option: "", imageUrl: "" },
-                ],
-        });
-        setIsEditing(true);
-        setShowAddQuestionModal(true);
-      }
+  const handleEditQuestion = (id) => {
+    const questionToEdit = questions.find(
+      (q) => q.id.toString() === id.toString()
+    );
+    console.log(questionToEdit);
+    if (questionToEdit) {
+      setNewQuestion({
+        subject: questionToEdit.subject || "",
+        chapter: questionToEdit.chapter || "",
+        grade: questionToEdit.grade || "",
+        id: questionToEdit.id,
+        type: questionToEdit.type || "", // use the value directly
+        questionText: questionToEdit.questionText,
+        imageUrls: questionToEdit.imageUrls || [],
+        marks: questionToEdit.marks || "",
+        difficulty: questionToEdit.difficulty || "", // remove toUpperCase()
+        options:
+          questionToEdit.type === "mcq"
+            ? questionToEdit.options?.map((opt) => ({
+                ...opt,
+                imageUrl: opt.imageUrl || "",
+              }))
+            : [
+                { key: "A", option: "", imageUrl: "" },
+                { key: "B", option: "", imageUrl: "" },
+                { key: "C", option: "", imageUrl: "" },
+                { key: "D", option: "", imageUrl: "" },
+              ],
+      });
+      console.log(isEditing);
+      setIsEditing(true);
+      setShowAddQuestionModal(true);
     }
   };
 
@@ -448,7 +445,10 @@ const QuestionBank = () => {
       (id) => selected[id]
     ).length;
     return selectedCount === 1 ? (
-      <button onClick={handleEditQuestion} className={blackButtonClass}>
+      <button
+        onClick={() => handleEditQuestion(selected[0])}
+        className={blackButtonClass}
+      >
         Edit Question
       </button>
     ) : null;
@@ -531,8 +531,16 @@ const QuestionBank = () => {
    *   type, difficulty, marks, questionText
    */
   const isFormValid = () => {
-    const { type, difficulty, marks, questionText } = newQuestion;
-    if (!type || !difficulty || !marks || !questionText.trim()) {
+    const { type, difficulty, marks, questionText, grade,subject } = newQuestion;
+    if (
+      !type ||
+      !difficulty ||
+      !marks ||
+      !questionText.trim() ||
+      !grade ||
+      !subject ||
+      Number(grade) < 1
+    ) {
       return false;
     }
     return true;
@@ -598,7 +606,7 @@ const QuestionBank = () => {
         ...newQuestion,
         subject: newQuestion.subject?.toLowerCase(),
         chapter: newQuestion.chapter?.toLowerCase(),
-        grade: newQuestion.grade,
+        grade: parseInt(newQuestion.grade),
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
@@ -1100,18 +1108,22 @@ const QuestionBank = () => {
 
             {/* Subject */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Subject</label>
+              <label className="block mb-1 font-medium">
+                Subject <span className="text-red-500">*</span>
+              </label>
               <select
                 value={newQuestion.subject}
                 onChange={(e) => handleNewQuestionChange(e, "subject")}
                 className={inputClass}
+                required
               >
-                <option value="">Select Subject (optional)</option>
+                <option value="">Select Subject</option>
                 {subjectOptions?.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </option>
                 ))}
+                
               </select>
             </div>
 
@@ -1129,13 +1141,17 @@ const QuestionBank = () => {
 
             {/* Grade */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Grade</label>
+              <label className="block mb-1 font-medium">
+                Grade <span className="text-red-500">*</span>
+              </label>
               <input
-                type="text"
+                type="number"
+                min="1"
                 value={newQuestion.grade}
                 onChange={(e) => handleNewQuestionChange(e, "grade")}
                 className={inputClass}
-                placeholder="Enter Grade (optional)"
+                placeholder="Enter Grade"
+                required
               />
             </div>
 
