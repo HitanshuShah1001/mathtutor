@@ -32,7 +32,10 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { renderTextWithMath, renderTruncatedTextWithMath } from "./RenderTextWithMath";
+import {
+  renderTextWithMath,
+  renderTruncatedTextWithMath,
+} from "./RenderTextWithMath";
 
 // --- FilterGroupAccordion Component ---
 const FilterGroupAccordion = ({
@@ -179,7 +182,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
   ];
 
   // --- Fetch Questions ---
-  const fetchQuestions = async (isInitialLoad = false) => {
+  const fetchQuestions = async (isInitialLoad = false, customCursor) => {
     if (isInitialLoad) {
       setLoading(true);
       setQuestions([]);
@@ -189,7 +192,10 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
       setInfiniteLoading(true);
     }
     try {
-      const queryParams = new URLSearchParams({ limit: "10" });
+      const queryParams = new URLSearchParams({
+        limit: "10",
+        ...(typeof customCursor !== "undefined" && { cursor: customCursor })
+        });
       const payload = {
         ...(filters.marks.length > 0 && { marks: filters.marks }),
         ...(filters.types.length > 0 && { types: filters.types }),
@@ -209,7 +215,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
         }),
-        ...(cursor && { cursor }),
       };
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
@@ -240,7 +245,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     const scrollThreshold = 100;
     const { clientHeight, scrollTop, scrollHeight } = scrollContainer;
     if (clientHeight + scrollTop >= scrollHeight - scrollThreshold) {
-      fetchQuestions(false);
+      fetchQuestions(false,cursor);
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 

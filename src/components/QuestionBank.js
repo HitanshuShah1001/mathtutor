@@ -247,7 +247,7 @@ const QuestionBank = () => {
 
   // Load more on scroll
   const handleInfiniteScroll = useCallback(() => {
-    if (!hasNextPage || infiniteLoading || loading) return;
+    if (!hasNextPage || infiniteLoading || loading || !cursor) return;
     const scrollThreshold = 300;
     const scrolledToBottom =
       window.innerHeight + window.scrollY >=
@@ -309,10 +309,6 @@ const QuestionBank = () => {
           questionTypes: filters.questionTypes,
         }),
       };
-
-      if (searchQuery !== "") {
-        payload.name = searchQuery;
-      }
 
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
