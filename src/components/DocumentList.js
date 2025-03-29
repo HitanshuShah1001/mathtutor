@@ -407,7 +407,6 @@ export const DocumentSidebar = () => {
       return result?.questionPaper;
     } catch (error) {
       console.error("Error generating HTML:", error);
-      throw error;
     }
   };
 
