@@ -194,8 +194,8 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     try {
       const queryParams = new URLSearchParams({
         limit: "10",
-        ...(typeof customCursor !== "undefined" && { cursor: customCursor })
-        });
+        ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
+      });
       const payload = {
         ...(filters.marks.length > 0 && { marks: filters.marks }),
         ...(filters.types.length > 0 && { types: filters.types }),
@@ -245,7 +245,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     const scrollThreshold = 100;
     const { clientHeight, scrollTop, scrollHeight } = scrollContainer;
     if (clientHeight + scrollTop >= scrollHeight - scrollThreshold) {
-      fetchQuestions(false,cursor);
+      fetchQuestions(false, cursor);
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
@@ -1120,6 +1120,30 @@ export const CustomPaperCreatePage = () => {
     setShowBankModal({ visible: false, sectionName: null });
   };
 
+  const handleAddOption = () => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      const newKey = String.fromCharCode(65 + newOptions.length);
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleRemoveOption = (index) => {
+    setNewQuestion((prev) => {
+      let newOptions = [...prev.options];
+      if (newOptions.length > 2) {
+        newOptions.splice(index, 1);
+        newOptions = newOptions.map((opt, idx) => ({
+          ...opt,
+          key: String.fromCharCode(65 + idx),
+        }));
+        return { ...prev, options: newOptions };
+      }
+      return prev;
+    });
+  };
+
   // ======================= NEW QUESTION SUBMISSION =======================
   const handleNewQuestionSubmit = async () => {
     try {
@@ -1135,6 +1159,7 @@ export const CustomPaperCreatePage = () => {
         );
         uploadedImageUrls = uploadedUrls;
       }
+
       const updatedOptions = await Promise.all(
         (newQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
@@ -1806,7 +1831,10 @@ export const CustomPaperCreatePage = () => {
                   Options <span className="text-red-500">*</span>
                 </label>
                 {newQuestion.options.map((option, index) => (
-                  <div key={option.key} className="mb-4 border p-2 rounded">
+                  <div
+                    key={option.key}
+                    className="mb-4 border p-2 rounded relative"
+                  >
                     <label className="block text-sm font-medium">
                       Option {option.key}
                     </label>
@@ -1841,8 +1869,25 @@ export const CustomPaperCreatePage = () => {
                         />
                       )}
                     </div>
+                    {newQuestion.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(index)}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                        title="Remove option"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 ))}
+                <button
+                  type="button"
+                  onClick={handleAddOption}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                >
+                  Add Option
+                </button>
               </div>
             )}
 
