@@ -150,6 +150,8 @@ export const DocumentSidebar = () => {
 
   const [showPaperDialog, setShowPaperDialog] = useState(false);
   const [showCustomCreateModal, setShowCustomCreateModal] = useState(false);
+  const [totalSets, setTotalSets] = useState(1);
+
 
   /**
    * Custom paper creation form state:
@@ -448,6 +450,7 @@ export const DocumentSidebar = () => {
             name: customPaperName,
             grade: customPaperGrade,
             subject: customPaperSubject,
+            numberOfSets: totalSets,
           },
         });
       } else {
@@ -910,7 +913,7 @@ export const DocumentSidebar = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
                   <option value="">-- Select Grade --</option>
-                  {grades.map((g) => (
+                  {grades?.map((g) => (
                     <option key={g} value={g}>
                       {g}
                     </option>
@@ -927,12 +930,25 @@ export const DocumentSidebar = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
                   <option value="">-- Select Subject --</option>
-                  {subjects.map((sub) => (
+                  {subjects?.map((sub) => (
                     <option key={sub} value={sub}>
                       {sub}
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Total Sets
+                </label>
+                <input
+                  type="number"
+                  value={totalSets}
+                  onChange={(e) => setTotalSets(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Enter total sets"
+                  min={1}
+                />
               </div>
               <div className="flex justify-end mt-4">
                 <button

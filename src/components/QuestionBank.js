@@ -183,6 +183,7 @@ const QuestionBank = () => {
   const [customPaperName, setCustomPaperName] = useState("");
   const [customPaperGrade, setCustomPaperGrade] = useState("");
   const [customPaperSubject, setCustomPaperSubject] = useState("");
+  const [totalSets, setTotalSets] = useState(1);
   const [errorMessage, setErrorMessage] = useState("");
 
   /**
@@ -555,7 +556,8 @@ const QuestionBank = () => {
    * Check if the mandatory fields are filled.
    */
   const isFormValid = () => {
-    const { type, difficulty, marks, questionText, grade, subject } = newQuestion;
+    const { type, difficulty, marks, questionText, grade, subject } =
+      newQuestion;
     if (
       !type ||
       !difficulty ||
@@ -730,6 +732,7 @@ const QuestionBank = () => {
             name: customPaperName,
             grade: customPaperGrade,
             subject: customPaperSubject,
+            numberOfSets: totalSets,
           },
         });
       } else {
@@ -1493,6 +1496,19 @@ const QuestionBank = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Total Sets
+                </label>
+                <input
+                  type="number"
+                  value={totalSets}
+                  onChange={(e) => setTotalSets(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Enter total sets"
+                  min={1}
+                />
               </div>
               <div className="flex justify-end mt-4">
                 <button
