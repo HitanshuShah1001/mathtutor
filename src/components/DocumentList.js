@@ -356,7 +356,7 @@ export const DocumentSidebar = () => {
     const scrolledToBottom =
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
-    if (scrolledToBottom) fetchDocuments(false,cursor);
+    if (scrolledToBottom) fetchDocuments(false, cursor);
   }, [hasNextPage, infiniteLoading, loading]);
 
   // Initial check after documents load or resize
@@ -685,7 +685,6 @@ export const DocumentSidebar = () => {
                         </p> */}
                       </div>
                       <div className="flex gap-2">
-                        {/* View Button */}
                         <button
                           onClick={async () => {
                             const docWithQuestionAndSolutionLink =
@@ -698,45 +697,50 @@ export const DocumentSidebar = () => {
                         >
                           View
                         </button>
-                        {/* Edit Button */}
-                        <button
-                          onClick={() => {
-                            if (doc.sections && doc.sections.length > 0) {
-                              navigate(`/edit-document/${doc.id}`, {
-                                state: {
-                                  sections: doc.sections,
-                                  docName: doc.name,
-                                },
-                              });
-                            } else {
-                              alert(
-                                "No sections found for this document. Cannot edit."
-                              );
-                            }
-                          }}
-                          className={commonButtonClass}
-                        >
-                          Edit
-                        </button>
+                        {/* View Button */}
+                        {doc.type !== "archive" && (
+                          <>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await deleteRequest(
+                                    `${BASE_URL_API}/questionPaper/${doc.id}`
+                                  );
+                                  setDocuments([]);
+                                  setCursor(undefined);
+                                  setHasNextPage(true);
+                                  fetchDocuments(true);
+                                } catch (error) {
+                                  console.error("Error deleting paper:", error);
+                                }
+                              }}
+                              className={commonButtonClass}
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (doc.sections && doc.sections.length > 0) {
+                                  navigate(`/edit-document/${doc.id}`, {
+                                    state: {
+                                      sections: doc.sections,
+                                      docName: doc.name,
+                                    },
+                                  });
+                                } else {
+                                  alert(
+                                    "No sections found for this document. Cannot edit."
+                                  );
+                                }
+                              }}
+                              className={commonButtonClass}
+                            >
+                              Edit
+                            </button>
+                          </>
+                        )}
+
                         {/* Delete Button */}
-                        <button
-                          onClick={async () => {
-                            try {
-                              await deleteRequest(
-                                `${BASE_URL_API}/questionPaper/${doc.id}`
-                              );
-                              setDocuments([]);
-                              setCursor(undefined);
-                              setHasNextPage(true);
-                              fetchDocuments(true);
-                            } catch (error) {
-                              console.error("Error deleting paper:", error);
-                            }
-                          }}
-                          className={commonButtonClass}
-                        >
-                          Delete
-                        </button>
                       </div>
                     </div>
                   ))}
