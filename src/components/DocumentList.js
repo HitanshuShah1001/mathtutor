@@ -19,6 +19,7 @@ import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
 import ProfileMenu from "../subcomponents/ProfileMenu";
+import { CreatePaperButton, QuestionBankButton } from "./QuestionBankButton";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -151,7 +152,6 @@ export const DocumentSidebar = () => {
   const [showPaperDialog, setShowPaperDialog] = useState(false);
   const [showCustomCreateModal, setShowCustomCreateModal] = useState(false);
   const [totalSets, setTotalSets] = useState(1);
-
 
   /**
    * Custom paper creation form state:
@@ -542,21 +542,8 @@ export const DocumentSidebar = () => {
         {/* Header section with title and Create Question Paper button */}
         <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
         <div className="ml-auto flex items-center">
-          <button
-            onClick={() => navigate("/question-bank")}
-            className={`inline-flex items-center ${primaryButtonClass} mr-4`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Question Bank
-          </button>
-
-          <button
-            onClick={handleCreatePaper}
-            className={`inline-flex items-center ${primaryButtonClass}`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Create Question Paper
-          </button>
+          <QuestionBankButton />
+          <CreatePaperButton onClick={handleCreatePaper} />
           <div style={{ marginLeft: "10px" }}>
             <ProfileMenu />
           </div>
@@ -646,7 +633,6 @@ export const DocumentSidebar = () => {
             >
               {showFilterPanel ? "Hide Filters" : "Show Filters"}
             </button>
-
           </div>
 
           {/* Main documents display area:
@@ -734,7 +720,7 @@ export const DocumentSidebar = () => {
                                       sections: doc.sections,
                                       docName: doc.name,
                                       grade: doc.grade,
-                                      subject: doc.subject
+                                      subject: doc.subject,
                                     },
                                   });
                                 } else {
