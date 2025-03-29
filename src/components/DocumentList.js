@@ -731,6 +731,8 @@ export const DocumentSidebar = () => {
                                     state: {
                                       sections: doc.sections,
                                       docName: doc.name,
+                                      grade: doc.grade,
+                                      subject: doc.subject
                                     },
                                   });
                                 } else {

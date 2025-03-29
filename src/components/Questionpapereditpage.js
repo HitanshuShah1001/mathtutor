@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/img-redundant-alt */
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Trash,
   Image as ImageIcon,
@@ -27,7 +27,8 @@ import { renderTextWithMath } from "./RenderTextWithMath";
  */
 const QuestionPaperEditPage = () => {
   const { docId: questionPaperId } = useParams();
-
+  const location = useLocation();
+  const { grade:paperGrade, subject:paperSubject } = location.state || {};
   // State to hold the sections of the question paper
   const [sections, setSections] = useState([]);
 
@@ -75,7 +76,8 @@ const QuestionPaperEditPage = () => {
 
   // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
-
+  const [grade,setGrade] = useState(paperGrade);
+  const [subject,setSubject] = useState(paperSubject);
   // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
 
@@ -251,6 +253,8 @@ const QuestionPaperEditPage = () => {
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response.success) {
+        setGrade(response.questionPaper.grade);
+        setSubject(response.questionPaper.subject);
         setSections(response.questionPaper.sections || []);
       } else {
         if (response.message === INVALID_TOKEN) {
@@ -581,6 +585,8 @@ const QuestionPaperEditPage = () => {
         ...updatedQuestion,
         difficulty: updatedQuestion.difficulty?.toLowerCase(),
         questionPaperId,
+        grade,
+        subject
       };
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
@@ -596,7 +602,7 @@ const QuestionPaperEditPage = () => {
       if (response && response.success) {
         alert("Question edited successfully!");
       } else {
-        alert("Failed to upsert question.");
+        alert("Failed to edit question.");
       }
 
       await fetchQuestionPaperDetails();
@@ -827,6 +833,8 @@ const QuestionPaperEditPage = () => {
         questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
+        subject,
+        grade
       };
       if (newQuestion.type !== "mcq") {
         delete payload.options;
