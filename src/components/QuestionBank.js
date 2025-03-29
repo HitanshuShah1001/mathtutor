@@ -243,7 +243,7 @@ const QuestionBank = () => {
         fetchQuestions(false, cursor);
       }
     }
-  }, [hasNextPage, infiniteLoading, loading]);
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
 
   // Load more on scroll
   const handleInfiniteScroll = useCallback(() => {
@@ -277,6 +277,7 @@ const QuestionBank = () => {
     setCursor(undefined);
     setHasNextPage(true);
     fetchQuestions(true, undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   /**
@@ -403,24 +404,22 @@ const QuestionBank = () => {
 
   /**
    * Handle "Edit Question" button – sets up the selected question in newQuestion.
-   * (In a real app, you might also have "subject", "chapter", "grade" stored for each question.)
    */
   const handleEditQuestion = (id) => {
     const questionToEdit = questions.find(
       (q) => q.id.toString() === id.toString()
     );
-    console.log(questionToEdit);
     if (questionToEdit) {
       setNewQuestion({
         subject: questionToEdit.subject || "",
         chapter: questionToEdit.chapter || "",
         grade: questionToEdit.grade || "",
         id: questionToEdit.id,
-        type: questionToEdit.type || "", // use the value directly
+        type: questionToEdit.type || "",
         questionText: questionToEdit.questionText,
         imageUrls: questionToEdit.imageUrls || [],
         marks: questionToEdit.marks || "",
-        difficulty: questionToEdit.difficulty || "", // remove toUpperCase()
+        difficulty: questionToEdit.difficulty || "",
         options:
           questionToEdit.type === "mcq"
             ? questionToEdit.options?.map((opt) => ({
@@ -434,7 +433,6 @@ const QuestionBank = () => {
                 { key: "D", option: "", imageUrl: "" },
               ],
       });
-      console.log(isEditing);
       setIsEditing(true);
       setShowAddQuestionModal(true);
     }
@@ -457,8 +455,7 @@ const QuestionBank = () => {
   // SHIFT + $ insertion – optional logic
   const MATH_MARKER = "\u200B";
   const handleMathKeyDown = (e, field, index = null) => {
-    // Only do something if you want SHIFT + $ or META + $ etc.
-    // For simplicity, let's keep it a no-op or a placeholder:
+    // Optionally handle SHIFT + $ logic here, omitted for brevity
   };
 
   /**
@@ -527,11 +524,38 @@ const QuestionBank = () => {
   };
 
   /**
-   * Check if the mandatory fields are filled:
-   *   type, difficulty, marks, questionText
+   * Add an MCQ option (e.g., E, F, ...). We'll re-label keys A, B, C, ...
+   */
+  const addMCQOption = () => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      const newKey = String.fromCharCode(65 + newOptions.length); // A=65 in ASCII
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  /**
+   * Remove an MCQ option by index, then re-label the remaining options from A, B, C...
+   */
+  const removeMCQOption = (index) => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      newOptions.splice(index, 1);
+      // Re-label
+      const updatedOptions = newOptions.map((opt, idx) => ({
+        ...opt,
+        key: String.fromCharCode(65 + idx),
+      }));
+      return { ...prev, options: updatedOptions };
+    });
+  };
+
+  /**
+   * Check if the mandatory fields are filled.
    */
   const isFormValid = () => {
-    const { type, difficulty, marks, questionText, grade,subject } = newQuestion;
+    const { type, difficulty, marks, questionText, grade, subject } = newQuestion;
     if (
       !type ||
       !difficulty ||
@@ -598,10 +622,12 @@ const QuestionBank = () => {
             }
           })
         );
+      } else {
+        // Remove options if not mcq
+        delete newQuestion.options;
       }
 
       // 3) Build final payload
-      // Convert subject, chapter, grade to lowercase
       const payload = {
         ...newQuestion,
         subject: newQuestion.subject?.toLowerCase(),
@@ -612,9 +638,6 @@ const QuestionBank = () => {
       };
       if (newQuestion.type === "mcq") {
         payload.options = finalOptions;
-      } else {
-        // Remove options if not mcq
-        delete payload.options;
       }
 
       if (isEditing && newQuestion.id) {
@@ -1123,7 +1146,6 @@ const QuestionBank = () => {
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </option>
                 ))}
-                
               </select>
             </div>
 
@@ -1238,9 +1260,20 @@ const QuestionBank = () => {
                 <label className="block mb-1 font-medium">Options</label>
                 {newQuestion?.options?.map((option, index) => (
                   <div key={option.key} className="mb-4 border p-2 rounded">
-                    <label className="block text-sm font-medium">
-                      Option {option.key}
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium">
+                        Option {option.key}
+                      </label>
+                      {/* Remove Option Button */}
+                      {newQuestion.options.length > 1 && (
+                        <button
+                          onClick={() => removeMCQOption(index)}
+                          className="text-red-500 text-sm border border-red-500 px-2 py-1 rounded"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                     {/* Option Text */}
                     <input
                       type="text"
@@ -1303,6 +1336,14 @@ const QuestionBank = () => {
                     </div>
                   </div>
                 ))}
+
+                {/* Add Option Button */}
+                <button
+                  onClick={addMCQOption}
+                  className="border border-black rounded px-3 py-1 mt-2 hover:bg-gray-100"
+                >
+                  Add Option
+                </button>
               </div>
             )}
 
