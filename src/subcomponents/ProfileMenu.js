@@ -28,13 +28,7 @@ const ProfileMenu = () => {
           className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border"
           style={{ zIndex: 2000 }} // ensures the dropdown is above sibling elements
         >
-          <div 
-            className="flex items-center p-3 hover:bg-gray-100 cursor-pointer"
-            onClick={() => {/* Open Settings */}}
-          >
-            <SettingsIcon className="mr-2" size={18} />
-            Settings
-          </div>
+          
           <div 
             className="flex items-center p-3 hover:bg-gray-100 cursor-pointer text-red-600"
             onClick={handleLogout}
