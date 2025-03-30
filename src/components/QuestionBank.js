@@ -989,13 +989,16 @@ const QuestionBank = () => {
                     key={question.id}
                     className="flex justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(question.id)}
-                      onChange={() => toggleSelection(question.id)}
-                      className="mt-1 mr-3"
-                      style={{ height: "20px" }}
-                    />
+                    {question.questionSource !== "archive" && (
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(question.id)}
+                        onChange={() => toggleSelection(question.id)}
+                        className="mt-1 mr-3"
+                        style={{ height: "20px" }}
+                      />
+                    )}
+
                     <div className="flex-1">
                       <div className="mb-2">
                         {renderTextWithMath(question.questionText)}
