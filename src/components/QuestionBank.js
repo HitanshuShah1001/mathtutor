@@ -1043,12 +1043,12 @@ const QuestionBank = () => {
                       <div className="mt-2 text-sm text-gray-600">
                         {question.subject && (
                           <span className="mr-2">
-                            Subject: {question.subject}
+                            Subject: {question.subject} |
                           </span>
                         )}
                         {question.chapter && (
                           <span className="mr-2">
-                            Chapter: {question.chapter}
+                            Chapter: {question.chapter} |
                           </span>
                         )}
                         {question.grade && (
@@ -1165,15 +1165,19 @@ const QuestionBank = () => {
               <label className="block mb-1 font-medium">
                 Grade <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
-                min="1"
+              <select
                 value={newQuestion.grade}
                 onChange={(e) => handleNewQuestionChange(e, "grade")}
                 className={inputClass}
-                placeholder="Enter Grade"
                 required
-              />
+              >
+                <option value="">Select Grade</option>
+                {grades.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Question Type */}
