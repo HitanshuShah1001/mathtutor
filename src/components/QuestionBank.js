@@ -736,7 +736,7 @@ const QuestionBank = () => {
             name: customPaperName,
             grade: customPaperGrade,
             subject: customPaperSubject,
-            numberOfSets: totalSets,
+            numberOfSets: 1,
           },
         });
       } else {
@@ -1496,19 +1496,7 @@ const QuestionBank = () => {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-black mb-1 font-medium">
-                  Total Sets
-                </label>
-                <input
-                  type="number"
-                  value={totalSets}
-                  onChange={(e) => setTotalSets(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Enter total sets"
-                  min={1}
-                />
-              </div>
+              
               <div className="flex justify-end mt-4">
                 <button
                   className={commonButtonClass}

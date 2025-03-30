@@ -1278,6 +1278,30 @@ export const CustomPaperCreatePage = () => {
     return true;
   };
 
+  const handleAddOptionEdit = () => {
+    setEditedQuestion((prev) => {
+      const newOptions = [...(prev.options || [])];
+      const newKey = String.fromCharCode(65 + newOptions.length);
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleRemoveOptionEdit = (index) => {
+    setEditedQuestion((prev) => {
+      let newOptions = [...(prev.options || [])];
+      if (newOptions.length > 2) {
+        newOptions.splice(index, 1);
+        newOptions = newOptions.map((opt, idx) => ({
+          ...opt,
+          key: String.fromCharCode(65 + idx),
+        }));
+        return { ...prev, options: newOptions };
+      }
+      return prev;
+    });
+  };
+
   // ================== RENDER ==================
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
@@ -1564,7 +1588,6 @@ export const CustomPaperCreatePage = () => {
                       <option value="easy">easy</option>
                       <option value="medium">medium</option>
                       <option value="hard">hard</option>
-
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1716,12 +1739,33 @@ export const CustomPaperCreatePage = () => {
                                 handleOptionImageChange(idx, e.target.files[0])
                               }
                             />
+                            {editedQuestion.options.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveOptionEdit(idx)}
+                                className="ml-4"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
+                      {opt.option && opt.option.includes("$") && (
+                        <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
+                          {renderTextWithMath(opt.option)}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
+                <button
+                  type="button"
+                  onClick={handleAddOptionEdit}
+                  className="mt-2 px-3 py-1 border border-black rounded bg-black text-white"
+                >
+                  Add Option
+                </button>
               </div>
             )}
           </div>
