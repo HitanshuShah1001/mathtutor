@@ -785,6 +785,38 @@ export const CustomPaperCreatePage = () => {
         : [...prev, questionId]
     );
   };
+
+    /**
+   * Unmarks the selected questions from optional by removing their optionalGroupId.
+   */
+    const handleUnmarkAsOptional = async () => {
+      // Only meaningful if exactly 2 questions share the same optionalGroupId
+      if (selectedOptionalQuestions.length !== 2) return;
+      const updatedSections = sections.map((section) => {
+        const updatedQuestions = section.questions.map((q) => {
+          if (selectedOptionalQuestions.includes(q.id)) {
+            return { ...q, optionalGroupId: null };
+          }
+          return q;
+        });
+        return { ...section, questions: updatedQuestions };
+      });
+      setSections(updatedSections);
+  
+      const payload = { id: questionPaperId, sections: updatedSections };
+      const response = await postRequest(
+        `${BASE_URL_API}/questionPaper/update`,
+        payload
+      );
+      if (response.success) {
+        alert("Optional status removed successfully!");
+        setSelectedOptionalQuestions([]);
+        await fetchQuestionPaperDetails();
+      } else {
+        alert("Failed to remove optional status.");
+      }
+    };
+
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;
     const targetSectionIndex = sections.findIndex((section) =>
@@ -1302,6 +1334,23 @@ export const CustomPaperCreatePage = () => {
     });
   };
 
+  // Utility to retrieve two selected questions' data
+  const getSelectedQuestions = () => {
+    const allQuestions = sections.flatMap((section) => section.questions);
+    return selectedOptionalQuestions.map((id) =>
+      allQuestions.find((q) => q.id === id)
+    );
+  };
+
+  // Determine if the two selected questions share the same non-null optionalGroupId
+  const twoSelectedHaveSameGroupId = () => {
+    if (selectedOptionalQuestions.length !== 2) return false;
+    const [q1, q2] = getSelectedQuestions();
+    if (!q1 || !q2) return false;
+    if (!q1.optionalGroupId || !q2.optionalGroupId) return false;
+    return q1.optionalGroupId === q2.optionalGroupId;
+  };
+
   // ================== RENDER ==================
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
@@ -1340,13 +1389,23 @@ export const CustomPaperCreatePage = () => {
           {/* If exactly 2 non-mcq selected => Mark Optional */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
-              <button
-                onClick={handleMarkAsOptional}
-                className="px-4 py-2 rounded shadow-md"
-                style={{ backgroundColor: "black", color: "white" }}
-              >
-                Mark as Optional
-              </button>
+              {twoSelectedHaveSameGroupId() ? (
+                <button
+                  onClick={handleUnmarkAsOptional}
+                  className="px-4 py-2 rounded shadow-md"
+                  style={{ backgroundColor: "black", color: "white" }}
+                >
+                  Unmark as Optional
+                </button>
+              ) : (
+                <button
+                  onClick={handleMarkAsOptional}
+                  className="px-4 py-2 rounded shadow-md"
+                  style={{ backgroundColor: "black", color: "white" }}
+                >
+                  Mark as Optional
+                </button>
+              )}
             </div>
           )}
 
