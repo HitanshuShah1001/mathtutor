@@ -685,11 +685,12 @@ export const DocumentSidebar = () => {
                               console.error("Error loading document:", e);
                             }
                           }}
-                          className={commonButtonClass}
+                          className={`${commonButtonClass} ${
+                            doc.type === "archive" ? "w-full" : ""
+                          }`}
                         >
                           View
                         </button>
-
                         {/* Delete / Edit Buttons (if not archived) */}
                         {doc.type !== "archive" && (
                           <>
