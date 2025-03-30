@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { renderTextWithMath } from "./RenderTextWithMath";
+import ResizableTextarea from "./ResizableTextArea";
 
 /**
  * Main component for editing a question paper.
@@ -28,7 +29,7 @@ import { renderTextWithMath } from "./RenderTextWithMath";
 const QuestionPaperEditPage = () => {
   const { docId: questionPaperId } = useParams();
   const location = useLocation();
-  const { grade:paperGrade, subject:paperSubject } = location.state || {};
+  const { grade: paperGrade, subject: paperSubject } = location.state || {};
   // State to hold the sections of the question paper
   const [sections, setSections] = useState([]);
 
@@ -76,8 +77,8 @@ const QuestionPaperEditPage = () => {
 
   // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
-  const [grade,setGrade] = useState(paperGrade);
-  const [subject,setSubject] = useState(paperSubject);
+  const [grade, setGrade] = useState(paperGrade);
+  const [subject, setSubject] = useState(paperSubject);
   // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
 
@@ -586,7 +587,7 @@ const QuestionPaperEditPage = () => {
         difficulty: updatedQuestion.difficulty?.toLowerCase(),
         questionPaperId,
         grade,
-        subject
+        subject,
       };
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
@@ -834,7 +835,7 @@ const QuestionPaperEditPage = () => {
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
         subject,
-        grade
+        grade,
       };
       if (newQuestion.type !== "mcq") {
         delete payload.options;
@@ -1185,10 +1186,10 @@ const QuestionPaperEditPage = () => {
                 Edit Question Text:
               </label>
 
-              <textarea
-                className="w-full p-2 border rounded min-h-[100px]"
+              <ResizableTextarea
+                className="w-full p-2 border rounded"
                 value={editedQuestion.questionText}
-                onChange={(e) => handleQuestionTextChange(e.target.value)}
+                onChange={(e) => handleQuestionTextChange(e)}
                 style={{ whiteSpace: "pre-wrap" }}
               />
             </div>
@@ -1427,12 +1428,11 @@ const QuestionPaperEditPage = () => {
               <label className="block mb-1 font-medium">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <ResizableTextarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
                 className="border rounded px-2 py-1 w-full"
                 placeholder="Enter question text. Use Shift + $ to add math equations."
-                rows={4}
               />
               <div className="mt-2 text-sm text-gray-500">
                 Preview: {renderTextWithMath(newQuestion.questionText)}

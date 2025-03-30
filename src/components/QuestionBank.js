@@ -21,6 +21,7 @@ import { FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProfileMenu from "../subcomponents/ProfileMenu";
 import { renderTextWithMath } from "./RenderTextWithMath";
+import ResizableTextarea from "./ResizableTextArea";
 
 // Styling constants
 const inputClass =
@@ -1204,14 +1205,13 @@ const QuestionBank = () => {
               <label className="block mb-1 font-medium">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <ResizableTextarea
+                className="w-full p-2 border rounded"
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
-                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
-                className={inputClass}
-                placeholder="Enter question text. Use SHIFT + $ for math."
-                rows="4"
+                style={{ whiteSpace: "pre-wrap" }}
               />
+
               <div className="mt-2 text-sm text-gray-500">
                 Preview: {renderTextWithMath(newQuestion.questionText)}
               </div>
