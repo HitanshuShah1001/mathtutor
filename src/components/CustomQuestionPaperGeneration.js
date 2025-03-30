@@ -30,11 +30,33 @@ import {
 } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { v4 as uuidv4 } from "uuid";
-import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { renderTextWithMath, renderTruncatedTextWithMath } from "./RenderTextWithMath";
+import {
+  renderTextWithMath,
+  renderTruncatedTextWithMath,
+} from "./RenderTextWithMath";
+import ResizableTextarea from "./ResizableTextArea";
 
-// --- FilterGroupAccordion Component ---
+/**
+ * API to generate HTML link for question paper preview
+ */
+const getHtmlLink = async (questionPaperId) => {
+  const url = `${BASE_URL_API}/questionpaper/generateHtml`;
+  const body = { questionPaperId };
+  try {
+    const result = await postRequest(url, body);
+    return result?.questionPaper; // e.g., a URL to the generated HTML/PDF
+  } catch (error) {
+    console.error("Error generating HTML:", error);
+  }
+};
+
+const modalContainerClass =
+  "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60";
+const modalContentClass =
+  "bg-white border border-gray-300 shadow-lg rounded-lg w-[800px] max-h-[90vh] overflow-auto p-6 relative";
+
+// --- FilterGroupAccordion Component (from your code) ---
 const FilterGroupAccordion = ({
   label,
   filterKey,
@@ -46,7 +68,6 @@ const FilterGroupAccordion = ({
 }) => {
   return (
     <div className="border-b mb-2">
-      {/* Header: clickable area to expand/collapse */}
       <div
         className="flex items-center justify-between cursor-pointer py-2 px-1"
         onClick={() => onToggleAccordion(filterKey)}
@@ -56,7 +77,6 @@ const FilterGroupAccordion = ({
           {isOpen ? "▲" : "▼"}
         </span>
       </div>
-      {/* Body: Only visible if isOpen is true */}
       {isOpen && (
         <div className="flex flex-wrap gap-2 pb-3 pt-1 px-1">
           {values.map((val) => {
@@ -84,7 +104,6 @@ const FilterGroupAccordion = ({
   );
 };
 
-// --- QuestionBankModal Component ---
 export const QuestionBankModal = ({ onClose, onImport }) => {
   const blackButtonClass =
     "inline-flex items-center px-4 py-2 bg-black text-white font-semibold rounded-lg hover:bg-black transition-colors duration-200";
@@ -179,7 +198,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
   ];
 
   // --- Fetch Questions ---
-  const fetchQuestions = async (isInitialLoad = false) => {
+  const fetchQuestions = async (isInitialLoad = false, customCursor) => {
     if (isInitialLoad) {
       setLoading(true);
       setQuestions([]);
@@ -189,7 +208,10 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
       setInfiniteLoading(true);
     }
     try {
-      const queryParams = new URLSearchParams({ limit: "10" });
+      const queryParams = new URLSearchParams({
+        limit: "10",
+        ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
+      });
       const payload = {
         ...(filters.marks.length > 0 && { marks: filters.marks }),
         ...(filters.types.length > 0 && { types: filters.types }),
@@ -209,7 +231,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
         }),
-        ...(cursor && { cursor }),
       };
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
@@ -240,7 +261,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     const scrollThreshold = 100;
     const { clientHeight, scrollTop, scrollHeight } = scrollContainer;
     if (clientHeight + scrollTop >= scrollHeight - scrollThreshold) {
-      fetchQuestions(false);
+      fetchQuestions(false, cursor);
     }
   }, [hasNextPage, infiniteLoading, loading, cursor]);
 
@@ -601,33 +622,34 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
   );
 };
 
-/**
- * COMPONENT: CustomPaperCreatePage
- *
- * (Unchanged except that it references the updated <QuestionBankModal /> above.)
- * For brevity, here is the full code including your existing logic.
- */
+// =================== MAIN COMPONENT ===================
 export const CustomPaperCreatePage = () => {
   const location = useLocation();
-  // Retrieve questionPaperId passed via navigate state
-  const { questionPaperId, name, grade, subject } = location.state || {};
   const navigate = useNavigate();
+
+  // Retrieve questionPaperId passed via navigate state
+  const { questionPaperId, numberOfSets, grade, subject } =
+    location.state || {};
+
   // State to hold paper details (sections array)
   const [sections, setSections] = useState([]);
-  const [questionImageUrls, setQuestionImageUrls] = useState([]);
+
   // States for question editing
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
+  const [questionImageUrls, setQuestionImageUrls] = useState([]);
+
   // Search state for left panel
   const [searchTerm, setSearchTerm] = useState("");
-  // Modal for adding a new question (for a section)
+
+  // Modal for adding a new question
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState({});
+  const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
   const [sectionForNewQuestion, setSectionForNewQuestion] = useState(null);
   const [newQuestion, setNewQuestion] = useState({
     type: "mcq",
     questionText: "",
-    imageUrlS: [],
+    imageUrls: [],
     marks: "",
     difficulty: "",
     options: [
@@ -637,39 +659,36 @@ export const CustomPaperCreatePage = () => {
       { key: "D", option: "", imageUrl: "" },
     ],
   });
+
   // For optional question selection
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
   );
+
   // Panel resizing state
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
-  const [isEditingNewQuestion, setIsEditingNewQuestion] = useState(false);
+
   // Modal for importing questions from question bank
   const [showBankModal, setShowBankModal] = useState({
     visible: false,
     sectionName: null,
   });
+
   // Modal for adding a new section
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
 
-  // ======================= Helper Functions =======================
-  const getNextSectionLetter = () => {
-    if (!sections || sections.length === 0) return "A";
-    const letters = sections
-      .map((sec) => sec.name.trim().toUpperCase())
-      .filter((name) => /^[A-Z]$/.test(name));
-    if (letters.length === 0) return "A";
-    const maxLetter = letters.reduce((prev, curr) =>
-      curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
-    );
-    const nextCharCode = maxLetter.charCodeAt(0) + 1;
-    if (nextCharCode > "Z".charCodeAt(0)) return "A";
-    return String.fromCharCode(nextCharCode);
-  };
+  // For toggling collapsed sections
+  const [collapsedSections, setCollapsedSections] = useState({});
 
-  // ======================= API CALLS =======================
+  // ---------------------
+  // NEW: PREVIEW MODAL
+  // ---------------------
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalDocument, setModalDocument] = useState(null);
+
+  // ================== Fetch question paper details ===================
   const fetchQuestionPaperDetails = async () => {
     try {
       const response = await getRequest(
@@ -694,20 +713,36 @@ export const CustomPaperCreatePage = () => {
     fetchQuestionPaperDetails();
   }, []);
 
-  // =============== QUESTION CLICK / SELECTION ===============
-  const handleQuestionClick = (question) => {
-    setOriginalQuestion(question);
-    setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    setQuestionImageUrls([]);
+  // ======================================================
+  // PREVIEW BUTTON HANDLER
+  // ======================================================
+  const handlePreviewClick = async () => {
+    const link = await getHtmlLink(questionPaperId);
+    if (link) {
+      // link is presumably a URL to the generated HTML (or PDF)
+      setModalDocument(link?.questionPaperLink);
+      setModalVisible(true);
+    } else {
+      alert("Failed to generate preview");
+    }
   };
 
-  const isModified =
-    editedQuestion && originalQuestion
-      ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
-        questionImageUrls.length > 0
-      : false;
+  // ================== HELPER: Next Section Letter (A, B, C, ...) ==================
+  const getNextSectionLetter = () => {
+    if (!sections || sections.length === 0) return "A";
+    const letters = sections
+      .map((sec) => sec.name.trim().toUpperCase())
+      .filter((name) => /^[A-Z]$/.test(name));
+    if (letters.length === 0) return "A";
+    const maxLetter = letters.reduce((prev, curr) =>
+      curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
+    );
+    const nextCharCode = maxLetter.charCodeAt(0) + 1;
+    if (nextCharCode > "Z".charCodeAt(0)) return "A";
+    return String.fromCharCode(nextCharCode);
+  };
 
-  // ======================= MOUSE EVENTS FOR PANEL RESIZING =======================
+  // ================== MOUSE EVENTS FOR PANEL RESIZING ==================
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!isResizing) return;
@@ -726,9 +761,8 @@ export const CustomPaperCreatePage = () => {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing]);
-  const handleMouseDown = () => setIsResizing(true);
 
-  // ======================= LEFT PANEL FILTERING =======================
+  // ================== LEFT PANEL FILTERING ==================
   const getFilteredSections = () => {
     const lowerSearch = searchTerm?.toLowerCase();
     const filtered = sections.map((section) => {
@@ -742,7 +776,7 @@ export const CustomPaperCreatePage = () => {
   const visibleSections = getFilteredSections();
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
-  // ========== OPTIONAL QUESTION SELECTION (FOR NON-MCQs, etc.) =========
+  // ================== OPTIONAL QUESTIONS LOGIC ==================
   const toggleOptionalSelection = (questionId, e) => {
     e.stopPropagation();
     setSelectedOptionalQuestions((prev) =>
@@ -753,18 +787,15 @@ export const CustomPaperCreatePage = () => {
   };
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;
-
     const targetSectionIndex = sections.findIndex((section) =>
       selectedOptionalQuestions.every((id) =>
         section.questions.some((q) => q.id === id)
       )
     );
-
     if (targetSectionIndex === -1) {
       alert("Please select two questions from the same section.");
       return;
     }
-
     const optionalGroupId = uuidv4();
     const section = sections[targetSectionIndex];
     let sortedQuestions = [...section.questions].sort(
@@ -773,37 +804,28 @@ export const CustomPaperCreatePage = () => {
     const optionalQuestions = sortedQuestions
       .filter((q) => selectedOptionalQuestions.includes(q.id))
       .sort((a, b) => a.orderIndex - b.orderIndex);
-
     if (optionalQuestions.length !== 2) {
       alert("Could not find both selected questions in the section.");
       return;
     }
-
     const firstOptional = optionalQuestions[0];
     const secondOptional = optionalQuestions[1];
-
-    // Remove the second optional question from its original position.
+    // Remove second question from original position
     sortedQuestions = sortedQuestions.filter((q) => q.id !== secondOptional.id);
-
-    // Find the index of the first optional question in the new array.
+    // Insert second question right after the first
     const firstIndex = sortedQuestions.findIndex(
       (q) => q.id === firstOptional.id
     );
-
-    // Insert the second optional question right after the first.
     sortedQuestions.splice(firstIndex + 1, 0, { ...secondOptional });
-
-    // Now update the orderIndex for all questions in the section sequentially.
+    // Update orderIndex
     sortedQuestions = sortedQuestions.map((q, index) => ({
       ...q,
       orderIndex: index + 1,
       ...(selectedOptionalQuestions.includes(q.id) && { optionalGroupId }),
     }));
-
     const updatedSections = sections.map((sec, idx) =>
       idx === targetSectionIndex ? { ...sec, questions: sortedQuestions } : sec
     );
-
     setSections(updatedSections);
     const payload = { id: questionPaperId, sections: updatedSections };
     const response = await postRequest(
@@ -819,7 +841,19 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // ======================= EDITING HANDLERS =======================
+  // ================== QUESTION CLICK / EDIT ==================
+  const handleQuestionClick = (question) => {
+    setOriginalQuestion(question);
+    setEditedQuestion(JSON.parse(JSON.stringify(question)));
+    setQuestionImageUrls([]);
+  };
+  const isModified =
+    editedQuestion && originalQuestion
+      ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
+        questionImageUrls.length > 0
+      : false;
+
+  // ================== EDITING HANDLERS ==================
   const handleQuestionTextChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, questionText: e.target.value }));
   };
@@ -840,28 +874,25 @@ export const CustomPaperCreatePage = () => {
     });
   };
 
-  // ======================= IMAGE HANDLERS (EDIT) =======================
+  // ================== IMAGE HANDLERS (EDIT) ==================
   const handleQuestionImageChange = (e) => {
     const files = Array.from(e.target.files);
     setQuestionImageUrls((prev) => [...prev, ...files]);
   };
-
   const handleDeleteQuestionImage = (index) => {
     setEditedQuestion((prev) => {
-      const updatedImageUrls = [...prev.imageUrls];
+      const updatedImageUrls = [...(prev.imageUrls || [])];
       updatedImageUrls.splice(index, 1);
       return { ...prev, imageUrls: updatedImageUrls };
     });
   };
-
   const handleDiscardQuestionImage = (index) => {
     setQuestionImageUrls((prev) => {
-      const updatedFiles = [...prev];
-      updatedFiles.splice(index, 1);
-      return updatedFiles;
+      const updated = [...prev];
+      updated.splice(index, 1);
+      return updated;
     });
   };
-
   const handleOptionImageChange = (index, file) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
@@ -879,21 +910,21 @@ export const CustomPaperCreatePage = () => {
       return { ...prev, options: updatedOptions };
     });
   };
-
   const handleDiscardOptionImage = (index) => {
     setEditedQuestion((prev) => {
       const updatedOptions = [...(prev.options || [])];
       if (updatedOptions[index].imageUrl) {
         delete updatedOptions[index].imageUrl;
       }
-      return updatedOptions;
+      return { ...prev, options: updatedOptions };
     });
   };
 
-  // ======================= SAVE (EDITED) QUESTION =======================
+  // ================== SAVE (EDITED) QUESTION ==================
   const handleSave = async () => {
     try {
       let updatedImageUrls = editedQuestion.imageUrls || [];
+      // Upload new images
       if (questionImageUrls.length > 0) {
         const uploadedUrls = await Promise.all(
           questionImageUrls.map(async (file) => {
@@ -905,6 +936,7 @@ export const CustomPaperCreatePage = () => {
         );
         updatedImageUrls = [...updatedImageUrls, ...uploadedUrls];
       }
+      // Upload new option images
       const updatedOptions = await Promise.all(
         (editedQuestion.options || []).map(async (opt) => {
           let updatedOption = { ...opt };
@@ -918,17 +950,19 @@ export const CustomPaperCreatePage = () => {
           return updatedOption;
         })
       );
+
       const finalQuestion = {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
         options: updatedOptions,
         difficulty: editedQuestion.difficulty?.toLowerCase(),
       };
+
       const response = await postRequest(`${BASE_URL_API}/question/upsert`, {
         ...finalQuestion,
         questionPaperId: parseInt(questionPaperId),
         id: finalQuestion.id,
-        grade,
+        grade: parseInt(grade),
         subject,
       });
       if (response && response.success) {
@@ -946,7 +980,7 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // ======================= DELETE QUESTION =======================
+  // ================== DELETE QUESTION ==================
   const handleDeleteQuestion = async (questionId) => {
     if (!window.confirm("Are you sure you want to delete this question?"))
       return;
@@ -974,7 +1008,7 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // ======================= DRAG AND DROP REORDERING =======================
+  // ================== DRAG AND DROP REORDERING ==================
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
@@ -1002,7 +1036,7 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // ======================= ADD NEW QUESTION (Existing Flow) =======================
+  // ================== ADD NEW QUESTION (EXISTING FLOW) ==================
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
     setShowAddQuestionModal(true);
@@ -1022,7 +1056,6 @@ export const CustomPaperCreatePage = () => {
     });
   };
 
-  // For text-based changes in new question form
   const handleNewQuestionChange = (e, field, index) => {
     if (["type", "questionText", "marks", "difficulty"].includes(field)) {
       setNewQuestion((prev) => ({ ...prev, [field]: e.target.value }));
@@ -1034,11 +1067,9 @@ export const CustomPaperCreatePage = () => {
       });
     }
   };
-
   const handleMathKeyDown = (e, field, index) => {
-    // Optional logic for SHIFT+$ or similar
+    // optional if you want special handling for math input
   };
-
   const handleQuestionImageUpload = (e) => {
     const files = Array.from(e.target.files);
     setNewQuestion((prev) => ({
@@ -1046,7 +1077,6 @@ export const CustomPaperCreatePage = () => {
       imageUrls: [...prev.imageUrls, ...files],
     }));
   };
-
   const handleOptionImageUpload = (e, index) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1059,26 +1089,25 @@ export const CustomPaperCreatePage = () => {
       return { ...prev, options: newOptions };
     });
   };
-
   const calculateNextOrderIndex = (sectionName) => {
     const foundSection = sections.find((sec) => sec.name === sectionName);
     if (!foundSection) return 1;
     return foundSection.questions.length + 1;
   };
 
-  // ======================= NEW SECTION CREATION =======================
+  // ================== NEW SECTION CREATION ==================
   const handleAddSection = () => {
     if (!newSectionName.trim()) {
       alert("Please enter a valid section name.");
       return;
     }
-    const newSection = { name: newSectionName.trim(), questions: [] };
-    setSections([...sections, newSection]);
+    const newSec = { name: newSectionName.trim(), questions: [] };
+    setSections([...sections, newSec]);
     setShowAddSectionModal(false);
     setNewSectionName("");
   };
 
-  // ======================= IMPORT FROM QUESTION BANK =======================
+  // ================== IMPORT FROM QUESTION BANK ==================
   const handleImportQuestions = async (selectedIds) => {
     if (!selectedIds || selectedIds.length === 0) {
       setShowBankModal({ visible: false, sectionName: null });
@@ -1115,7 +1144,30 @@ export const CustomPaperCreatePage = () => {
     setShowBankModal({ visible: false, sectionName: null });
   };
 
-  // ======================= NEW QUESTION SUBMISSION =======================
+  const handleAddOption = () => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      const newKey = String.fromCharCode(65 + newOptions.length);
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+  const handleRemoveOption = (index) => {
+    setNewQuestion((prev) => {
+      let newOptions = [...prev.options];
+      if (newOptions.length > 2) {
+        newOptions.splice(index, 1);
+        // rename keys (A,B,C,...)
+        newOptions = newOptions.map((opt, idx) => ({
+          ...opt,
+          key: String.fromCharCode(65 + idx),
+        }));
+        return { ...prev, options: newOptions };
+      }
+      return prev;
+    });
+  };
+
   const handleNewQuestionSubmit = async () => {
     try {
       let uploadedImageUrls = [];
@@ -1152,6 +1204,8 @@ export const CustomPaperCreatePage = () => {
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
+        grade: parseInt(grade),
+        subject,
       };
       if (newQuestion.type !== "mcq") {
         delete createQuestionBody.options;
@@ -1163,7 +1217,7 @@ export const CustomPaperCreatePage = () => {
       setNewQuestion({
         type: "mcq",
         questionText: "",
-        imageUrl: "",
+        imageUrls: [],
         marks: "",
         difficulty: "",
         options: [
@@ -1189,7 +1243,6 @@ export const CustomPaperCreatePage = () => {
   const groupQuestions = (questions) => {
     const groups = [];
     const seen = new Set();
-
     questions.forEach((q) => {
       if (q.optionalGroupId) {
         if (!seen.has(q.optionalGroupId)) {
@@ -1197,7 +1250,7 @@ export const CustomPaperCreatePage = () => {
             (x) => x.optionalGroupId === q.optionalGroupId
           );
           groups.push({ groupId: q.optionalGroupId, questions: grouped });
-          seen.add(q.optionalGroupId);
+          grouped.forEach((item) => seen.add(item.optionalGroupId));
         }
       } else {
         groups.push({ groupId: null, questions: [q] });
@@ -1208,11 +1261,15 @@ export const CustomPaperCreatePage = () => {
 
   const isNewQuestionValid = () => {
     const { type, questionText, marks, difficulty, options } = newQuestion;
-    if (!type) return false;
-    if (!questionText.trim()) return false;
-    if (!marks || Number(marks) < 0) return false;
-    if (!difficulty) return false;
-
+    if (
+      !type ||
+      !questionText.trim() ||
+      !marks ||
+      Number(marks) < 0 ||
+      !difficulty
+    ) {
+      return false;
+    }
     if (type === "mcq") {
       for (let opt of options) {
         if (!opt.option.trim()) return false;
@@ -1221,15 +1278,15 @@ export const CustomPaperCreatePage = () => {
     return true;
   };
 
+  // ================== RENDER ==================
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
-      {/* ===================== LEFT PANEL (SECTIONS + QUESTIONS) ===================== */}
+      {/* ================= LEFT PANEL (Sections + Questions) ================= */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div
           className="border-r p-4 overflow-y-auto"
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
-          {/* Top Controls: Search box and "Add New Section" button */}
           <div className="mb-4 flex flex-col gap-2">
             <input
               type="text"
@@ -1238,6 +1295,13 @@ export const CustomPaperCreatePage = () => {
               placeholder="Search questions..."
               className="w-full p-2 border rounded"
             />
+            {/* Preview button */}
+            <button
+              onClick={handlePreviewClick}
+              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition-colors"
+            >
+              Preview
+            </button>
             <button
               onClick={() => {
                 setNewSectionName(getNextSectionLetter());
@@ -1249,7 +1313,7 @@ export const CustomPaperCreatePage = () => {
             </button>
           </div>
 
-          {/* If exactly 2 non-mcq selected => show Mark as Optional */}
+          {/* If exactly 2 non-mcq selected => Mark Optional */}
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               <button
@@ -1262,9 +1326,9 @@ export const CustomPaperCreatePage = () => {
             </div>
           )}
 
+          {/* Show all visible sections + questions (drag-n-drop not shown for brevity) */}
           {visibleSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-6">
-              {/* Section Heading with Import and Add Question buttons */}
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-lg">Section {section.name}</h3>
                 <div className="flex items-center gap-2">
@@ -1308,6 +1372,7 @@ export const CustomPaperCreatePage = () => {
                       <div ref={provided.innerRef} {...provided.droppableProps}>
                         {groupedQuestions.map((group, groupIndex) => {
                           if (group.questions.length > 1) {
+                            // Optional group
                             return (
                               <Draggable
                                 key={group.groupId}
@@ -1371,6 +1436,7 @@ export const CustomPaperCreatePage = () => {
                               </Draggable>
                             );
                           } else {
+                            // Normal question
                             const q = group.questions[0];
                             return (
                               <Draggable
@@ -1443,12 +1509,12 @@ export const CustomPaperCreatePage = () => {
 
       {/* Resize handle */}
       <div
-        onMouseDown={handleMouseDown}
+        onMouseDown={() => setIsResizing(true)}
         style={{ width: "5px", cursor: "col-resize" }}
         className="bg-gray-300"
       />
 
-      {/* RIGHT PANEL (EDIT SELECTED QUESTION) */}
+      {/* ============ RIGHT PANEL (EDIT SELECTED QUESTION) ============ */}
       <div
         className="p-4 overflow-hidden"
         style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
@@ -1512,10 +1578,10 @@ export const CustomPaperCreatePage = () => {
                   <label className="font-semibold mb-2 block">
                     Edit Question Text:
                   </label>
-                  <textarea
-                    className="w-full p-2 border rounded min-h-[100px]"
+                  <ResizableTextarea
+                    className="w-full p-2 border rounded"
                     value={editedQuestion.questionText}
-                    onChange={handleQuestionTextChange}
+                    onChange={(e) => handleQuestionTextChange(e)}
                     style={{ whiteSpace: "pre-wrap" }}
                   />
                 </div>
@@ -1579,6 +1645,7 @@ export const CustomPaperCreatePage = () => {
                   </div>
                 </div>
               )}
+              {/* Optional real-time math preview, if you want */}
             </div>
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>
@@ -1648,11 +1715,6 @@ export const CustomPaperCreatePage = () => {
                           </>
                         )}
                       </div>
-                      {opt.option && opt.option.includes("$") && (
-                        <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
-                          {renderTextWithMath(opt.option)}
-                        </div>
-                      )}
                     </li>
                   ))}
                 </ul>
@@ -1662,14 +1724,14 @@ export const CustomPaperCreatePage = () => {
         )}
       </div>
 
-      {/* Additional right handle if needed */}
+      {/* Additional right handle (if needed) */}
       <div
-        onMouseDown={handleMouseDown}
+        onMouseDown={() => setIsResizing(true)}
         style={{ width: "5px", cursor: "col-resize" }}
         className="bg-gray-300"
       />
 
-      {/* ===================== NEW SECTION CREATION MODAL ===================== */}
+      {/* ================== NEW QUESTION MODAL ================== */}
       {showAddQuestionModal && (
         <div className={modalContainerClass}>
           <div className={modalContentClass}>
@@ -1739,14 +1801,13 @@ export const CustomPaperCreatePage = () => {
               <label className="block mb-1 font-medium">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <ResizableTextarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
-                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
                 className="border rounded px-2 py-1 w-full"
                 placeholder="Enter question text. Use Shift + $ to add math equations."
-                rows={4}
               />
+
               <div className="mt-2 text-sm text-gray-500">
                 Preview: {renderTextWithMath(newQuestion.questionText)}
               </div>
@@ -1801,7 +1862,10 @@ export const CustomPaperCreatePage = () => {
                   Options <span className="text-red-500">*</span>
                 </label>
                 {newQuestion.options.map((option, index) => (
-                  <div key={option.key} className="mb-4 border p-2 rounded">
+                  <div
+                    key={option.key}
+                    className="mb-4 border p-2 rounded relative"
+                  >
                     <label className="block text-sm font-medium">
                       Option {option.key}
                     </label>
@@ -1836,8 +1900,25 @@ export const CustomPaperCreatePage = () => {
                         />
                       )}
                     </div>
+                    {newQuestion.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(index)}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                        title="Remove option"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 ))}
+                <button
+                  type="button"
+                  onClick={handleAddOption}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                >
+                  Add Option
+                </button>
               </div>
             )}
 
@@ -1875,6 +1956,7 @@ export const CustomPaperCreatePage = () => {
         </div>
       )}
 
+      {/* ================== BANK MODAL (Import from question bank) ================== */}
       {showBankModal.visible && (
         <QuestionBankModal
           onClose={() =>
@@ -1884,6 +1966,7 @@ export const CustomPaperCreatePage = () => {
         />
       )}
 
+      {/* ================== ADD SECTION MODAL ================== */}
       {showAddSectionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-[400px] p-6 relative">
@@ -1921,6 +2004,32 @@ export const CustomPaperCreatePage = () => {
               >
                 Confirm
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================== PREVIEW MODAL ================== */}
+      {modalVisible && modalDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative flex flex-col">
+            <button
+              onClick={() => setModalVisible(false)}
+              className="absolute top-4 right-4 px-3 py-1 border border-black rounded bg-black text-white"
+            >
+              Close
+            </button>
+            <div className="p-4 flex-1 overflow-auto">
+              {/* 
+                Display the returned link in an iframe.
+                The user can only view and close. 
+                (No download actions, no extra buttons)
+              */}
+              <iframe
+                src={modalDocument}
+                className="w-full h-full"
+                title="Question Paper Preview"
+              />
             </div>
           </div>
         </div>

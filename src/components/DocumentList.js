@@ -18,7 +18,7 @@ import {
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
-import ProfileMenu from "../subcomponents/ProfileMenu";
+import { CreatePaperButton, ProfileMenuButton, QuestionBankButton } from "./QuestionBankButton";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -109,7 +109,10 @@ export const DocumentSidebar = () => {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(""); // New search query state
+
+  // We have a searchQuery state, in case you later need to implement searching.
+  // For now, we'll reset pagination if it changes (same approach as filters).
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -147,6 +150,7 @@ export const DocumentSidebar = () => {
 
   const [showPaperDialog, setShowPaperDialog] = useState(false);
   const [showCustomCreateModal, setShowCustomCreateModal] = useState(false);
+  const [totalSets, setTotalSets] = useState(1);
 
   /**
    * Custom paper creation form state:
@@ -170,7 +174,6 @@ export const DocumentSidebar = () => {
    * Accordion state for each filter group:
    * - openFilterGroups: object storing a boolean for whether each filter category is expanded.
    */
-
   const [openFilterGroups, setOpenFilterGroups] = useState({
     grade: false,
     subject: false,
@@ -186,7 +189,6 @@ export const DocumentSidebar = () => {
     questionTypes: false,
   });
 
-  // Attach the mousemove and mouseup event listeners when dragging
   /**
    * filterGroups: This array of objects maps each category's label, key, and possible values.
    * We iterate over these to create multiple FilterGroupAccordion components.
@@ -202,16 +204,13 @@ export const DocumentSidebar = () => {
     { label: "Exam Name", key: "examNames", values: examNames },
     { label: "Marks", key: "marks", values: marksOptions },
     { label: "Type", key: "types", values: types },
+    // Uncomment if needed:
     // { label: "Difficulty", key: "difficulties", values: difficulties },
     // { label: "Question Type", key: "questionTypes", values: questionTypes },
   ];
 
   /**
    * toggleFilterValue: Helper function to add/remove a value in a multi-select filter category.
-   *
-   * For example, if a user clicks "Grade 10" in the "Grade" filter:
-   *  - If "Grade 10" is not in the array, we add it.
-   *  - If it is already selected, we remove it.
    */
   const toggleFilterValue = (filterKey, value) => {
     setFilters((prev) => {
@@ -222,6 +221,7 @@ export const DocumentSidebar = () => {
       return { ...prev, [filterKey]: newValues };
     });
   };
+
   /**
    * onToggleAccordion: Toggles the open/close state for a specific filter group's accordion.
    */
@@ -233,17 +233,19 @@ export const DocumentSidebar = () => {
   };
 
   /**
-   * fetchDocuments: Fetches the question papers from the server. It supports two modes:
-   *  - isInitialLoad = true: Clear out old documents and fetch a fresh list.
-   *  - isInitialLoad = false: Appends the next page of documents for infinite scrolling.
+   * fetchDocuments: Fetches the question papers from the server with pagination.
    *
-   * The function uses the 'filters' state to build a request body for the server,
-   * so the documents returned already match the selected filter criteria.
+   * If isInitialLoad=true, we fetch the first page (cursor omitted).
+   * If isInitialLoad=false, we must have a valid customCursor to fetch next pages.
    */
   const fetchDocuments = async (isInitialLoad = false, customCursor) => {
-    console.log("being called", isInitialLoad);
-    // Distinguish between initial load and subsequent loads
+    // If we're trying to load a subsequent page but have no cursor, skip to prevent duplicates
+    if (!isInitialLoad && (!customCursor || customCursor === null)) {
+      return;
+    }
+
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
+
     try {
       // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
@@ -266,23 +268,20 @@ export const DocumentSidebar = () => {
         requestBody.examNames = filters.examNames;
       if (filters.marks.length > 0) requestBody.marks = filters.marks;
       if (filters.types.length > 0) requestBody.types = filters.types;
-      if (filters.difficulties.length > 0)
+      if (filters.difficulties.length > 0) {
         requestBody.difficulties = filters.difficulties.map((d) =>
           d.toLowerCase()
         );
-      // if (filters.questionTypes.length > 0)
-      //   requestBody.questionTypes = filters.questionTypes;
-      if (searchQuery != "") {
-        requestBody.name = searchQuery;
       }
+      // if (filters.questionTypes.length > 0) {
+      //   requestBody.questionTypes = filters.questionTypes;
+      // }
 
-      // Use an API call helper (postRequest) to fetch data
       const data = await postRequest(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?${queryParams.toString()}`,
         requestBody
       );
 
-      // Check if API returned an error about the token; if so, reset local storage and navigate to login
       if (data.message) {
         if (data.message === INVALID_TOKEN) {
           removeDataFromLocalStorage();
@@ -291,28 +290,33 @@ export const DocumentSidebar = () => {
         }
       }
 
-      console.log(data, "data");
-      // If successful, update documents and pagination state
       if (data.success && data.questionPapers) {
-        isInitialLoad
-          ? setDocuments(data.questionPapers)
-          : setDocuments((prev) => [...prev, ...data.questionPapers]);
+        if (isInitialLoad) {
+          setDocuments(data.questionPapers);
+        } else {
+          setDocuments((prev) => [...prev, ...data.questionPapers]);
+        }
         setHasNextPage(data.hasNextPage);
         setCursor(data.nextCursor);
       } else {
-        if (isInitialLoad) setDocuments([]);
+        // If initial load fails or returns empty, clear out old docs
+        if (isInitialLoad) {
+          setDocuments([]);
+        }
       }
     } catch (error) {
       console.error("Error fetching documents:", error);
-      if (isInitialLoad) setDocuments([]);
+      if (isInitialLoad) {
+        setDocuments([]);
+      }
     } finally {
       isInitialLoad ? setLoading(false) : setInfiniteLoading(false);
     }
   };
 
   /**
-   * Whenever the filters change, we reset pagination (cursor, hasNextPage, etc.)
-   * and fetch the first batch of documents anew.
+   * Whenever the filters OR the searchQuery changes,
+   * we reset pagination and fetch the first batch of documents anew.
    */
   useEffect(() => {
     setDocuments([]);
@@ -326,8 +330,8 @@ export const DocumentSidebar = () => {
    * checkIfMoreDocumentsNeeded: This function checks if the viewport is larger than the content
    * and loads more documents if needed.
    */
-
   const checkIfMoreDocumentsNeeded = useCallback(() => {
+    // If we're out of pages or currently loading, do nothing
     if (!hasNextPage || infiniteLoading || loading) return;
 
     if (documentListRef.current) {
@@ -336,7 +340,7 @@ export const DocumentSidebar = () => {
       const headerHeight = 80; // 80px for the header
 
       // If the document list doesn't fill the viewport (with some buffer),
-      // and we have more documents to load, then load more
+      // and we have more documents, fetch the next page.
       if (
         documentListHeight < viewportHeight - headerHeight - 10 &&
         hasNextPage
@@ -344,22 +348,27 @@ export const DocumentSidebar = () => {
         fetchDocuments(false, cursor);
       }
     }
-  }, [hasNextPage, infiniteLoading, loading]);
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
 
   /**
    * handleInfiniteScroll: This function runs on the window scroll event.
    * If the user scrolls near the bottom, we fetch the next page of documents (if available).
    */
   const handleInfiniteScroll = useCallback(() => {
-    if (!hasNextPage || infiniteLoading || loading) return;
+    if (!hasNextPage || infiniteLoading || loading || !cursor) return;
     const scrollThreshold = 300;
     const scrolledToBottom =
       window.innerHeight + window.scrollY >=
       document.body.offsetHeight - scrollThreshold;
-    if (scrolledToBottom) fetchDocuments(false, cursor);
-  }, [hasNextPage, infiniteLoading, loading]);
+    if (scrolledToBottom) {
+      fetchDocuments(false, cursor);
+    }
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
 
-  // Initial check after documents load or resize
+  /**
+   * After each load of documents, we check if there's enough vertical space on the screen.
+   * If not, we load more (if available).
+   */
   useEffect(() => {
     checkIfMoreDocumentsNeeded();
     // Add resize event listener to check if more documents are needed when window is resized
@@ -374,16 +383,13 @@ export const DocumentSidebar = () => {
     return () => window.removeEventListener("scroll", handleInfiniteScroll);
   }, [handleInfiniteScroll]);
 
+  // Disable body scrolling when a modal is open
   useEffect(() => {
     if (modalVisible) {
-      // Disable scrolling on the background when modal is open
       document.body.style.overflow = "hidden";
     } else {
-      // Enable scrolling again when modal is closed
       document.body.style.overflow = "auto";
     }
-
-    // Cleanup: Reset the overflow when the component unmounts
     return () => {
       document.body.style.overflow = "auto";
     };
@@ -400,13 +406,11 @@ export const DocumentSidebar = () => {
       return result?.questionPaper;
     } catch (error) {
       console.error("Error generating HTML:", error);
-      throw error;
     }
   };
 
   /**
    * handleCreatePaper: Triggered when the user clicks the "Create Question Paper" button.
-   * It shows a dialog letting them choose between "AI-generated" or "Custom" question paper creation.
    */
   const handleCreatePaper = () => {
     setShowPaperDialog(true);
@@ -422,7 +426,6 @@ export const DocumentSidebar = () => {
 
   /**
    * handleConfirmCustomPaper: Validates the custom paper form and creates a new paper via the API.
-   * If successful, navigates to the custom question paper generation screen.
    */
   const handleConfirmCustomPaper = async () => {
     if (!customPaperName || !customPaperGrade || !customPaperSubject) {
@@ -445,6 +448,7 @@ export const DocumentSidebar = () => {
             name: customPaperName,
             grade: customPaperGrade,
             subject: customPaperSubject,
+            numberOfSets: totalSets,
           },
         });
       } else {
@@ -460,12 +464,10 @@ export const DocumentSidebar = () => {
       setErrorMessage("Something went wrong while creating the paper.");
     }
   };
+
   /**
    * downloadAllSetPDFs: For a multi-set question paper, each set can have its own link.
    * This function opens each link, loads it, prints as a PDF, and then closes the window.
-   *
-   * The reason for multiple links is that the same question paper can have multiple versions
-   * or sets for different sections / streams, etc.
    */
   const downloadAllSetPDFs = async (links) => {
     for (let index = 0; index < links?.length; index++) {
@@ -539,24 +541,9 @@ export const DocumentSidebar = () => {
         {/* Header section with title and Create Question Paper button */}
         <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
         <div className="ml-auto flex items-center">
-          <button
-            onClick={() => navigate("/question-bank")}
-            className={`inline-flex items-center ${primaryButtonClass} mr-4`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Question Bank
-          </button>
-
-          <button
-            onClick={handleCreatePaper}
-            className={`inline-flex items-center ${primaryButtonClass}`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Create Question Paper
-          </button>
-          <div style={{ marginLeft: "10px" }}>
-            <ProfileMenu />
-          </div>
+          <QuestionBankButton />
+          <CreatePaperButton onClick={handleCreatePaper} />
+          <ProfileMenuButton />
         </div>
       </header>
 
@@ -636,7 +623,7 @@ export const DocumentSidebar = () => {
           }`}
         >
           {/* Button to toggle filter sidebar visibility */}
-          <div className="mb-4">
+          <div className="mb-4 flex items-center gap-4">
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
               className="px-3 py-2 border rounded"
@@ -644,6 +631,7 @@ export const DocumentSidebar = () => {
               {showFilterPanel ? "Hide Filters" : "Show Filters"}
             </button>
           </div>
+
           {/* Main documents display area:
                 1. Show a spinner if loading the initial set of documents.
                 2. Otherwise, list the documents or show a "no results" message if empty. 
@@ -675,29 +663,32 @@ export const DocumentSidebar = () => {
                         </h3>
                         <p className="text-sm text-gray-500">
                           {getCapitalSubjectName({ subject: doc.subject })} •
-                          Grade {doc.grade} • Status :-{" "}
+                          Grade {doc.grade} • Status:{" "}
                           {doc.status.charAt(0).toUpperCase() +
                             doc.status.slice(1)}
                         </p>
-                        {/* <p className="text-sm text-gray-500">
-                          Created on{" "}
-                          {new Date(doc.createdAt).toLocaleDateString()}
-                        </p> */}
                       </div>
                       <div className="flex gap-2">
+                        {/* View Button */}
                         <button
                           onClick={async () => {
-                            const docWithQuestionAndSolutionLink =
-                              await getHtmlLink(doc.id);
-                            setModalDocument(docWithQuestionAndSolutionLink);
-                            setModalActiveTab("question");
-                            setModalVisible(true);
+                            try {
+                              const docWithQuestionAndSolutionLink =
+                                await getHtmlLink(doc.id);
+                              setModalDocument(docWithQuestionAndSolutionLink);
+                              setModalActiveTab("question");
+                              setModalVisible(true);
+                            } catch (e) {
+                              console.error("Error loading document:", e);
+                            }
                           }}
-                          className={commonButtonClass}
+                          className={`${commonButtonClass} ${
+                            doc.type === "archive" ? "w-full" : ""
+                          }`}
                         >
                           View
                         </button>
-                        {/* View Button */}
+                        {/* Delete / Edit Buttons (if not archived) */}
                         {doc.type !== "archive" && (
                           <>
                             <button
@@ -706,6 +697,7 @@ export const DocumentSidebar = () => {
                                   await deleteRequest(
                                     `${BASE_URL_API}/questionPaper/${doc.id}`
                                   );
+                                  // After deleting, reset and fetch again
                                   setDocuments([]);
                                   setCursor(undefined);
                                   setHasNextPage(true);
@@ -725,6 +717,8 @@ export const DocumentSidebar = () => {
                                     state: {
                                       sections: doc.sections,
                                       docName: doc.name,
+                                      grade: doc.grade,
+                                      subject: doc.subject,
                                     },
                                   });
                                 } else {
@@ -739,11 +733,11 @@ export const DocumentSidebar = () => {
                             </button>
                           </>
                         )}
-
-                        {/* Delete Button */}
                       </div>
                     </div>
                   ))}
+
+                  {/* Infinite-scrolling status */}
                   {hasNextPage ? (
                     infiniteLoading && (
                       <div className="text-center py-4 text-gray-500">
@@ -762,7 +756,6 @@ export const DocumentSidebar = () => {
         </main>
       </div>
 
-      {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -820,6 +813,8 @@ export const DocumentSidebar = () => {
           </div>
         </div>
       )}
+
+      {/* Paper Type Selection Dialog */}
       {showPaperDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div
@@ -901,7 +896,7 @@ export const DocumentSidebar = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
                   <option value="">-- Select Grade --</option>
-                  {grades.map((g) => (
+                  {grades?.map((g) => (
                     <option key={g} value={g}>
                       {g}
                     </option>
@@ -918,12 +913,25 @@ export const DocumentSidebar = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
                   <option value="">-- Select Subject --</option>
-                  {subjects.map((sub) => (
+                  {subjects?.map((sub) => (
                     <option key={sub} value={sub}>
                       {sub}
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Total Sets
+                </label>
+                <input
+                  type="number"
+                  value={totalSets}
+                  onChange={(e) => setTotalSets(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Enter total sets"
+                  min={1}
+                />
               </div>
               <div className="flex justify-end mt-4">
                 <button

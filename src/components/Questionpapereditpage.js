@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/img-redundant-alt */
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Trash,
   Image as ImageIcon,
@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { renderTextWithMath } from "./RenderTextWithMath";
+import ResizableTextarea from "./ResizableTextArea";
 
 /**
  * Main component for editing a question paper.
@@ -27,7 +28,8 @@ import { renderTextWithMath } from "./RenderTextWithMath";
  */
 const QuestionPaperEditPage = () => {
   const { docId: questionPaperId } = useParams();
-
+  const location = useLocation();
+  const { grade: paperGrade, subject: paperSubject } = location.state || {};
   // State to hold the sections of the question paper
   const [sections, setSections] = useState([]);
 
@@ -75,7 +77,8 @@ const QuestionPaperEditPage = () => {
 
   // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
-
+  const [grade, setGrade] = useState(paperGrade);
+  const [subject, setSubject] = useState(paperSubject);
   // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
 
@@ -194,6 +197,54 @@ const QuestionPaperEditPage = () => {
     setIsResizing(true);
   };
 
+  const handleAddOptionNew = () => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      const newKey = String.fromCharCode(65 + newOptions.length);
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleRemoveOptionNew = (index) => {
+    setNewQuestion((prev) => {
+      let newOptions = [...prev.options];
+      if (newOptions.length > 2) {
+        newOptions.splice(index, 1);
+        newOptions = newOptions.map((opt, idx) => ({
+          ...opt,
+          key: String.fromCharCode(65 + idx),
+        }));
+        return { ...prev, options: newOptions };
+      }
+      return prev;
+    });
+  };
+
+  const handleAddOptionEdit = () => {
+    setEditedQuestion((prev) => {
+      const newOptions = [...(prev.options || [])];
+      const newKey = String.fromCharCode(65 + newOptions.length);
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  const handleRemoveOptionEdit = (index) => {
+    setEditedQuestion((prev) => {
+      let newOptions = [...(prev.options || [])];
+      if (newOptions.length > 2) {
+        newOptions.splice(index, 1);
+        newOptions = newOptions.map((opt, idx) => ({
+          ...opt,
+          key: String.fromCharCode(65 + idx),
+        }));
+        return { ...prev, options: newOptions };
+      }
+      return prev;
+    });
+  };
+
   /**
    * Fetches the details of the question paper (sections, questions) from the server.
    */
@@ -203,6 +254,8 @@ const QuestionPaperEditPage = () => {
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response.success) {
+        setGrade(response.questionPaper.grade);
+        setSubject(response.questionPaper.subject);
         setSections(response.questionPaper.sections || []);
       } else {
         if (response.message === INVALID_TOKEN) {
@@ -240,7 +293,6 @@ const QuestionPaperEditPage = () => {
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
         questionImageUrls.length > 0
       : false;
-
 
   /**
    * Renders truncated question text with math. Only shows up to maxLength characters.
@@ -534,6 +586,8 @@ const QuestionPaperEditPage = () => {
         ...updatedQuestion,
         difficulty: updatedQuestion.difficulty?.toLowerCase(),
         questionPaperId,
+        grade,
+        subject,
       };
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
@@ -549,7 +603,7 @@ const QuestionPaperEditPage = () => {
       if (response && response.success) {
         alert("Question edited successfully!");
       } else {
-        alert("Failed to upsert question.");
+        alert("Failed to edit question.");
       }
 
       await fetchQuestionPaperDetails();
@@ -780,6 +834,8 @@ const QuestionPaperEditPage = () => {
         questionPaperId,
         difficulty: newQuestion.difficulty?.toLowerCase(),
         orderIndex,
+        subject,
+        grade,
       };
       if (newQuestion.type !== "mcq") {
         delete payload.options;
@@ -1130,10 +1186,10 @@ const QuestionPaperEditPage = () => {
                 Edit Question Text:
               </label>
 
-              <textarea
-                className="w-full p-2 border rounded min-h-[100px]"
+              <ResizableTextarea
+                className="w-full p-2 border rounded"
                 value={editedQuestion.questionText}
-                onChange={(e) => handleQuestionTextChange(e.target.value)}
+                onChange={(e) => handleQuestionTextChange(e)}
                 style={{ whiteSpace: "pre-wrap" }}
               />
             </div>
@@ -1206,87 +1262,95 @@ const QuestionPaperEditPage = () => {
               <div>
                 <strong>Options</strong>
                 <ul className="list-disc ml-6 mt-2 space-y-3">
-                  {editedQuestion.options.map((opt, idx) => {
-                    return (
-                      <li key={idx} className="ml-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">{opt.key}.</span>
-                          <textarea
-                            className="w-1/2 p-2 border rounded min-h-[40px]"
-                            value={opt.option || ""}
-                            onChange={(e) =>
-                              handleOptionChange(idx, e.target.value)
-                            }
-                          />
-                          {/* Option Image Handling */}
-                          {opt.imageUrl ? (
-                            <div className="flex items-center gap-2 ml-2">
-                              <img
-                                src={
-                                  typeof opt.imageUrl === "string"
-                                    ? opt.imageUrl
-                                    : URL.createObjectURL(opt.imageUrl)
-                                }
-                                alt={`Option ${opt.key}`}
-                                className="h-24"
-                              />
-                              {typeof opt.imageUrl === "string" ? (
-                                // Existing image: user can remove it
-                                <button
-                                  onClick={() => handleDeleteOptionImage(idx)}
-                                  className="px-2 py-1 bg-red-200 rounded text-sm"
-                                  title="Remove Option Image"
-                                >
-                                  <Trash size={16} />
-                                </button>
-                              ) : (
-                                // Newly uploaded image: user can discard
-                                <button
-                                  onClick={() => handleDiscardOptionImage(idx)}
-                                  className="px-2 py-1 bg-gray-200 rounded text-sm"
-                                  title="Discard new image"
-                                >
-                                  Discard
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              <label
-                                htmlFor={`option-image-${idx}`}
-                                className="cursor-pointer"
-                                title="Upload Option Image"
+                  {editedQuestion.options.map((opt, idx) => (
+                    <li key={idx} className="ml-3 relative">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{opt.key}.</span>
+                        <textarea
+                          className="w-1/2 p-2 border rounded min-h-[40px]"
+                          value={opt.option || ""}
+                          onChange={(e) =>
+                            handleOptionChange(idx, e.target.value)
+                          }
+                        />
+                        {opt.imageUrl ? (
+                          <div className="flex items-center gap-2 ml-2">
+                            <img
+                              src={
+                                typeof opt.imageUrl === "string"
+                                  ? opt.imageUrl
+                                  : URL.createObjectURL(opt.imageUrl)
+                              }
+                              alt={`Option ${opt.key}`}
+                              className="h-24"
+                            />
+                            {typeof opt.imageUrl === "string" ? (
+                              <button
+                                onClick={() => handleDeleteOptionImage(idx)}
+                                className="px-2 py-1 bg-red-200 rounded text-sm"
+                                title="Remove Option Image"
                               >
-                                <ImageIcon
-                                  size={20}
-                                  className="text-gray-500 hover:text-gray-700"
-                                />
-                              </label>
-                              <input
-                                id={`option-image-${idx}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) =>
-                                  handleOptionImageChange(
-                                    idx,
-                                    e.target.files[0]
-                                  )
-                                }
-                              />
-                            </>
-                          )}
-                        </div>
-                        {/* Math Preview for Option */}
-                        {opt.option && opt.option.includes("$") && (
-                          <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
-                            {renderTextWithMath(opt.option)}
+                                <Trash size={16} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDiscardOptionImage(idx)}
+                                className="px-2 py-1 bg-gray-200 rounded text-sm"
+                                title="Discard new image"
+                              >
+                                Discard
+                              </button>
+                            )}
                           </div>
+                        ) : (
+                          <>
+                            <label
+                              htmlFor={`option-image-${idx}`}
+                              className="cursor-pointer"
+                              title="Upload Option Image"
+                            >
+                              <ImageIcon
+                                size={20}
+                                className="text-gray-500 hover:text-gray-700"
+                              />
+                            </label>
+                            <input
+                              id={`option-image-${idx}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) =>
+                                handleOptionImageChange(idx, e.target.files[0])
+                              }
+                            />
+                            {editedQuestion.options.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveOptionEdit(idx)}
+                                className="ml-4"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </>
                         )}
-                      </li>
-                    );
-                  })}
+                      </div>
+
+                      {opt.option && opt.option.includes("$") && (
+                        <div className="ml-8 bg-gray-50 p-2 rounded text-sm text-gray-700">
+                          {renderTextWithMath(opt.option)}
+                        </div>
+                      )}
+                    </li>
+                  ))}
                 </ul>
+                <button
+                  type="button"
+                  onClick={handleAddOptionEdit}
+                  className="mt-2 px-3 py-1 border border-black rounded bg-black text-white"
+                >
+                  Add Option
+                </button>
               </div>
             )}
           </div>
@@ -1364,12 +1428,11 @@ const QuestionPaperEditPage = () => {
               <label className="block mb-1 font-medium">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <ResizableTextarea
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
                 className="border rounded px-2 py-1 w-full"
                 placeholder="Enter question text. Use Shift + $ to add math equations."
-                rows={4}
               />
               <div className="mt-2 text-sm text-gray-500">
                 Preview: {renderTextWithMath(newQuestion.questionText)}
@@ -1425,7 +1488,10 @@ const QuestionPaperEditPage = () => {
                   Options <span className="text-red-500">*</span>
                 </label>
                 {newQuestion.options.map((option, index) => (
-                  <div key={option.key} className="mb-4 border p-2 rounded">
+                  <div
+                    key={option.key}
+                    className="mb-4 border p-2 rounded relative"
+                  >
                     <label className="block text-sm font-medium">
                       Option {option.key}
                     </label>
@@ -1460,8 +1526,24 @@ const QuestionPaperEditPage = () => {
                         />
                       )}
                     </div>
+                    {newQuestion.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOptionNew(index)}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 ))}
+                <button
+                  type="button"
+                  onClick={handleAddOptionNew}
+                  className="px-3 py-1 border border-black rounded bg-black text-white"
+                >
+                  Add Option
+                </button>
               </div>
             )}
 

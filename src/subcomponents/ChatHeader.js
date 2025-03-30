@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom"; // Import useLocation
 import ProfileMenu from "./ProfileMenu";
 import { AuthContext } from "../utils/AuthContext";
 import { actionButtonClass } from "../components/Questionpaper";
+import { QuestionBankButton } from "../components/QuestionBankButton";
+import { primaryButtonClass } from "../components/DocumentList";
 
 export const ChatHeader = ({ title, handleOpenModal }) => {
   const { selectedChat } = useContext(AuthContext);
@@ -25,15 +27,16 @@ export const ChatHeader = ({ title, handleOpenModal }) => {
         {isQuestionPaperPage ? (
           <>
             <button
-              className={`${actionButtonClass} btn-hover`}
+              className={`${primaryButtonClass} btn-hover !ml-0 `}
               onClick={handleOpenModal}
             >
               Load from existing blueprint
             </button>
+            <QuestionBankButton />
 
             <Link
               to="/question-paper-list"
-              className={`${actionButtonClass} btn-hover`}
+              className={`${primaryButtonClass} btn-hover`}
             >
               Question Papers
             </Link>

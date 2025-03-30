@@ -43,7 +43,7 @@ const GenerateQuestionPaper = () => {
   const [marks, setMarks] = useState("");
   const [numberOfSets, setNumberOfSets] = useState(1);
   const [title, setTitle] = useState("");
-  const [academyName, setAcademyName] = useState("Knowledge High School");
+  const [academyName, setAcademyName] = useState("Surya International School");
   const [timeDuration, setTimeDuration] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -219,7 +219,7 @@ const GenerateQuestionPaper = () => {
     let blueprint = {
       name: title,
       grade: parseInt(standard),
-      subject:subject.toLowerCase(),
+      subject: subject.toLowerCase(),
       totalMarks: parseInt(marks),
     };
     let breakdown = [];
@@ -235,7 +235,7 @@ const GenerateQuestionPaper = () => {
     const res = await putRequest(`${BASE_URL_API}/blueprint/create`, {
       blueprint,
     });
-    console.log(res,"response that came");
+    console.log(res, "response that came");
     if (!res?.success) {
       alert(res.message ?? "Some Error Occurred");
     } else {

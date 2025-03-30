@@ -17,10 +17,14 @@ import {
 } from "../constants/constants";
 import { postRequest, deleteRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ProfileMenu from "../subcomponents/ProfileMenu";
 import { renderTextWithMath } from "./RenderTextWithMath";
+import ResizableTextarea from "./ResizableTextArea";
+import {
+  CreatePaperButton,
+  ProfileMenuButton,
+  QuestionPapersButton,
+} from "./QuestionBankButton";
 
 // Styling constants
 const inputClass =
@@ -183,6 +187,7 @@ const QuestionBank = () => {
   const [customPaperName, setCustomPaperName] = useState("");
   const [customPaperGrade, setCustomPaperGrade] = useState("");
   const [customPaperSubject, setCustomPaperSubject] = useState("");
+  const [totalSets, setTotalSets] = useState(1);
   const [errorMessage, setErrorMessage] = useState("");
 
   /**
@@ -243,11 +248,11 @@ const QuestionBank = () => {
         fetchQuestions(false, cursor);
       }
     }
-  }, [hasNextPage, infiniteLoading, loading]);
+  }, [hasNextPage, infiniteLoading, loading, cursor]);
 
   // Load more on scroll
   const handleInfiniteScroll = useCallback(() => {
-    if (!hasNextPage || infiniteLoading || loading) return;
+    if (!hasNextPage || infiniteLoading || loading || !cursor) return;
     const scrollThreshold = 300;
     const scrolledToBottom =
       window.innerHeight + window.scrollY >=
@@ -277,6 +282,7 @@ const QuestionBank = () => {
     setCursor(undefined);
     setHasNextPage(true);
     fetchQuestions(true, undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   /**
@@ -309,10 +315,6 @@ const QuestionBank = () => {
           questionTypes: filters.questionTypes,
         }),
       };
-
-      if (searchQuery !== "") {
-        payload.name = searchQuery;
-      }
 
       const response = await postRequest(
         `${BASE_URL_API}/question/getPaginatedQuestions?${queryParams.toString()}`,
@@ -356,8 +358,7 @@ const QuestionBank = () => {
 
   // Handles deleting the selected questions
   const handleDeleteQuestions = async () => {
-    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
-    if (selectedIds.length === 0) {
+    if (selected.length === 0) {
       alert("Please select at least one question to delete.");
       return;
     }
@@ -368,7 +369,7 @@ const QuestionBank = () => {
     }
     try {
       await Promise.all(
-        selectedIds?.map((id) =>
+        selected?.map((id) =>
           deleteRequest(`${BASE_URL_API}/question/delete`, { id })
         )
       );
@@ -408,42 +409,37 @@ const QuestionBank = () => {
 
   /**
    * Handle "Edit Question" button – sets up the selected question in newQuestion.
-   * (In a real app, you might also have "subject", "chapter", "grade" stored for each question.)
    */
-  const handleEditQuestion = () => {
-    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
-    if (selectedIds.length === 1) {
-      const questionId = selectedIds[0];
-      const questionToEdit = questions.find(
-        (q) => q.id.toString() === questionId.toString()
-      );
-      if (questionToEdit) {
-        setNewQuestion({
-          subject: questionToEdit.subject || "",
-          chapter: questionToEdit.chapter || "",
-          grade: questionToEdit.grade || "",
-          id: questionToEdit.id,
-          type: questionToEdit.type || "", // use the value directly
-          questionText: questionToEdit.questionText,
-          imageUrls: questionToEdit.imageUrls || [],
-          marks: questionToEdit.marks || "",
-          difficulty: questionToEdit.difficulty || "", // remove toUpperCase()
-          options:
-            questionToEdit.type === "mcq"
-              ? questionToEdit.options?.map((opt) => ({
-                  ...opt,
-                  imageUrl: opt.imageUrl || "",
-                }))
-              : [
-                  { key: "A", option: "", imageUrl: "" },
-                  { key: "B", option: "", imageUrl: "" },
-                  { key: "C", option: "", imageUrl: "" },
-                  { key: "D", option: "", imageUrl: "" },
-                ],
-        });
-        setIsEditing(true);
-        setShowAddQuestionModal(true);
-      }
+  const handleEditQuestion = (id) => {
+    const questionToEdit = questions.find(
+      (q) => q.id.toString() === id.toString()
+    );
+    if (questionToEdit) {
+      setNewQuestion({
+        subject: questionToEdit.subject || "",
+        chapter: questionToEdit.chapter || "",
+        grade: questionToEdit.grade || "",
+        id: questionToEdit.id,
+        type: questionToEdit.type || "",
+        questionText: questionToEdit.questionText,
+        imageUrls: questionToEdit.imageUrls || [],
+        marks: questionToEdit.marks || "",
+        difficulty: questionToEdit.difficulty || "",
+        options:
+          questionToEdit.type === "mcq"
+            ? questionToEdit.options?.map((opt) => ({
+                ...opt,
+                imageUrl: opt.imageUrl || "",
+              }))
+            : [
+                { key: "A", option: "", imageUrl: "" },
+                { key: "B", option: "", imageUrl: "" },
+                { key: "C", option: "", imageUrl: "" },
+                { key: "D", option: "", imageUrl: "" },
+              ],
+      });
+      setIsEditing(true);
+      setShowAddQuestionModal(true);
     }
   };
 
@@ -452,7 +448,10 @@ const QuestionBank = () => {
       (id) => selected[id]
     ).length;
     return selectedCount === 1 ? (
-      <button onClick={handleEditQuestion} className={blackButtonClass}>
+      <button
+        onClick={() => handleEditQuestion(selected[0])}
+        className={blackButtonClass}
+      >
         Edit Question
       </button>
     ) : null;
@@ -461,8 +460,7 @@ const QuestionBank = () => {
   // SHIFT + $ insertion – optional logic
   const MATH_MARKER = "\u200B";
   const handleMathKeyDown = (e, field, index = null) => {
-    // Only do something if you want SHIFT + $ or META + $ etc.
-    // For simplicity, let's keep it a no-op or a placeholder:
+    // Optionally handle SHIFT + $ logic here, omitted for brevity
   };
 
   /**
@@ -531,12 +529,48 @@ const QuestionBank = () => {
   };
 
   /**
-   * Check if the mandatory fields are filled:
-   *   type, difficulty, marks, questionText
+   * Add an MCQ option (e.g., E, F, ...). We'll re-label keys A, B, C, ...
+   */
+  const addMCQOption = () => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      const newKey = String.fromCharCode(65 + newOptions.length); // A=65 in ASCII
+      newOptions.push({ key: newKey, option: "", imageUrl: "" });
+      return { ...prev, options: newOptions };
+    });
+  };
+
+  /**
+   * Remove an MCQ option by index, then re-label the remaining options from A, B, C...
+   */
+  const removeMCQOption = (index) => {
+    setNewQuestion((prev) => {
+      const newOptions = [...prev.options];
+      newOptions.splice(index, 1);
+      // Re-label
+      const updatedOptions = newOptions.map((opt, idx) => ({
+        ...opt,
+        key: String.fromCharCode(65 + idx),
+      }));
+      return { ...prev, options: updatedOptions };
+    });
+  };
+
+  /**
+   * Check if the mandatory fields are filled.
    */
   const isFormValid = () => {
-    const { type, difficulty, marks, questionText } = newQuestion;
-    if (!type || !difficulty || !marks || !questionText.trim()) {
+    const { type, difficulty, marks, questionText, grade, subject } =
+      newQuestion;
+    if (
+      !type ||
+      !difficulty ||
+      !marks ||
+      !questionText.trim() ||
+      !grade ||
+      !subject ||
+      Number(grade) < 1
+    ) {
       return false;
     }
     return true;
@@ -594,23 +628,22 @@ const QuestionBank = () => {
             }
           })
         );
+      } else {
+        // Remove options if not mcq
+        delete newQuestion.options;
       }
 
       // 3) Build final payload
-      // Convert subject, chapter, grade to lowercase
       const payload = {
         ...newQuestion,
         subject: newQuestion.subject?.toLowerCase(),
         chapter: newQuestion.chapter?.toLowerCase(),
-        grade: newQuestion.grade,
+        grade: parseInt(newQuestion.grade),
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
       if (newQuestion.type === "mcq") {
         payload.options = finalOptions;
-      } else {
-        // Remove options if not mcq
-        delete payload.options;
       }
 
       if (isEditing && newQuestion.id) {
@@ -703,6 +736,7 @@ const QuestionBank = () => {
             name: customPaperName,
             grade: customPaperGrade,
             subject: customPaperSubject,
+            numberOfSets: totalSets,
           },
         });
       } else {
@@ -724,20 +758,9 @@ const QuestionBank = () => {
       <header className={headerClass}>
         <h2 className="text-2xl font-semibold text-gray-800">Questions</h2>
         <div className="ml-auto flex items-center">
-          <button
-            onClick={() => navigate("/question-paper-list")}
-            className={`inline-flex items-center ${primaryButtonClass} mr-4`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Question Papers
-          </button>
-          <button onClick={handleCreatePaper} className={primaryButtonClass}>
-            <FileText className="w-4 h-4 mr-2" />
-            Create Question Paper
-          </button>
-          <div style={{ marginLeft: "10px" }}>
-            <ProfileMenu />
-          </div>
+          <QuestionPapersButton />
+          <CreatePaperButton onClick={handleCreatePaper} />
+          <ProfileMenuButton />
         </div>
       </header>
 
@@ -828,7 +851,7 @@ const QuestionBank = () => {
         >
           {/* Fixed action bar */}
           <div
-            className={`fixed z-50 bg-white p-4 border-b ${
+            className={`fixed z-10 bg-white p-4 border-b ${
               showFilterPanel ? "left-64" : "left-0"
             } right-0`}
             style={{ top: "80px" }}
@@ -1104,13 +1127,16 @@ const QuestionBank = () => {
 
             {/* Subject */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Subject</label>
+              <label className="block mb-1 font-medium">
+                Subject <span className="text-red-500">*</span>
+              </label>
               <select
                 value={newQuestion.subject}
                 onChange={(e) => handleNewQuestionChange(e, "subject")}
                 className={inputClass}
+                required
               >
-                <option value="">Select Subject (optional)</option>
+                <option value="">Select Subject</option>
                 {subjectOptions?.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
@@ -1133,13 +1159,17 @@ const QuestionBank = () => {
 
             {/* Grade */}
             <div className="mb-4">
-              <label className="block mb-1 font-medium">Grade</label>
+              <label className="block mb-1 font-medium">
+                Grade <span className="text-red-500">*</span>
+              </label>
               <input
-                type="text"
+                type="number"
+                min="1"
                 value={newQuestion.grade}
                 onChange={(e) => handleNewQuestionChange(e, "grade")}
                 className={inputClass}
-                placeholder="Enter Grade (optional)"
+                placeholder="Enter Grade"
+                required
               />
             </div>
 
@@ -1167,14 +1197,13 @@ const QuestionBank = () => {
               <label className="block mb-1 font-medium">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <ResizableTextarea
+                className="w-full p-2 border rounded"
                 value={newQuestion.questionText}
                 onChange={(e) => handleNewQuestionChange(e, "questionText")}
-                onKeyDown={(e) => handleMathKeyDown(e, "questionText")}
-                className={inputClass}
-                placeholder="Enter question text. Use SHIFT + $ for math."
-                rows="4"
+                style={{ whiteSpace: "pre-wrap" }}
               />
+
               <div className="mt-2 text-sm text-gray-500">
                 Preview: {renderTextWithMath(newQuestion.questionText)}
               </div>
@@ -1226,9 +1255,20 @@ const QuestionBank = () => {
                 <label className="block mb-1 font-medium">Options</label>
                 {newQuestion?.options?.map((option, index) => (
                   <div key={option.key} className="mb-4 border p-2 rounded">
-                    <label className="block text-sm font-medium">
-                      Option {option.key}
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium">
+                        Option {option.key}
+                      </label>
+                      {/* Remove Option Button */}
+                      {newQuestion.options.length > 1 && (
+                        <button
+                          onClick={() => removeMCQOption(index)}
+                          className="text-red-500 text-sm border border-red-500 px-2 py-1 rounded"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                     {/* Option Text */}
                     <input
                       type="text"
@@ -1291,6 +1331,14 @@ const QuestionBank = () => {
                     </div>
                   </div>
                 ))}
+
+                {/* Add Option Button */}
+                <button
+                  onClick={addMCQOption}
+                  className="border border-black rounded px-3 py-1 mt-2 hover:bg-gray-100"
+                >
+                  Add Option
+                </button>
               </div>
             )}
 
@@ -1440,6 +1488,19 @@ const QuestionBank = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="block text-black mb-1 font-medium">
+                  Total Sets
+                </label>
+                <input
+                  type="number"
+                  value={totalSets}
+                  onChange={(e) => setTotalSets(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Enter total sets"
+                  min={1}
+                />
               </div>
               <div className="flex justify-end mt-4">
                 <button
