@@ -17,11 +17,14 @@ import {
 } from "../constants/constants";
 import { postRequest, deleteRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ProfileMenu from "../subcomponents/ProfileMenu";
 import { renderTextWithMath } from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
+import {
+  CreatePaperButton,
+  ProfileMenuButton,
+  QuestionPapersButton,
+} from "./QuestionBankButton";
 
 // Styling constants
 const inputClass =
@@ -755,20 +758,9 @@ const QuestionBank = () => {
       <header className={headerClass}>
         <h2 className="text-2xl font-semibold text-gray-800">Questions</h2>
         <div className="ml-auto flex items-center">
-          <button
-            onClick={() => navigate("/question-paper-list")}
-            className={`inline-flex items-center ${primaryButtonClass} mr-4`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Question Papers
-          </button>
-          <button onClick={handleCreatePaper} className={primaryButtonClass}>
-            <FileText className="w-4 h-4 mr-2" />
-            Create Question Paper
-          </button>
-          <div style={{ marginLeft: "10px" }}>
-            <ProfileMenu />
-          </div>
+          <QuestionPapersButton />
+          <CreatePaperButton onClick={handleCreatePaper} />
+          <ProfileMenuButton />
         </div>
       </header>
 

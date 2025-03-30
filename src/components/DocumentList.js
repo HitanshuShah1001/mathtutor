@@ -18,8 +18,7 @@ import {
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
-import ProfileMenu from "../subcomponents/ProfileMenu";
-import { CreatePaperButton, QuestionBankButton } from "./QuestionBankButton";
+import { CreatePaperButton, ProfileMenuButton, QuestionBankButton } from "./QuestionBankButton";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -544,9 +543,7 @@ export const DocumentSidebar = () => {
         <div className="ml-auto flex items-center">
           <QuestionBankButton />
           <CreatePaperButton onClick={handleCreatePaper} />
-          <div style={{ marginLeft: "10px" }}>
-            <ProfileMenu />
-          </div>
+          <ProfileMenuButton />
         </div>
       </header>
 

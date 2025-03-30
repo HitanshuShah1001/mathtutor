@@ -26,13 +26,13 @@ export const ChatHeader = ({ title, handleOpenModal }) => {
         {/* Conditionally render the appropriate link */}
         {isQuestionPaperPage ? (
           <>
-            <QuestionBankButton />
             <button
               className={`${primaryButtonClass} btn-hover !ml-0 `}
               onClick={handleOpenModal}
             >
               Load from existing blueprint
             </button>
+            <QuestionBankButton />
 
             <Link
               to="/question-paper-list"

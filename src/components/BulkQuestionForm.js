@@ -10,7 +10,7 @@ const BulkQuestionForm = () => {
     difficulty: "medium",
     chapter: "Active and passive voice",
     subject: "english", // fixed subject
-    grade: 6, // fixed standard is always 6
+    grade: 1, // fixed standard is always 6
     repositoryType: "exercise",
     exerciseName: "",
     textBook: "ncert",
@@ -24,6 +24,10 @@ const BulkQuestionForm = () => {
       { key: "2", option: "", imageUrl: "", imageFile: null },
       { key: "3", option: "", imageUrl: "", imageFile: null },
       { key: "4", option: "", imageUrl: "", imageFile: null },
+      { key: "5", option: "", imageUrl: "", imageFile: null },
+      { key: "6", option: "", imageUrl: "", imageFile: null },
+      { key: "7", option: "", imageUrl: "", imageFile: null },
+      { key: "8", option: "", imageUrl: "", imageFile: null },
     ],
   };
 
@@ -51,6 +55,10 @@ const BulkQuestionForm = () => {
         { key: "2", option: "", imageUrl: "", imageFile: null },
         { key: "3", option: "", imageUrl: "", imageFile: null },
         { key: "4", option: "", imageUrl: "", imageFile: null },
+        { key: "5", option: "", imageUrl: "", imageFile: null },
+        { key: "6", option: "", imageUrl: "", imageFile: null },
+        { key: "7", option: "", imageUrl: "", imageFile: null },
+        { key: "8", option: "", imageUrl: "", imageFile: null },
       ];
     }
 
@@ -167,7 +175,7 @@ const BulkQuestionForm = () => {
           headers: {
             "Content-Type": "application/json",
             Authorization:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWxJZCI6ImhpdGFuc2h1c2hhaDVAZ21haWwuY29tIiwiaWF0IjoxNzQzMTk0ODExLCJleHAiOjE3NDMyODEyMTF9.Z6jscSBnXn5Vjywu9XDIRWNinpTPxaBC6xdVbB5s-M4",
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywiZW1haWxJZCI6ImhpdGFuc2h1c2hhaDVAZ21haWwuY29tIiwiaWF0IjoxNzQzMjgxODQ5LCJleHAiOjE3NDMzNjgyNDl9.AoJPm5hnhFnRpZNwykn6xRdDMbUf3RmGtcxYiFW-4rc",
           },
           body: JSON.stringify(payload),
         }
@@ -189,7 +197,7 @@ const BulkQuestionForm = () => {
     }
   };
 
-  console.log(questions)
+  console.log(questions);
 
   return (
     <div style={{ padding: "0.5rem" }}>
@@ -287,7 +295,7 @@ const BulkQuestionForm = () => {
                 Chapter:
                 <input
                   type="text"
-                  value={"Active and passive voice"}
+                  value={"doing words"}
                   onChange={(e) =>
                     handleQuestionChange(qIndex, "chapter", e.target.value)
                   }
@@ -311,7 +319,7 @@ const BulkQuestionForm = () => {
                 Grade:
                 <input
                   type="number"
-                  value={7}
+                  value={2}
                   readOnly
                   style={{ fontSize: "0.9rem" }}
                 />
