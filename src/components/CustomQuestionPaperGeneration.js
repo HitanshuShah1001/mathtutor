@@ -122,6 +122,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
+  const [chapters, setChapters] = useState([]);
 
   // Updated filters as multi-select arrays
   const [filters, setFilters] = useState({
@@ -137,6 +138,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     streams: [],
     examNames: [],
     questionTypes: [],
+    chapters: [],
   });
   const [cursor, setCursor] = useState(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
@@ -156,6 +158,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     streams: false,
     examNames: false,
     questionTypes: false,
+    chapters: false,
   });
 
   // State to toggle the entire left panel visibility
@@ -195,6 +198,12 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     { label: "Streams", key: "streams", values: streams },
     { label: "Exam Names", key: "examNames", values: examNames },
     { label: "Question Types", key: "questionTypes", values: questionTypes },
+    {
+      label: "Chapters",
+      key: "chapters",
+      values: chapters,
+    },
+    {},
   ];
 
   // --- Fetch Questions ---
@@ -230,6 +239,9 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
         ...(filters.examNames.length > 0 && { examNames: filters.examNames }),
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
+        }),
+        ...(filters.chapters.length > 0 && {
+          chapters: filters.chapters,
         }),
       };
       const response = await postRequest(
@@ -327,6 +339,36 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
       questionTypes: [],
     });
   };
+
+  useEffect(() => {
+    const fetchChapters = async (grade, subject, examName) => {
+      try {
+        const body = { grade, subject, examName };
+        const response = await postRequest(
+          `${BASE_URL_API}/question/get-chapters`,
+          body
+        );
+        // Suppose the API returns { chapters: [...] }
+        if (response && response.chapters) {
+          setChapters(response.chapters);
+        }
+      } catch (error) {
+        console.error("Error fetching chapters:", error);
+      }
+    };
+
+    // Only call if user has exactly 1 grade & exactly 1 subject selected
+    if (
+      (filters.grades.length === 1 || filters.examNames.length === 1) &&
+      filters.subjects.length === 1
+    ) {
+      fetchChapters(filters.grades[0], filters.subjects[0], filters.examNames[0]);
+    } else {
+      // Otherwise, reset chapters
+      setFilters((prev) => ({ ...prev, chapters: [] }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.grades, filters.subjects]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -786,36 +828,36 @@ export const CustomPaperCreatePage = () => {
     );
   };
 
-    /**
+  /**
    * Unmarks the selected questions from optional by removing their optionalGroupId.
    */
-    const handleUnmarkAsOptional = async () => {
-      // Only meaningful if exactly 2 questions share the same optionalGroupId
-      if (selectedOptionalQuestions.length !== 2) return;
-      const updatedSections = sections.map((section) => {
-        const updatedQuestions = section.questions.map((q) => {
-          if (selectedOptionalQuestions.includes(q.id)) {
-            return { ...q, optionalGroupId: null };
-          }
-          return q;
-        });
-        return { ...section, questions: updatedQuestions };
+  const handleUnmarkAsOptional = async () => {
+    // Only meaningful if exactly 2 questions share the same optionalGroupId
+    if (selectedOptionalQuestions.length !== 2) return;
+    const updatedSections = sections.map((section) => {
+      const updatedQuestions = section.questions.map((q) => {
+        if (selectedOptionalQuestions.includes(q.id)) {
+          return { ...q, optionalGroupId: null };
+        }
+        return q;
       });
-      setSections(updatedSections);
-  
-      const payload = { id: questionPaperId, sections: updatedSections };
-      const response = await postRequest(
-        `${BASE_URL_API}/questionPaper/update`,
-        payload
-      );
-      if (response.success) {
-        alert("Optional status removed successfully!");
-        setSelectedOptionalQuestions([]);
-        await fetchQuestionPaperDetails();
-      } else {
-        alert("Failed to remove optional status.");
-      }
-    };
+      return { ...section, questions: updatedQuestions };
+    });
+    setSections(updatedSections);
+
+    const payload = { id: questionPaperId, sections: updatedSections };
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (response.success) {
+      alert("Optional status removed successfully!");
+      setSelectedOptionalQuestions([]);
+      await fetchQuestionPaperDetails();
+    } else {
+      alert("Failed to remove optional status.");
+    }
+  };
 
   const handleMarkAsOptional = async () => {
     if (selectedOptionalQuestions.length !== 2) return;

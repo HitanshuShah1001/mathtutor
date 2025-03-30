@@ -120,7 +120,7 @@ const QuestionBank = () => {
   const [selectedQuestionObjs, setSelectedQuestionObjs] = useState([]);
   const [viewSelected, setViewSelected] = useState(false);
 
-  // Filter state
+  // Filter state, now includes `chapters` array for storing fetched chapters
   const [filters, setFilters] = useState({
     grade: [],
     subject: [],
@@ -134,7 +134,9 @@ const QuestionBank = () => {
     types: [],
     difficulties: [],
     questionTypes: [],
+    chapters: [], // new property to store fetched chapters
   });
+
   const [searchQuery, setSearchQuery] = useState("");
 
   // Show/hide filter panel
@@ -154,6 +156,7 @@ const QuestionBank = () => {
     types: false,
     difficulties: false,
     questionTypes: false,
+    chapters: false,
   });
 
   // Infinite scroll references
@@ -189,6 +192,7 @@ const QuestionBank = () => {
   const [customPaperSubject, setCustomPaperSubject] = useState("");
   const [totalSets, setTotalSets] = useState(1);
   const [errorMessage, setErrorMessage] = useState("");
+  const [chapters, setChapters] = useState([]);
 
   /**
    * Toggles a filter group accordion.
@@ -230,9 +234,44 @@ const QuestionBank = () => {
       types: [],
       difficulties: [],
       questionTypes: [],
+      chapters: [],
     });
     setSearchQuery("");
   };
+
+  /**
+   * **Fetch chapters** if exactly one grade and exactly one subject are selected.
+   * Called automatically any time filters.grade or filters.subject changes.
+   */
+  useEffect(() => {
+    const fetchChapters = async (grade, subject,examName) => {
+      try {
+        const body = { grade, subject,examName };
+        const response = await postRequest(
+          `${BASE_URL_API}/question/get-chapters`,
+          body
+        );
+        // Suppose the API returns { chapters: [...] }
+        if (response && response.chapters) {
+          setChapters(response.chapters);
+        }
+      } catch (error) {
+        console.error("Error fetching chapters:", error);
+      }
+    };
+
+    // Only call if user has exactly 1 grade & exactly 1 subject selected
+    if (
+      (filters.grade.length === 1 || filters.examNames.length === 1) &&
+      filters.subject.length === 1
+    ) {
+      fetchChapters(filters.grade[0], filters.subject[0], filters.examNames[0]);
+    } else {
+      // Otherwise, reset chapters
+      setFilters((prev) => ({ ...prev, chapters: [] }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.grade, filters.subject]);
 
   // Check if we need to load more documents (infinite scroll)
   const checkIfMoreDocumentsNeeded = useCallback(() => {
@@ -314,6 +353,12 @@ const QuestionBank = () => {
         ...(filters.questionTypes.length > 0 && {
           questionTypes: filters.questionTypes,
         }),
+        ...(filters.chapters.length > 0 && {
+          chapters: filters.chapters,
+        }),
+        // The new "chapters" array doesn't necessarily need to be part of question filtering,
+        // unless your backend expects that. If so, add it here:
+        // ...(filters.chapters.length > 0 && { chapters: filters.chapters }),
       };
 
       const response = await postRequest(
@@ -815,6 +860,11 @@ const QuestionBank = () => {
                   label: "Question Type",
                   key: "questionTypes",
                   values: questionTypes,
+                },
+                {
+                  label: "Chapters",
+                  key: "chapters",
+                  values: chapters,
                 },
               ]?.map(({ label, key, values }) => (
                 <FilterGroupAccordion
@@ -1498,7 +1548,7 @@ const QuestionBank = () => {
                   ))}
                 </select>
               </div>
-              
+
               <div className="flex justify-end mt-4">
                 <button
                   className={commonButtonClass}
