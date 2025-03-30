@@ -376,21 +376,7 @@ const GenerateQuestionPaper = () => {
               </option>
             ))}
           </select>
-          <div className="flex">
-            <input
-              type="text"
-              placeholder="Custom topic..."
-              className={inputClass}
-              value={customTopic}
-              onChange={(e) => setCustomTopic(e.target.value)}
-            />
-            <button
-              className={`${actionButtonClass} ml-2`}
-              onClick={handleAddCustomTopic}
-            >
-              +
-            </button>
-          </div>
+         
         </div>
         {Object.keys(topicsConfig).length > 0 && (
           <div className="mt-2 flex flex-wrap">
@@ -585,16 +571,7 @@ const GenerateQuestionPaper = () => {
                 placeholder="e.g. 3"
               />
             </div>
-            <div className={formGroupClass}>
-              <label className={labelClass}>Additional Instructions</label>
-              <input
-                type="text"
-                className={inputClass}
-                value={anyotherQuery}
-                onChange={(e) => setAnyOtherQuery(e.target.value)}
-                placeholder="e.g. Mark problems as Section A"
-              />
-            </div>
+            
           </div>
 
           {/* Bottom left buttons */}
