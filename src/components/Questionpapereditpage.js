@@ -1420,7 +1420,7 @@ const QuestionPaperEditPage = () => {
                 className="border rounded px-2 py-1 w-full"
               >
                 <option value="mcq">mcq</option>
-                <option value="descriptive">DESCRIPTIVE</option>
+                <option value="descriptive">descriptive</option>
               </select>
             </div>
 

@@ -1793,7 +1793,7 @@ export const CustomPaperCreatePage = () => {
                 className="border rounded px-2 py-1 w-full"
               >
                 <option value="mcq">mcq</option>
-                <option value="DESCRIPTIVE">DESCRIPTIVE</option>
+                <option value="descriptive">descriptive</option>
               </select>
             </div>
 
