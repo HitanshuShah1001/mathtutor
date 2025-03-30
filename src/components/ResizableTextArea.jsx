@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { ArrowDownRight, CornerDownRight } from "lucide-react";
 
 const ResizableTextarea = ({
   value,
@@ -55,19 +56,21 @@ const ResizableTextarea = ({
         }}
         {...rest}
       />
-      {/* Draggable handle */}
+      {/* Draggable handle rendered as an arrow */}
       <div
         onMouseDown={handleMouseDown}
         style={{
           position: "absolute",
           bottom: "4px",
           right: "4px",
-          width: "16px",
-          height: "16px",
           cursor: "se-resize",
-          backgroundColor: "#ccc",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
-      />
+      >
+        <ArrowDownRight size={16} color="#ccc" />
+      </div>
     </div>
   );
 };
