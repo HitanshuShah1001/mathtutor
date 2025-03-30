@@ -851,7 +851,7 @@ const QuestionBank = () => {
         >
           {/* Fixed action bar */}
           <div
-            className={`fixed z-50 bg-white p-4 border-b ${
+            className={`fixed z-10 bg-white p-4 border-b ${
               showFilterPanel ? "left-64" : "left-0"
             } right-0`}
             style={{ top: "80px" }}

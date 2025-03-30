@@ -14,16 +14,19 @@ const ProfileMenu = () => {
   };
 
   return (
-    <div className="relative">
+    // Set a higher z-index on the container
+    <div className="relative z-[100]">
       <button 
         onClick={() => setIsMenuOpen(!isMenuOpen)}
         className="rounded-full bg-gray-200 p-2 hover:bg-gray-300 transition-colors"
-        >
+      >
         <UserIcon size={24} />
       </button>
 
       {isMenuOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border" style={{zIndex:2000}}
+        <div 
+          className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border"
+          style={{ zIndex: 2000 }} // ensures the dropdown is above sibling elements
         >
           <div 
             className="flex items-center p-3 hover:bg-gray-100 cursor-pointer"

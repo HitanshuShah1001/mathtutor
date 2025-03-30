@@ -43,7 +43,7 @@ const GenerateQuestionPaper = () => {
   const [marks, setMarks] = useState("");
   const [numberOfSets, setNumberOfSets] = useState(1);
   const [title, setTitle] = useState("");
-  const [academyName, setAcademyName] = useState("Knowledge High School");
+  const [academyName, setAcademyName] = useState("Surya International School");
   const [timeDuration, setTimeDuration] = useState("");
   const [anyotherQuery, setAnyOtherQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
