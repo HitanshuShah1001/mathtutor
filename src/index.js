@@ -5,6 +5,7 @@ import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { ErrorBoundary } from "react-error-boundary";
 import ErrorPage from "./Fallback";
+import { Analytics } from "@vercel/analytics/react"
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -13,6 +14,7 @@ root.render(
     onError={(r) => console.log(r, "dfdf")}
   >
     <React.StrictMode>
+      <Analytics />
       <App />
     </React.StrictMode>
   </ErrorBoundary>
