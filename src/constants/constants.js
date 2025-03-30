@@ -7,9 +7,9 @@ export const ACCESS_KEY = "accessKey";
 export const SYSTEM = "system";
 export const COMPLETED = "completed";
 export const difficulty = {
-  EASY: "EASY",
-  MEDIUM: "MEDIUM",
-  HARD: "HARD",
+  EASY: "easy",
+  MEDIUM: "medium",
+  HARD: "hard",
 };
 export const MCQ = "mcq";
 export const DESCRIPTIVE = "descriptive";

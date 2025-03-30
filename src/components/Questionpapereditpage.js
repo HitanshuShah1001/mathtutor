@@ -1156,17 +1156,21 @@ const QuestionPaperEditPage = () => {
                   className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                 >
                   <option value="mcq">mcq</option>
-                  <option value="descriptive">Descriptive</option>
+                  <option value="descriptive">descriptive</option>
                 </select>
               </div>
+
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Difficulty:</span>
-                <input
-                  type="text"
+                <select
                   value={editedQuestion.difficulty || ""}
                   onChange={handleDifficultyChange}
-                  className="w-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                />
+                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                >
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
+                </select>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Marks:</span>
@@ -1571,9 +1575,9 @@ const QuestionPaperEditPage = () => {
                   className="border rounded px-2 py-1 w-full"
                 >
                   <option value="">Select Difficulty</option>
-                  <option value="EASY">EASY</option>
-                  <option value="MEDIUM">MEDIUM</option>
-                  <option value="HARD">HARD</option>
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
                 </select>
               </div>
             </div>
