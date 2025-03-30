@@ -377,6 +377,7 @@ const QuestionBank = () => {
       setCursor(undefined);
       setHasNextPage(true);
       setSelected([]);
+      setSelectedQuestionObjs([]);
       fetchQuestions(true);
     } catch (error) {
       console.error("Error deleting questions:", error);
@@ -686,6 +687,7 @@ const QuestionBank = () => {
         ],
       });
       setSelected([]);
+      setSelectedQuestionObjs([]);
       setQuestions([]);
       setCursor(undefined);
       setHasNextPage(true);
