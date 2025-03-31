@@ -400,6 +400,7 @@ const QuestionPaperEditPage = () => {
    * Updates the question text in the editedQuestion state.
    */
   const handleQuestionTextChange = (content) => {
+    console.log(content.target.value)
     setEditedQuestion((prev) => ({
       ...prev,
       questionText: content.target.value,
