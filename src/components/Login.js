@@ -50,7 +50,7 @@ const LoginPage = () => {
         >
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              Welcome To MathTutor
+              Welcome To Tutorless
             </h2>
             <p className="text-gray-500">Enter your phone number to continue</p>
           </div>

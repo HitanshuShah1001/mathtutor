@@ -18,7 +18,10 @@ import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
 import { QuestionBankModal } from "./CustomQuestionPaperGeneration";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { renderTextWithMath } from "./RenderTextWithMath";
+import {
+  renderTextWithMath,
+  renderTruncatedTextWithMath,
+} from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
 
 /**
@@ -295,27 +298,6 @@ const QuestionPaperEditPage = () => {
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
         questionImageUrls.length > 0
       : false;
-
-  /**
-   * Renders truncated question text with math. Only shows up to maxLength characters.
-   */
-  const renderTruncatedTextWithMath = (text, maxLength = 600) => {
-    if (!text) return null;
-    let truncated = text;
-    if (text.length > 100) {
-      truncated = text.slice(0, 100) + "...";
-    }
-    const parts = truncated.split("$");
-    return parts.map((part, index) =>
-      index % 2 === 1 ? (
-        <InlineMath key={index} math={part} />
-      ) : (
-        <span key={index} style={{ textAlign: "justify" }}>
-          {part}
-        </span>
-      )
-    );
-  };
 
   /**
    * Filters the sections by the search term so that only matching questions appear.
