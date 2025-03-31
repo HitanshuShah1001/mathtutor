@@ -1773,7 +1773,7 @@ export const CustomPaperCreatePage = () => {
                   </div>
                 </div>
               )}
-              {/* Optional real-time math preview, if you want */}
+             
             </div>
             {editedQuestion.options && editedQuestion.options.length > 0 && (
               <div>

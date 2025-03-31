@@ -315,7 +315,6 @@ const QuestionPaperEditPage = () => {
 
   const visibleSections = getFilteredSections();
 
-  // For showing a live math preview on the right side
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
   /**
@@ -1299,7 +1298,7 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-            {/* Math Preview (if question includes $) */}
+          
             {isEditingMath && (
               <div className="border-l pl-4 mt-4">
                 <h3 className="font-semibold mb-2">Math Preview</h3>
