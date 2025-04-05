@@ -46,6 +46,7 @@ export const modalContentClass =
 const subjectOptions = [
   "maths",
   "science",
+  "physics",
   "ss",
   "english",
   "grammar",
@@ -331,7 +332,7 @@ const QuestionBank = () => {
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
       const queryParams = new URLSearchParams({
-        limit: "10",
+        limit: "40",
         ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
       });
       const payload = {
