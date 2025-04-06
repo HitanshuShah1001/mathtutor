@@ -172,7 +172,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     }));
   };
 
-  console.log(chapters)
   const toggleFilterValue = (filterKey, value) => {
     setFilters((prev) => {
       const existingValues = prev[filterKey];
