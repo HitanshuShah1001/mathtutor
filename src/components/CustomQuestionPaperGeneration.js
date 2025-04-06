@@ -117,6 +117,8 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
   const [selectedQuestionObjs, setSelectedQuestionObjs] = useState([]);
   // Toggle between normal/all-questions view and selected-questions view
   const [viewSelected, setViewSelected] = useState(false);
+  const [showChaptersModal, setShowChaptersModal] = useState(false);
+
   // ------------------------------------------------------------
 
   const [loading, setLoading] = useState(false);
@@ -170,6 +172,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     }));
   };
 
+  console.log(chapters)
   const toggleFilterValue = (filterKey, value) => {
     setFilters((prev) => {
       const existingValues = prev[filterKey];
@@ -197,12 +200,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     { label: "Streams", key: "streams", values: streams },
     { label: "Exam Names", key: "examNames", values: examNames },
     { label: "Question Types", key: "questionTypes", values: questionTypes },
-    {
-      label: "Chapters",
-      key: "chapters",
-      values: chapters,
-    },
-    {},
   ];
 
   // --- Fetch Questions ---
@@ -397,6 +394,43 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
             </button>
           </div>
         </div>
+        {showChaptersModal && (
+          <div className={modalContainerClass}>
+            <div className={`${modalContentClass} max-w-md`}>
+              <h2 className="text-xl font-semibold mb-4">Select Chapters</h2>
+              <div className="flex flex-wrap gap-2">
+                {chapters && chapters.length > 0 ? (
+                  chapters.map((ch) => {
+                    const isSelected = filters.chapters.includes(ch);
+                    return (
+                      <span
+                        key={ch}
+                        onClick={() => toggleFilterValue("chapters", ch)}
+                        className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
+                          isSelected
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        }`}
+                      >
+                        {ch}
+                      </span>
+                    );
+                  })
+                ) : (
+                  <p>No chapters available</p>
+                )}
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowChaptersModal(false)}
+                  className="px-4 py-2 border rounded"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Content: Left panel for Filters and Right panel for Questions */}
         <div className="flex flex-1 overflow-hidden">
@@ -430,9 +464,19 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
+              {chapters.length > 0 && (
+                <button
+                  onClick={() => setShowChaptersModal(true)}
+                  className={`${blackButtonClass} w-full mt-4`}
+                >
+                  {filters.chapters.length > 0
+                    ? `Chapters (${filters.chapters.length} selected)`
+                    : "Select Chapters"}
+                </button>
+              )}
               <button
                 onClick={() => setViewSelected((prev) => !prev)}
-                className="px-3 py-2 border rounded"
+                className={`${blackButtonClass} w-full mt-4`}
               >
                 {viewSelected ? "Show All" : "Show Selected"}
               </button>
@@ -938,7 +982,6 @@ export const CustomPaperCreatePage = () => {
     setEditedQuestion((prev) => ({ ...prev, questionText: e.target.value }));
   };
 
-  
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setEditedQuestion((prev) => {
@@ -962,7 +1005,7 @@ export const CustomPaperCreatePage = () => {
       };
     });
   };
-  
+
   const handleDifficultyChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, difficulty: e.target.value }));
   };
