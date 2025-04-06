@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
@@ -737,7 +736,8 @@ export const CustomPaperCreatePage = () => {
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response?.success) {
-        setSections(response.questionPaper.sections || []);
+        const sortedSections = sortSectionsAlphabetically(response.questionPaper.sections || []);
+        setSections(sortedSections);
       } else {
         if (response.message === INVALID_TOKEN) {
           removeDataFromLocalStorage();
@@ -750,6 +750,7 @@ export const CustomPaperCreatePage = () => {
       console.error("Error fetching question paper details:", error);
     }
   };
+  
 
   useEffect(() => {
     fetchQuestionPaperDetails();
@@ -1086,26 +1087,68 @@ export const CustomPaperCreatePage = () => {
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
-    if (source.droppableId === destination.droppableId) {
-      const sectionIndex = parseInt(source.droppableId, 10);
-      const section = sections[sectionIndex];
-      const newQuestions = Array.from(section.questions);
-      const [removed] = newQuestions.splice(source.index, 1);
-      newQuestions.splice(destination.index, 0, removed);
-      const updatedSections = [...sections];
-      updatedSections[sectionIndex] = { ...section, questions: newQuestions };
-      setSections(updatedSections);
-      const payload = {
-        id: questionPaperId,
-        sections: updatedSections,
+  
+    const sourceSectionIndex = parseInt(source.droppableId, 10);
+    const destSectionIndex = parseInt(destination.droppableId, 10);
+  
+    const sourceSection = sections[sourceSectionIndex];
+    const destSection = sections[destSectionIndex];
+  
+    // Clone the questions array
+    const updatedSections = [...sections];
+  
+    if (sourceSectionIndex === destSectionIndex) {
+      // Same section reorder
+      const updatedQuestions = [...sourceSection.questions];
+      const [movedQuestion] = updatedQuestions.splice(source.index, 1);
+      updatedQuestions.splice(destination.index, 0, movedQuestion);
+  
+      // Update orderIndex
+      const reordered = updatedQuestions.map((q, i) => ({
+        ...q,
+        orderIndex: i + 1,
+      }));
+  
+      updatedSections[sourceSectionIndex] = {
+        ...sourceSection,
+        questions: reordered,
       };
-      const response = await postRequest(
-        `${BASE_URL_API}/questionPaper/update`,
-        payload
-      );
-      if (!response?.success) {
-        console.error("Failed to update question order:", response);
-      }
+    } else {
+      // Cross-section move
+      const sourceQuestions = [...sourceSection.questions];
+      const [movedQuestion] = sourceQuestions.splice(source.index, 1);
+  
+      const destQuestions = [...destSection.questions];
+      destQuestions.splice(destination.index, 0, {
+        ...movedQuestion,
+        section: destSection.name,
+      });
+  
+      updatedSections[sourceSectionIndex] = {
+        ...sourceSection,
+        questions: sourceQuestions.map((q, i) => ({ ...q, orderIndex: i + 1 })),
+      };
+      updatedSections[destSectionIndex] = {
+        ...destSection,
+        questions: destQuestions.map((q, i) => ({
+          ...q,
+          section: destSection.name,
+          orderIndex: i + 1,
+        })),
+      };
+    }
+  
+    setSections(updatedSections);
+  
+    const payload = {
+      id: questionPaperId,
+      sections: updatedSections,
+    };
+  
+    const response = await postRequest(`${BASE_URL_API}/questionPaper/update`, payload);
+    if (!response?.success) {
+      console.error("Failed to update question order:", response);
+    } else {
       await fetchQuestionPaperDetails();
     }
   };
@@ -1169,6 +1212,10 @@ export const CustomPaperCreatePage = () => {
     return foundSection.questions.length + 1;
   };
 
+  const sortSectionsAlphabetically = (sections) => {
+    return [...sections].sort((a, b) => a.name.localeCompare(b.name));
+  };
+
   // ================== NEW SECTION CREATION ==================
   const handleAddSection = () => {
     if (!newSectionName.trim()) {
@@ -1176,7 +1223,9 @@ export const CustomPaperCreatePage = () => {
       return;
     }
     const newSec = { name: newSectionName.trim(), questions: [] };
-    setSections([...sections, newSec]);
+    const updated = [...sections, newSec];
+    const sorted = sortSectionsAlphabetically(updated);
+    setSections(sorted);
     setShowAddSectionModal(false);
     setNewSectionName("");
   };
@@ -1545,7 +1594,7 @@ export const CustomPaperCreatePage = () => {
                                             )}
                                             {renderTruncatedTextWithMath(
                                               q.questionText,
-                                              600
+                                              100
                                             )}
                                           </div>
                                           {idx < group.questions.length - 1 && (
@@ -1598,7 +1647,7 @@ export const CustomPaperCreatePage = () => {
                                       )}
                                       {renderTruncatedTextWithMath(
                                         q.questionText,
-                                        600
+                                        100
                                       )}
                                       {q.optionalGroupId && (
                                         <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
@@ -1737,7 +1786,7 @@ export const CustomPaperCreatePage = () => {
                       <div key={index} className="relative">
                         <img
                           src={URL.createObjectURL(file)}
-                          alt={`New Image ${index + 1}`}
+                          alt={`New ${index + 1}`}
                           className="h-24 object-cover rounded border"
                         />
                         <button

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowDownRight, CornerDownRight } from "lucide-react";
+import { ArrowDownRight } from "lucide-react";
 
 const ResizableTextarea = ({
   value,
