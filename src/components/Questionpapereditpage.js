@@ -161,7 +161,6 @@ const QuestionPaperEditPage = () => {
     setShowAddSectionModal(false);
     setNewSectionName("");
   };
-  
 
   const sortSectionsAlphabetically = (sections) => {
     return [...sections].sort((a, b) => a.name.localeCompare(b.name));
@@ -682,28 +681,29 @@ const QuestionPaperEditPage = () => {
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
-  
+    console.log(sections, "sections");
+    console.log(source, destination);
     const sourceSectionIndex = parseInt(source.droppableId, 10);
     const destSectionIndex = parseInt(destination.droppableId, 10);
-  
+
     const sourceSection = sections[sourceSectionIndex];
     const destSection = sections[destSectionIndex];
-  
+
     // Clone the questions array
     const updatedSections = [...sections];
-  
+
     if (sourceSectionIndex === destSectionIndex) {
       // Same section reorder
       const updatedQuestions = [...sourceSection.questions];
       const [movedQuestion] = updatedQuestions.splice(source.index, 1);
       updatedQuestions.splice(destination.index, 0, movedQuestion);
-  
+
       // Update orderIndex
       const reordered = updatedQuestions.map((q, i) => ({
         ...q,
         orderIndex: i + 1,
       }));
-  
+
       updatedSections[sourceSectionIndex] = {
         ...sourceSection,
         questions: reordered,
@@ -712,13 +712,13 @@ const QuestionPaperEditPage = () => {
       // Cross-section move
       const sourceQuestions = [...sourceSection.questions];
       const [movedQuestion] = sourceQuestions.splice(source.index, 1);
-  
+
       const destQuestions = [...destSection.questions];
       destQuestions.splice(destination.index, 0, {
         ...movedQuestion,
         section: destSection.name,
       });
-  
+
       updatedSections[sourceSectionIndex] = {
         ...sourceSection,
         questions: sourceQuestions.map((q, i) => ({ ...q, orderIndex: i + 1 })),
@@ -732,22 +732,24 @@ const QuestionPaperEditPage = () => {
         })),
       };
     }
-  
+    console.log(updatedSections);
     setSections(updatedSections);
-  
+
     const payload = {
       id: questionPaperId,
       sections: updatedSections,
     };
-  
-    const response = await postRequest(`${BASE_URL_API}/questionPaper/update`, payload);
+
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
     if (!response?.success) {
       console.error("Failed to update question order:", response);
     } else {
       await fetchQuestionPaperDetails();
     }
   };
-  
 
   /**
    * Prepares to add a new question to a specified section.
@@ -1069,7 +1071,14 @@ const QuestionPaperEditPage = () => {
                     // Group questions by optionalGroupId
                     const groupedQuestions = groupQuestions(section.questions);
                     return (
-                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        style={{
+                          minHeight:
+                            groupedQuestions.length === 0 ? "50px" : "auto",
+                        }}
+                      >
                         {groupedQuestions.map((group, groupIndex) => {
                           // If a group has more than one question, show them together with "OR"
                           if (group.questions.length > 1) {
@@ -1177,11 +1186,7 @@ const QuestionPaperEditPage = () => {
                                         q.questionText,
                                         100
                                       )}
-                                      {q.optionalGroupId && (
-                                        <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                          Optional
-                                        </span>
-                                      )}
+                                      
                                     </div>
                                     <button
                                       onClick={(e) => {
@@ -1227,11 +1232,7 @@ const QuestionPaperEditPage = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              {editedQuestion?.optionalGroupId && (
-                <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
-                  Optional
-                </span>
-              )}
+              
               {isModified && (
                 <button
                   onClick={handleSave}

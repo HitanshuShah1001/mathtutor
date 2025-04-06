@@ -361,7 +361,11 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
       (filters.grades.length === 1 || filters.examNames.length === 1) &&
       filters.subjects.length === 1
     ) {
-      fetchChapters(filters.grades[0], filters.subjects[0], filters.examNames[0]);
+      fetchChapters(
+        filters.grades[0],
+        filters.subjects[0],
+        filters.examNames[0]
+      );
     } else {
       // Otherwise, reset chapters
       setFilters((prev) => ({ ...prev, chapters: [] }));
@@ -736,7 +740,9 @@ export const CustomPaperCreatePage = () => {
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response?.success) {
-        const sortedSections = sortSectionsAlphabetically(response.questionPaper.sections || []);
+        const sortedSections = sortSectionsAlphabetically(
+          response.questionPaper.sections || []
+        );
         setSections(sortedSections);
       } else {
         if (response.message === INVALID_TOKEN) {
@@ -750,7 +756,6 @@ export const CustomPaperCreatePage = () => {
       console.error("Error fetching question paper details:", error);
     }
   };
-  
 
   useEffect(() => {
     fetchQuestionPaperDetails();
@@ -1087,28 +1092,28 @@ export const CustomPaperCreatePage = () => {
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
-  
+
     const sourceSectionIndex = parseInt(source.droppableId, 10);
     const destSectionIndex = parseInt(destination.droppableId, 10);
-  
+
     const sourceSection = sections[sourceSectionIndex];
     const destSection = sections[destSectionIndex];
-  
+
     // Clone the questions array
     const updatedSections = [...sections];
-  
+
     if (sourceSectionIndex === destSectionIndex) {
       // Same section reorder
       const updatedQuestions = [...sourceSection.questions];
       const [movedQuestion] = updatedQuestions.splice(source.index, 1);
       updatedQuestions.splice(destination.index, 0, movedQuestion);
-  
+
       // Update orderIndex
       const reordered = updatedQuestions.map((q, i) => ({
         ...q,
         orderIndex: i + 1,
       }));
-  
+
       updatedSections[sourceSectionIndex] = {
         ...sourceSection,
         questions: reordered,
@@ -1117,13 +1122,13 @@ export const CustomPaperCreatePage = () => {
       // Cross-section move
       const sourceQuestions = [...sourceSection.questions];
       const [movedQuestion] = sourceQuestions.splice(source.index, 1);
-  
+
       const destQuestions = [...destSection.questions];
       destQuestions.splice(destination.index, 0, {
         ...movedQuestion,
         section: destSection.name,
       });
-  
+
       updatedSections[sourceSectionIndex] = {
         ...sourceSection,
         questions: sourceQuestions.map((q, i) => ({ ...q, orderIndex: i + 1 })),
@@ -1137,15 +1142,18 @@ export const CustomPaperCreatePage = () => {
         })),
       };
     }
-  
+
     setSections(updatedSections);
-  
+
     const payload = {
       id: questionPaperId,
       sections: updatedSections,
     };
-  
-    const response = await postRequest(`${BASE_URL_API}/questionPaper/update`, payload);
+
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
     if (!response?.success) {
       console.error("Failed to update question order:", response);
     } else {
@@ -1543,7 +1551,14 @@ export const CustomPaperCreatePage = () => {
                   {(provided) => {
                     const groupedQuestions = groupQuestions(section.questions);
                     return (
-                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        style={{
+                          minHeight:
+                            groupedQuestions.length === 0 ? "50px" : "auto",
+                        }}
+                      >
                         {groupedQuestions.map((group, groupIndex) => {
                           if (group.questions.length > 1) {
                             // Optional group
