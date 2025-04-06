@@ -937,9 +937,32 @@ export const CustomPaperCreatePage = () => {
   const handleQuestionTextChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, questionText: e.target.value }));
   };
+
+  
   const handleTypeChange = (e) => {
-    setEditedQuestion((prev) => ({ ...prev, type: e.target.value }));
+    const newType = e.target.value;
+    setEditedQuestion((prev) => {
+      // If changing from a non-mcq type to mcq, initialize options to 4 default options.
+      if (prev.type !== "mcq" && newType === "mcq") {
+        return {
+          ...prev,
+          type: newType,
+          options: [
+            { key: "A", option: "", imageUrl: "" },
+            { key: "B", option: "", imageUrl: "" },
+            { key: "C", option: "", imageUrl: "" },
+            { key: "D", option: "", imageUrl: "" },
+          ],
+        };
+      }
+      // For other cases, simply update the type.
+      return {
+        ...prev,
+        type: newType,
+      };
+    });
   };
+  
   const handleDifficultyChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, difficulty: e.target.value }));
   };
