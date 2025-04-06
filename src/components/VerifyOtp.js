@@ -7,7 +7,7 @@ import {
   addDataToLocalStorage,
   removeDataFromLocalStorage,
 } from "../utils/LocalStorageOps";
-import { PAPER_GENERATION } from "../constants/pages";
+import { QUESTION_PAPER_LIST } from "../constants/pages";
 
 const VerifyOtp = () => {
   // Get authentication context values and navigation functions
@@ -73,7 +73,7 @@ const VerifyOtp = () => {
         addDataToLocalStorage({ accessToken, user });
         setUser(user);
         setIsAuthenticated(true);
-        navigate(PAPER_GENERATION, { replace: true });
+        navigate(QUESTION_PAPER_LIST, { replace: true });
       }
       // } else {
       //   // Otherwise, navigate to update-user-details page for additional registration
