@@ -85,6 +85,9 @@ const QuestionPaperEditPage = () => {
   // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalDocument, setModalDocument] = useState(null);
+
   // Stores question IDs which are selected to be marked as optional
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
     []
@@ -415,13 +418,42 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
+   * API to generate HTML link for question paper preview
+   */
+  const getHtmlLink = async (questionPaperId) => {
+    const url = `${BASE_URL_API}/questionpaper/generateHtml`;
+    const body = { questionPaperId };
+    try {
+      const result = await postRequest(url, body);
+      return result?.questionPaper; // e.g., a URL to the generated HTML/PDF
+    } catch (error) {
+      console.error("Error generating HTML:", error);
+    }
+  };
+
+  const handlePreviewClick = async () => {
+    const link = await getHtmlLink(questionPaperId);
+    if (link) {
+      // link is presumably a URL to the generated HTML (or PDF)
+      setModalDocument(link?.questionPaperLink);
+      setModalVisible(true);
+    } else {
+      alert("Failed to generate preview");
+    }
+  };
+
+  /**
    * Changes the question type (mcq/Descriptive) in the editedQuestion via a dropdown.
    */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
     setEditedQuestion((prev) => {
       // If changing from a non-mcq type to mcq, initialize options to 4 default options.
-      if (prev.type !== "mcq" && newType === "mcq") {
+      if (
+        prev.type !== "mcq" &&
+        newType === "mcq" &&
+        editedQuestion.options.length == 0
+      ) {
         return {
           ...prev,
           type: newType,
@@ -440,7 +472,7 @@ const QuestionPaperEditPage = () => {
       };
     });
   };
-  
+
   /**
    * Imports questions from the question bank into the specified section.
    */
@@ -989,7 +1021,7 @@ const QuestionPaperEditPage = () => {
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
           {/* --Search Box-- */}
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-2">
             <input
               type="text"
               value={searchTerm}
@@ -997,6 +1029,12 @@ const QuestionPaperEditPage = () => {
               placeholder="Search questions..."
               className="w-full p-2 border rounded"
             />
+            <button
+              onClick={handlePreviewClick}
+              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition-colors"
+            >
+              Preview
+            </button>
           </div>
 
           {/* --Add New Section Button-- */}
@@ -1202,7 +1240,6 @@ const QuestionPaperEditPage = () => {
                                         q.questionText,
                                         100
                                       )}
-                                      
                                     </div>
                                     <button
                                       onClick={(e) => {
@@ -1248,7 +1285,7 @@ const QuestionPaperEditPage = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              
+
               {isModified && (
                 <button
                   onClick={handleSave}
@@ -1748,6 +1785,30 @@ const QuestionPaperEditPage = () => {
               >
                 Confirm
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalVisible && modalDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative flex flex-col">
+            <button
+              onClick={() => setModalVisible(false)}
+              className="absolute top-4 right-4 px-3 py-1 border border-black rounded bg-black text-white"
+            >
+              Close
+            </button>
+            <div className="p-4 flex-1 overflow-auto">
+              {/* 
+                Display the returned link in an iframe.
+                The user can only view and close. 
+                (No download actions, no extra buttons)
+              */}
+              <iframe
+                src={modalDocument}
+                className="w-full h-full"
+                title="Question Paper Preview"
+              />
             </div>
           </div>
         </div>

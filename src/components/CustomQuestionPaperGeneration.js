@@ -985,7 +985,11 @@ export const CustomPaperCreatePage = () => {
     const newType = e.target.value;
     setEditedQuestion((prev) => {
       // If changing from a non-mcq type to mcq, initialize options to 4 default options.
-      if (prev.type !== "mcq" && newType === "mcq") {
+      if (
+        prev.type !== "mcq" &&
+        newType === "mcq" &&
+        editedQuestion.options.length == 0
+      ) {
         return {
           ...prev,
           type: newType,
