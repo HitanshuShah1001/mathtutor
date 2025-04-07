@@ -18,7 +18,11 @@ import {
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
-import { CreatePaperButton, ProfileMenuButton, QuestionBankButton } from "./QuestionBankButton";
+import {
+  CreatePaperButton,
+  ProfileMenuButton,
+  QuestionBankButton,
+} from "./QuestionBankButton";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -693,17 +697,26 @@ export const DocumentSidebar = () => {
                           <>
                             <button
                               onClick={async () => {
-                                try {
-                                  await deleteRequest(
-                                    `${BASE_URL_API}/questionPaper/${doc.id}`
-                                  );
-                                  // After deleting, reset and fetch again
-                                  setDocuments([]);
-                                  setCursor(undefined);
-                                  setHasNextPage(true);
-                                  fetchDocuments(true);
-                                } catch (error) {
-                                  console.error("Error deleting paper:", error);
+                                if (
+                                  window.confirm(
+                                    "Are you sure you want to delete this paper?"
+                                  )
+                                ) {
+                                  try {
+                                    await deleteRequest(
+                                      `${BASE_URL_API}/questionPaper/${doc.id}`
+                                    );
+                                    // After deleting, reset and fetch again
+                                    setDocuments([]);
+                                    setCursor(undefined);
+                                    setHasNextPage(true);
+                                    fetchDocuments(true);
+                                  } catch (error) {
+                                    console.error(
+                                      "Error deleting paper:",
+                                      error
+                                    );
+                                  }
                                 }
                               }}
                               className={commonButtonClass}
@@ -920,7 +933,7 @@ export const DocumentSidebar = () => {
                   ))}
                 </select>
               </div>
-              
+
               <div className="flex justify-end mt-4">
                 <button
                   className={commonButtonClass}

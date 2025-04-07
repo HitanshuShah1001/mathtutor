@@ -127,11 +127,11 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 
   // Updated filters as multi-select arrays
   const [filters, setFilters] = useState({
+    grades: [],
+    subjects: [],
     marks: [],
     types: [],
     difficulties: [],
-    grades: [],
-    subjects: [],
     examDays: [],
     examMonths: [],
     examYears: [],
@@ -187,11 +187,11 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 
   // Define filter groups to display
   const filterGroups = [
+    { label: "Grades", key: "grades", values: grades },
+    { label: "Subjects", key: "subjects", values: subjects },
     { label: "Marks", key: "marks", values: marksOptions },
     { label: "Types", key: "types", values: types },
     { label: "Difficulty", key: "difficulties", values: difficulties },
-    { label: "Grades", key: "grades", values: grades },
-    { label: "Subjects", key: "subjects", values: subjects },
     { label: "Exam Days", key: "examDays", values: examDays },
     { label: "Exam Months", key: "examMonths", values: examMonths },
     { label: "Exam Years", key: "examYears", values: examYears },
