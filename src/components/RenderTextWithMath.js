@@ -12,7 +12,7 @@ export const renderTextWithMath = (text) => {
 
   const parts = noTagsText.split("$");
   return (
-    <div style={{ display: "inline", textAlign: "justify",whiteSpace:"pre-line" }}>
+    <div style={{ display: "inline", textAlign: "justify",whiteSpace:"pre-wrap" }}>
       {parts.map((part, index) =>
         index % 2 === 1 ? (
           <InlineMath key={index} math={part} />
@@ -45,7 +45,7 @@ export const renderTruncatedTextWithMath = (text, maxLength = 100) => {
 
   return (
     <div style={{ display: "inline", textAlign: "justify", marginRight: 5,
-    whiteSpace:"pre-line" }}>
+    whiteSpace:"pre-wrap" }}>
       {parts.map((part, index) =>
         index % 2 === 1 ? (
           <InlineMath key={index} math={part} />
