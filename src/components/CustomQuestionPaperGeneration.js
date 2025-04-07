@@ -1770,7 +1770,7 @@ export const CustomPaperCreatePage = () => {
 
       {/* ============ RIGHT PANEL (EDIT SELECTED QUESTION) ============ */}
       <div
-        className="p-4 overflow-hidden"
+        className="p-4 overflow-auto"
         style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
       >
         {!originalQuestion ? (
