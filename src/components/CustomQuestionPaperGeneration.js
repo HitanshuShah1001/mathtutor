@@ -503,15 +503,19 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                           <div className="mb-2">
                             {renderTextWithMath(question.questionText)}
                           </div>
-                          {question.imageUrl && (
-                            <div className="mt-2 mb-3">
-                              <img
-                                src={question.imageUrl}
-                                alt="Question"
-                                className="max-h-40 object-contain"
-                              />
-                            </div>
-                          )}
+                          {question.imageUrls &&
+                            question.imageUrls.length > 0 && (
+                              <div className="mb-2 flex flex-wrap gap-2">
+                                {question?.imageUrls?.map((url, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={url}
+                                    alt={`Question ${question.id} preview ${idx}`}
+                                    className="rounded h-48 object-contain"
+                                  />
+                                ))}
+                              </div>
+                            )}
                           {question.type === "mcq" && question.options && (
                             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                               {question.options.map((option, index) => (
@@ -596,15 +600,19 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                         <div className="mb-2">
                           {renderTextWithMath(question.questionText)}
                         </div>
-                        {question.imageUrl && (
-                          <div className="mt-2 mb-3">
-                            <img
-                              src={question.imageUrl}
-                              alt="Question"
-                              className="max-h-40 object-contain"
-                            />
-                          </div>
-                        )}
+                        {question.imageUrls &&
+                          question.imageUrls.length > 0 && (
+                            <div className="mb-2 flex flex-wrap gap-2">
+                              {question?.imageUrls?.map((url, idx) => (
+                                <img
+                                  key={idx}
+                                  src={url}
+                                  alt={`Question ${question.id} preview ${idx}`}
+                                  className="rounded h-48 object-contain"
+                                />
+                              ))}
+                            </div>
+                          )}
                         {question.type === "mcq" && question.options && (
                           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                             {question.options.map((option, index) => (
