@@ -996,7 +996,7 @@ export const CustomPaperCreatePage = () => {
       if (
         prev.type !== "mcq" &&
         newType === "mcq" &&
-        editedQuestion.options.length == 0
+        editedQuestion?.options?.length == 0
       ) {
         return {
           ...prev,
