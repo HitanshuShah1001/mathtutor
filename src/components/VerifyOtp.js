@@ -67,7 +67,9 @@ const VerifyOtp = () => {
     if (isValidAndData?.status) {
       const { accessToken, user } = isValidAndData.data?.data || {};
       removeDataFromLocalStorage();
-
+      setUser(user);
+        setIsAuthenticated(true);
+        navigate(QUESTION_PAPER_LIST, { replace: true });
       // If the user has an email, assume they are fully registered and navigate to paper generation page
       if (user?.emailId) {
         addDataToLocalStorage({ accessToken, user });
