@@ -1302,7 +1302,7 @@ const QuestionPaperEditPage = () => {
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Type:</span>
                 <select
-                  value={editedQuestion.type || ""}
+                  value={editedQuestion.type.toLowerCase() || ""}
                   onChange={handleTypeChange}
                   className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                 >
