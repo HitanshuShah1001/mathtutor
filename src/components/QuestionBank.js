@@ -43,20 +43,6 @@ export const modalContentClass =
   "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
 export const modelChapterClass = "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[20vh] overflow-y-auto relative";
 // Add your subject options here
-const subjectOptions = [
-  "maths",
-  "science",
-  "physics",
-  "ss",
-  "english",
-  "grammar",
-  "evs",
-  "accounts",
-  "economics",
-  "spcc",
-  "bo",
-  "statistics",
-];
 
 // Accordion for filtering
 const FilterGroupAccordion = ({
