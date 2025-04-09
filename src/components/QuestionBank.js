@@ -1233,7 +1233,7 @@ const QuestionBank = () => {
                 required
               >
                 <option value="">Select Subject</option>
-                {subjectOptions?.map((sub) => (
+                {subjects?.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </option>
