@@ -693,7 +693,7 @@ export const DocumentSidebar = () => {
                           View
                         </button>
                         {/* Delete / Edit Buttons (if not archived) */}
-                        {doc.type !== "archive" && (
+                        {/* {doc.type !== "archive" && (
                           <>
                             <button
                               onClick={async () => {
@@ -745,7 +745,7 @@ export const DocumentSidebar = () => {
                               Edit
                             </button>
                           </>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   ))}
