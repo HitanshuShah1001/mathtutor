@@ -693,9 +693,9 @@ export const DocumentSidebar = () => {
                           View
                         </button>
                         {/* Delete / Edit Buttons (if not archived) */}
-                        {/* {doc.type !== "archive" && (
+                        {doc.type !== "archive" && (
                           <>
-                            <button
+                            {/* <button
                               onClick={async () => {
                                 if (
                                   window.confirm(
@@ -722,7 +722,7 @@ export const DocumentSidebar = () => {
                               className={commonButtonClass}
                             >
                               Delete
-                            </button>
+                            </button> */}
                             <button
                               onClick={() => {
                                 if (doc.sections && doc.sections.length > 0) {
@@ -745,7 +745,7 @@ export const DocumentSidebar = () => {
                               Edit
                             </button>
                           </>
-                        )} */}
+                        )}
                       </div>
                     </div>
                   ))}
