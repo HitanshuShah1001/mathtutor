@@ -252,7 +252,7 @@ export const subjects = [
   "physics",
   "chemistry",
   "biology",
-  "socialStudies",
+  "socialstudies",
   "english",
   "accounts",
   "statistics",
