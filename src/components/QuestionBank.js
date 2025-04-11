@@ -41,7 +41,8 @@ export const modalContainerClass =
   "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 export const modalContentClass =
   "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
-export const modelChapterClass = "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[20vh] overflow-y-auto relative";
+export const modelChapterClass =
+  "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[20vh] overflow-y-auto relative";
 // Add your subject options here
 
 // Accordion for filtering
@@ -161,6 +162,7 @@ const QuestionBank = () => {
     imageUrls: [],
     marks: "",
     difficulty: "",
+    textBook: "ncert", // Use default "ncert" if not editing
     options: [
       { key: "A", option: "", imageUrl: "" },
       { key: "B", option: "", imageUrl: "" },
@@ -426,6 +428,7 @@ const QuestionBank = () => {
       imageUrls: [],
       marks: "",
       difficulty: "",
+      textBook: "ncert",
       options: [
         { key: "A", option: "", imageUrl: "" },
         { key: "B", option: "", imageUrl: "" },
@@ -454,6 +457,7 @@ const QuestionBank = () => {
         imageUrls: questionToEdit.imageUrls || [],
         marks: questionToEdit.marks || "",
         difficulty: questionToEdit.difficulty || "",
+        textBook: questionToEdit.textBook ||  "",
         options:
           questionToEdit.type === "mcq"
             ? questionToEdit.options?.map((opt) => ({
@@ -666,6 +670,7 @@ const QuestionBank = () => {
         subject: newQuestion.subject?.toLowerCase(),
         chapter: newQuestion.chapter?.toLowerCase(),
         grade: parseInt(newQuestion.grade),
+        textBook: newQuestion.textBook?.toLowerCase(),
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
@@ -705,6 +710,7 @@ const QuestionBank = () => {
         imageUrls: [],
         marks: "",
         difficulty: "",
+        textBook: "ncert",
         options: [
           { key: "A", option: "", imageUrl: "" },
           { key: "B", option: "", imageUrl: "" },
@@ -1177,6 +1183,7 @@ const QuestionBank = () => {
                       chapter: "",
                       grade: "",
                       type: "mcq",
+                      textBook: "ncert",
                       questionText: "",
                       imageUrls: [],
                       marks: "",
@@ -1224,6 +1231,21 @@ const QuestionBank = () => {
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">
+                Textbook <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={newQuestion.textBook}
+                onChange={(e) => handleNewQuestionChange(e, "textBook")}
+                className={inputClass}
+                required
+              >
+                <option value="">Select Textbook</option>
+                <option value="ncert">NCERT</option>
+                <option value="gseb">GSEB</option>
               </select>
             </div>
 
