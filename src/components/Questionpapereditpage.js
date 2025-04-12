@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
@@ -69,7 +68,7 @@ const QuestionPaperEditPage = () => {
     questionText: "",
     imageUrls: [],
     marks: "",
-    difficulty: "",
+    difficulty: "medium",
     options: [
       { key: "A", option: "", imageUrl: "" },
       { key: "B", option: "", imageUrl: "" },
@@ -661,7 +660,7 @@ const QuestionPaperEditPage = () => {
 
       let payload = {
         ...updatedQuestion,
-        difficulty: updatedQuestion.difficulty?.toLowerCase(),
+        difficulty: updatedQuestion.difficulty?.toLowerCase() ?? 'medium',
         questionPaperId,
         grade,
         subject,
@@ -811,7 +810,7 @@ const QuestionPaperEditPage = () => {
       questionText: "",
       imageUrls: [],
       marks: "",
-      difficulty: "",
+      difficulty: "medium",
       options: [
         { key: "A", option: "", imageUrl: "" },
         { key: "B", option: "", imageUrl: "" },
@@ -953,7 +952,7 @@ const QuestionPaperEditPage = () => {
         imageUrls: uploadedImageUrls,
         options: newQuestion.type === "mcq" ? updatedOptions : undefined,
         questionPaperId,
-        difficulty: newQuestion.difficulty?.toLowerCase(),
+        difficulty: "medium",
         orderIndex,
         subject,
         grade,
@@ -981,7 +980,7 @@ const QuestionPaperEditPage = () => {
         questionText: "",
         imageUrls: [],
         marks: "",
-        difficulty: "",
+        difficulty: "medium",
         options: [
           { key: "A", option: "", imageUrl: "" },
           { key: "B", option: "", imageUrl: "" },
@@ -1311,7 +1310,7 @@ const QuestionPaperEditPage = () => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <span className="font-semibold">Difficulty:</span>
                 <select
                   value={editedQuestion.difficulty || ""}
@@ -1322,7 +1321,7 @@ const QuestionPaperEditPage = () => {
                   <option value="medium">medium</option>
                   <option value="hard">hard</option>
                 </select>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Marks:</span>
                 <input
@@ -1532,7 +1531,7 @@ const QuestionPaperEditPage = () => {
                       questionText: "",
                       imageUrls: [],
                       marks: "",
-                      difficulty: "",
+                      difficulty: "medium",
                       options: [
                         { key: "A", option: "", imageUrl: "" },
                         { key: "B", option: "", imageUrl: "" },
@@ -1716,7 +1715,7 @@ const QuestionPaperEditPage = () => {
                   placeholder="e.g. 5"
                 />
               </div>
-              <div className="flex-1">
+              {/* <div className="flex-1">
                 <label className="block mb-1 font-medium">
                   Difficulty <span className="text-red-500">*</span>
                 </label>
@@ -1730,7 +1729,7 @@ const QuestionPaperEditPage = () => {
                   <option value="medium">medium</option>
                   <option value="hard">hard</option>
                 </select>
-              </div>
+              </div> */}
             </div>
             {/* The Save/Cancel buttons are at the top for this modal */}
           </div>

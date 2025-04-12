@@ -542,7 +542,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {question.type}
                           </span>
-                          {question.difficulty && (
+                          {/* {question.difficulty && (
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 question.difficulty.toLowerCase() === "easy"
@@ -555,7 +555,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                             >
                               {question.difficulty}
                             </span>
-                          )}
+                          )} */}
                           {question.marks && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                               {question.marks} marks
@@ -639,7 +639,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {question.type}
                         </span>
-                        {question.difficulty && (
+                        {/* {question.difficulty && (
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               question.difficulty.toLowerCase() === "easy"
@@ -651,7 +651,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                           >
                             {question.difficulty}
                           </span>
-                        )}
+                        )} */}
                         {question.marks && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                             {question.marks} marks
@@ -747,7 +747,7 @@ export const CustomPaperCreatePage = () => {
     questionText: "",
     imageUrls: [],
     marks: "",
-    difficulty: "",
+    difficulty: "medium",
     options: [
       { key: "A", option: "", imageUrl: "" },
       { key: "B", option: "", imageUrl: "" },
@@ -1112,7 +1112,7 @@ export const CustomPaperCreatePage = () => {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
         options: updatedOptions,
-        difficulty: editedQuestion.difficulty?.toLowerCase(),
+        difficulty: editedQuestion?.difficulty?.toLowerCase() ?? 'medium',
       };
 
       const response = await postRequest(`${BASE_URL_API}/question/upsert`, {
@@ -1248,7 +1248,7 @@ export const CustomPaperCreatePage = () => {
       questionText: "",
       imageUrls: [],
       marks: "",
-      difficulty: "",
+      difficulty: "medium",
       options: [
         { key: "A", option: "", imageUrl: "" },
         { key: "B", option: "", imageUrl: "" },
@@ -1408,7 +1408,7 @@ export const CustomPaperCreatePage = () => {
         ...newQuestion,
         imageUrls: uploadedImageUrls,
         options: newQuestion.type === "mcq" ? updatedOptions : undefined,
-        difficulty: newQuestion.difficulty?.toLowerCase(),
+        difficulty: newQuestion?.difficulty?.toLowerCase() ?? 'medium',
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
@@ -1427,7 +1427,7 @@ export const CustomPaperCreatePage = () => {
         questionText: "",
         imageUrls: [],
         marks: "",
-        difficulty: "",
+        difficulty: "medium",
         options: [
           { key: "A", option: "", imageUrl: "" },
           { key: "B", option: "", imageUrl: "" },
@@ -1820,7 +1820,7 @@ export const CustomPaperCreatePage = () => {
                       <option value="descriptive">Descriptive</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <span className="font-semibold">Difficulty:</span>
                     <select
                       value={editedQuestion.difficulty || ""}
@@ -1831,7 +1831,7 @@ export const CustomPaperCreatePage = () => {
                       <option value="medium">medium</option>
                       <option value="hard">hard</option>
                     </select>
-                  </div>
+                  </div> */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Marks:</span>
                     <input
@@ -2040,7 +2040,7 @@ export const CustomPaperCreatePage = () => {
                       questionText: "",
                       imageUrls: [],
                       marks: "",
-                      difficulty: "",
+                      difficulty: "medium",
                       options: [
                         { key: "A", option: "", imageUrl: "" },
                         { key: "B", option: "", imageUrl: "" },
@@ -2226,7 +2226,7 @@ export const CustomPaperCreatePage = () => {
                   placeholder="e.g. 5"
                 />
               </div>
-              <div className="flex-1">
+              {/* <div className="flex-1">
                 <label className="block mb-1 font-medium">
                   Difficulty <span className="text-red-500">*</span>
                 </label>
@@ -2240,7 +2240,7 @@ export const CustomPaperCreatePage = () => {
                   <option value="medium">medium</option>
                   <option value="hard">hard</option>
                 </select>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
