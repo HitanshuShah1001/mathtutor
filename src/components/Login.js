@@ -32,8 +32,9 @@ const LoginPage = () => {
       if (isOTPSent) {
         navigate(VERIFY_OTP, { state: { phoneNumber } });
       } else {
+       
         setError(
-          "Unable to send OTP. Please check the phone number and try again."
+          "Unable to send OTP. Please check the phone number/Internet and try again."
         );
       }
     }

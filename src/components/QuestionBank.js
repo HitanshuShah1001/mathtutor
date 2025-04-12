@@ -41,21 +41,9 @@ export const modalContainerClass =
   "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
 export const modalContentClass =
   "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[70vh] overflow-y-auto relative";
-
+export const modelChapterClass =
+  "bg-white rounded-lg p-6 max-w-3xl w-full mx-4 h-[20vh] overflow-y-auto relative";
 // Add your subject options here
-const subjectOptions = [
-  "maths",
-  "science",
-  "ss",
-  "english",
-  "grammar",
-  "evs",
-  "accounts",
-  "economics",
-  "spcc",
-  "bo",
-  "statistics",
-];
 
 // Accordion for filtering
 const FilterGroupAccordion = ({
@@ -119,6 +107,7 @@ const QuestionBank = () => {
   const [selected, setSelected] = useState([]);
   const [selectedQuestionObjs, setSelectedQuestionObjs] = useState([]);
   const [viewSelected, setViewSelected] = useState(false);
+  const [showChaptersModal, setShowChaptersModal] = useState(false);
 
   // Filter state, now includes `chapters` array for storing fetched chapters
   const [filters, setFilters] = useState({
@@ -136,9 +125,6 @@ const QuestionBank = () => {
     questionTypes: [],
     chapters: [], // new property to store fetched chapters
   });
-
-  const [searchQuery, setSearchQuery] = useState("");
-
   // Show/hide filter panel
   const [showFilterPanel, setShowFilterPanel] = useState(true);
 
@@ -176,6 +162,7 @@ const QuestionBank = () => {
     imageUrls: [],
     marks: "",
     difficulty: "",
+    textBook: "ncert", // Use default "ncert" if not editing
     options: [
       { key: "A", option: "", imageUrl: "" },
       { key: "B", option: "", imageUrl: "" },
@@ -190,7 +177,6 @@ const QuestionBank = () => {
   const [customPaperName, setCustomPaperName] = useState("");
   const [customPaperGrade, setCustomPaperGrade] = useState("");
   const [customPaperSubject, setCustomPaperSubject] = useState("");
-  const [totalSets, setTotalSets] = useState(1);
   const [errorMessage, setErrorMessage] = useState("");
   const [chapters, setChapters] = useState([]);
 
@@ -236,7 +222,6 @@ const QuestionBank = () => {
       questionTypes: [],
       chapters: [],
     });
-    setSearchQuery("");
   };
 
   /**
@@ -244,9 +229,9 @@ const QuestionBank = () => {
    * Called automatically any time filters.grade or filters.subject changes.
    */
   useEffect(() => {
-    const fetchChapters = async (grade, subject,examName) => {
+    const fetchChapters = async (grade, subject, examName) => {
       try {
-        const body = { grade, subject,examName };
+        const body = { grade, subject, examName };
         const response = await postRequest(
           `${BASE_URL_API}/question/get-chapters`,
           body
@@ -331,7 +316,7 @@ const QuestionBank = () => {
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
     try {
       const queryParams = new URLSearchParams({
-        limit: "10",
+        limit: "40",
         ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
       });
       const payload = {
@@ -443,6 +428,7 @@ const QuestionBank = () => {
       imageUrls: [],
       marks: "",
       difficulty: "",
+      textBook: "ncert",
       options: [
         { key: "A", option: "", imageUrl: "" },
         { key: "B", option: "", imageUrl: "" },
@@ -471,6 +457,7 @@ const QuestionBank = () => {
         imageUrls: questionToEdit.imageUrls || [],
         marks: questionToEdit.marks || "",
         difficulty: questionToEdit.difficulty || "",
+        textBook: questionToEdit.textBook ||  "",
         options:
           questionToEdit.type === "mcq"
             ? questionToEdit.options?.map((opt) => ({
@@ -503,8 +490,6 @@ const QuestionBank = () => {
     ) : null;
   };
 
-  // SHIFT + $ insertion – optional logic
-  const MATH_MARKER = "\u200B";
   const handleMathKeyDown = (e, field, index = null) => {
     // Optionally handle SHIFT + $ logic here, omitted for brevity
   };
@@ -685,6 +670,7 @@ const QuestionBank = () => {
         subject: newQuestion.subject?.toLowerCase(),
         chapter: newQuestion.chapter?.toLowerCase(),
         grade: parseInt(newQuestion.grade),
+        textBook: newQuestion.textBook?.toLowerCase(),
         imageUrls: finalImageUrls,
         difficulty: newQuestion.difficulty?.toLowerCase(),
       };
@@ -724,6 +710,7 @@ const QuestionBank = () => {
         imageUrls: [],
         marks: "",
         difficulty: "",
+        textBook: "ncert",
         options: [
           { key: "A", option: "", imageUrl: "" },
           { key: "B", option: "", imageUrl: "" },
@@ -878,6 +865,16 @@ const QuestionBank = () => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
+              {chapters.length > 0 && (
+                <button
+                  onClick={() => setShowChaptersModal(true)}
+                  className={`${blackButtonClass} w-full mt-4`}
+                >
+                  {filters.chapters.length > 0
+                    ? `Chapters (${filters.chapters.length} selected)`
+                    : "Select Chapters"}
+                </button>
+              )}
               <button
                 onClick={() => setViewSelected((prev) => !prev)}
                 className={`${blackButtonClass} w-full mt-4`}
@@ -935,7 +932,43 @@ const QuestionBank = () => {
               </div>
             </div>
           </div>
-
+          {showChaptersModal && (
+            <div className={modalContainerClass}>
+              <div className={`${modelChapterClass} max-w-md`}>
+                <h2 className="text-xl font-semibold mb-4">Select Chapters</h2>
+                <div className="flex flex-wrap gap-2">
+                  {chapters && chapters.length > 0 ? (
+                    chapters.map((ch) => {
+                      const isSelected = filters.chapters.includes(ch);
+                      return (
+                        <span
+                          key={ch}
+                          onClick={() => toggleFilterValue("chapters", ch)}
+                          className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
+                            isSelected
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                          }`}
+                        >
+                          {ch}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <p>No chapters available</p>
+                  )}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowChaptersModal(false)}
+                    className="px-4 py-2 border rounded"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Questions List */}
           <div className="pt-[72px]">
             {viewSelected ? (
@@ -1150,6 +1183,7 @@ const QuestionBank = () => {
                       chapter: "",
                       grade: "",
                       type: "mcq",
+                      textBook: "ncert",
                       questionText: "",
                       imageUrls: [],
                       marks: "",
@@ -1192,11 +1226,26 @@ const QuestionBank = () => {
                 required
               >
                 <option value="">Select Subject</option>
-                {subjectOptions?.map((sub) => (
+                {subjects?.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub.charAt(0).toUpperCase() + sub.slice(1)}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">
+                Textbook <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={newQuestion.textBook}
+                onChange={(e) => handleNewQuestionChange(e, "textBook")}
+                className={inputClass}
+                required
+              >
+                <option value="">Select Textbook</option>
+                <option value="ncert">NCERT</option>
+                <option value="gseb">GSEB</option>
               </select>
             </div>
 

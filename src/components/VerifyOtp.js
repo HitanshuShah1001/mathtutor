@@ -7,7 +7,7 @@ import {
   addDataToLocalStorage,
   removeDataFromLocalStorage,
 } from "../utils/LocalStorageOps";
-import { PAPER_GENERATION } from "../constants/pages";
+import { QUESTION_PAPER_LIST } from "../constants/pages";
 
 const VerifyOtp = () => {
   // Get authentication context values and navigation functions
@@ -64,17 +64,21 @@ const VerifyOtp = () => {
 
     // Call the verifyOTP function from the auth hook
     const isValidAndData = await verifyOTP(phoneNumber, otp);
+    console.log(isValidAndData,"is valid and darta");
     if (isValidAndData?.status) {
       const { accessToken, user } = isValidAndData.data?.data || {};
       removeDataFromLocalStorage();
-
+      addDataToLocalStorage({ accessToken, user });
+      setUser(user);
+      setIsAuthenticated(true);
+      navigate(QUESTION_PAPER_LIST, { replace: true });
       // If the user has an email, assume they are fully registered and navigate to paper generation page
-      if (user?.emailId) {
-        addDataToLocalStorage({ accessToken, user });
-        setUser(user);
-        setIsAuthenticated(true);
-        navigate(PAPER_GENERATION, { replace: true });
-      }
+      // if (user?.emailId) {
+      //   addDataToLocalStorage({ accessToken, user });
+      //   setUser(user);
+      //   setIsAuthenticated(true);
+      //   navigate(QUESTION_PAPER_LIST, { replace: true });
+      // }
       // } else {
       //   // Otherwise, navigate to update-user-details page for additional registration
       //   addDataToLocalStorage({ accessToken });

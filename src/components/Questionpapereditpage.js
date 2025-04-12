@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
@@ -69,7 +68,7 @@ const QuestionPaperEditPage = () => {
     questionText: "",
     imageUrls: [],
     marks: "",
-    difficulty: "",
+    difficulty: "medium",
     options: [
       { key: "A", option: "", imageUrl: "" },
       { key: "B", option: "", imageUrl: "" },
@@ -84,6 +83,9 @@ const QuestionPaperEditPage = () => {
   const [subject, setSubject] = useState(paperSubject);
   // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalDocument, setModalDocument] = useState(null);
 
   // Stores question IDs which are selected to be marked as optional
   const [selectedOptionalQuestions, setSelectedOptionalQuestions] = useState(
@@ -154,10 +156,16 @@ const QuestionPaperEditPage = () => {
       alert("Please enter a valid section name.");
       return;
     }
-    const newSection = { name: newSectionName.trim(), questions: [] };
-    setSections([...sections, newSection]);
+    const newSec = { name: newSectionName.trim(), questions: [] };
+    const updated = [...sections, newSec];
+    const sorted = sortSectionsAlphabetically(updated);
+    setSections(sorted);
     setShowAddSectionModal(false);
     setNewSectionName("");
+  };
+
+  const sortSectionsAlphabetically = (sections) => {
+    return [...sections].sort((a, b) => a.name.localeCompare(b.name));
   };
 
   /**
@@ -257,10 +265,11 @@ const QuestionPaperEditPage = () => {
       const response = await getRequest(
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
-      if (response.success) {
-        setGrade(response.questionPaper.grade);
-        setSubject(response.questionPaper.subject);
-        setSections(response.questionPaper.sections || []);
+      if (response?.success) {
+        const sortedSections = sortSectionsAlphabetically(
+          response.questionPaper.sections || []
+        );
+        setSections(sortedSections);
       } else {
         if (response.message === INVALID_TOKEN) {
           removeDataFromLocalStorage();
@@ -408,14 +417,59 @@ const QuestionPaperEditPage = () => {
   };
 
   /**
+   * API to generate HTML link for question paper preview
+   */
+  const getHtmlLink = async (questionPaperId) => {
+    const url = `${BASE_URL_API}/questionpaper/generateHtml`;
+    const body = { questionPaperId };
+    try {
+      const result = await postRequest(url, body);
+      return result?.questionPaper; // e.g., a URL to the generated HTML/PDF
+    } catch (error) {
+      console.error("Error generating HTML:", error);
+    }
+  };
+
+  const handlePreviewClick = async () => {
+    const link = await getHtmlLink(questionPaperId);
+    if (link) {
+      // link is presumably a URL to the generated HTML (or PDF)
+      setModalDocument(link?.questionPaperLink);
+      setModalVisible(true);
+    } else {
+      alert("Failed to generate preview");
+    }
+  };
+
+  /**
    * Changes the question type (mcq/Descriptive) in the editedQuestion via a dropdown.
    */
   const handleTypeChange = (e) => {
     const newType = e.target.value;
-    setEditedQuestion((prev) => ({
-      ...prev,
-      type: newType,
-    }));
+    setEditedQuestion((prev) => {
+      // If changing from a non-mcq type to mcq, initialize options to 4 default options.
+      if (
+        prev.type !== "mcq" &&
+        newType === "mcq" &&
+        (editedQuestion?.options?.length == 0 || !editedQuestion.options)
+      ) {
+        return {
+          ...prev,
+          type: newType,
+          options: [
+            { key: "A", option: "", imageUrl: "" },
+            { key: "B", option: "", imageUrl: "" },
+            { key: "C", option: "", imageUrl: "" },
+            { key: "D", option: "", imageUrl: "" },
+          ],
+        };
+      }
+      // For other cases, simply update the type.
+      return {
+        ...prev,
+        type: newType,
+      };
+    });
   };
 
   /**
@@ -606,7 +660,7 @@ const QuestionPaperEditPage = () => {
 
       let payload = {
         ...updatedQuestion,
-        difficulty: updatedQuestion.difficulty?.toLowerCase(),
+        difficulty: updatedQuestion.difficulty?.toLowerCase() ?? 'medium',
         questionPaperId,
         grade,
         subject,
@@ -674,29 +728,73 @@ const QuestionPaperEditPage = () => {
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
+    console.log(sections, "sections");
+    console.log(source, destination);
+    const sourceSectionIndex = parseInt(source.droppableId, 10);
+    const destSectionIndex = parseInt(destination.droppableId, 10);
 
-    if (source.droppableId === destination.droppableId) {
-      const sectionIndex = parseInt(source.droppableId, 10);
-      const section = sections[sectionIndex];
-      const newQuestions = Array.from(section.questions);
-      const [removed] = newQuestions.splice(source.index, 1);
-      newQuestions.splice(destination.index, 0, removed);
+    const sourceSection = sections[sourceSectionIndex];
+    const destSection = sections[destSectionIndex];
 
-      const updatedSections = [...sections];
-      updatedSections[sectionIndex] = { ...section, questions: newQuestions };
-      setSections(updatedSections);
+    // Clone the questions array
+    const updatedSections = [...sections];
 
-      const payload = { id: questionPaperId, sections: updatedSections };
-      const response = await postRequest(
-        `${BASE_URL_API}/questionPaper/update`,
-        payload
-      );
-      if (!response.success) {
-        console.error("Failed to update question paper order", response);
-      }
-      await fetchQuestionPaperDetails();
+    if (sourceSectionIndex === destSectionIndex) {
+      // Same section reorder
+      const updatedQuestions = [...sourceSection.questions];
+      const [movedQuestion] = updatedQuestions.splice(source.index, 1);
+      updatedQuestions.splice(destination.index, 0, movedQuestion);
+
+      // Update orderIndex
+      const reordered = updatedQuestions.map((q, i) => ({
+        ...q,
+        orderIndex: i + 1,
+      }));
+
+      updatedSections[sourceSectionIndex] = {
+        ...sourceSection,
+        questions: reordered,
+      };
     } else {
-      // Cross-section drag not implemented
+      // Cross-section move
+      const sourceQuestions = [...sourceSection.questions];
+      const [movedQuestion] = sourceQuestions.splice(source.index, 1);
+
+      const destQuestions = [...destSection.questions];
+      destQuestions.splice(destination.index, 0, {
+        ...movedQuestion,
+        section: destSection.name,
+      });
+
+      updatedSections[sourceSectionIndex] = {
+        ...sourceSection,
+        questions: sourceQuestions.map((q, i) => ({ ...q, orderIndex: i + 1 })),
+      };
+      updatedSections[destSectionIndex] = {
+        ...destSection,
+        questions: destQuestions.map((q, i) => ({
+          ...q,
+          section: destSection.name,
+          orderIndex: i + 1,
+        })),
+      };
+    }
+    console.log(updatedSections);
+    setSections(updatedSections);
+
+    const payload = {
+      id: questionPaperId,
+      sections: updatedSections,
+    };
+
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (!response?.success) {
+      console.error("Failed to update question order:", response);
+    } else {
+      await fetchQuestionPaperDetails();
     }
   };
 
@@ -712,7 +810,7 @@ const QuestionPaperEditPage = () => {
       questionText: "",
       imageUrls: [],
       marks: "",
-      difficulty: "",
+      difficulty: "medium",
       options: [
         { key: "A", option: "", imageUrl: "" },
         { key: "B", option: "", imageUrl: "" },
@@ -854,7 +952,7 @@ const QuestionPaperEditPage = () => {
         imageUrls: uploadedImageUrls,
         options: newQuestion.type === "mcq" ? updatedOptions : undefined,
         questionPaperId,
-        difficulty: newQuestion.difficulty?.toLowerCase(),
+        difficulty: "medium",
         orderIndex,
         subject,
         grade,
@@ -882,7 +980,7 @@ const QuestionPaperEditPage = () => {
         questionText: "",
         imageUrls: [],
         marks: "",
-        difficulty: "",
+        difficulty: "medium",
         options: [
           { key: "A", option: "", imageUrl: "" },
           { key: "B", option: "", imageUrl: "" },
@@ -922,7 +1020,7 @@ const QuestionPaperEditPage = () => {
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
           {/* --Search Box-- */}
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-2">
             <input
               type="text"
               value={searchTerm}
@@ -930,6 +1028,12 @@ const QuestionPaperEditPage = () => {
               placeholder="Search questions..."
               className="w-full p-2 border rounded"
             />
+            <button
+              onClick={handlePreviewClick}
+              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition-colors"
+            >
+              Preview
+            </button>
           </div>
 
           {/* --Add New Section Button-- */}
@@ -1020,7 +1124,14 @@ const QuestionPaperEditPage = () => {
                     // Group questions by optionalGroupId
                     const groupedQuestions = groupQuestions(section.questions);
                     return (
-                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        style={{
+                          minHeight:
+                            groupedQuestions.length === 0 ? "50px" : "auto",
+                        }}
+                      >
                         {groupedQuestions.map((group, groupIndex) => {
                           // If a group has more than one question, show them together with "OR"
                           if (group.questions.length > 1) {
@@ -1071,7 +1182,7 @@ const QuestionPaperEditPage = () => {
                                             )}
                                             {renderTruncatedTextWithMath(
                                               q.questionText,
-                                              600
+                                              100
                                             )}
                                           </div>
                                           {/* Insert an OR between each question in the optional group */}
@@ -1126,12 +1237,7 @@ const QuestionPaperEditPage = () => {
                                       )}
                                       {renderTruncatedTextWithMath(
                                         q.questionText,
-                                        600
-                                      )}
-                                      {q.optionalGroupId && (
-                                        <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
-                                          Optional
-                                        </span>
+                                        100
                                       )}
                                     </div>
                                     <button
@@ -1178,11 +1284,7 @@ const QuestionPaperEditPage = () => {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold">Question Details</h2>
-              {editedQuestion?.optionalGroupId && (
-                <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
-                  Optional
-                </span>
-              )}
+
               {isModified && (
                 <button
                   onClick={handleSave}
@@ -1199,7 +1301,7 @@ const QuestionPaperEditPage = () => {
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Type:</span>
                 <select
-                  value={editedQuestion.type || ""}
+                  value={editedQuestion.type.toLowerCase() || ""}
                   onChange={handleTypeChange}
                   className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
                 >
@@ -1208,7 +1310,7 @@ const QuestionPaperEditPage = () => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <span className="font-semibold">Difficulty:</span>
                 <select
                   value={editedQuestion.difficulty || ""}
@@ -1219,7 +1321,7 @@ const QuestionPaperEditPage = () => {
                   <option value="medium">medium</option>
                   <option value="hard">hard</option>
                 </select>
-              </div>
+              </div> */}
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Marks:</span>
                 <input
@@ -1429,7 +1531,7 @@ const QuestionPaperEditPage = () => {
                       questionText: "",
                       imageUrls: [],
                       marks: "",
-                      difficulty: "",
+                      difficulty: "medium",
                       options: [
                         { key: "A", option: "", imageUrl: "" },
                         { key: "B", option: "", imageUrl: "" },
@@ -1613,7 +1715,7 @@ const QuestionPaperEditPage = () => {
                   placeholder="e.g. 5"
                 />
               </div>
-              <div className="flex-1">
+              {/* <div className="flex-1">
                 <label className="block mb-1 font-medium">
                   Difficulty <span className="text-red-500">*</span>
                 </label>
@@ -1627,7 +1729,7 @@ const QuestionPaperEditPage = () => {
                   <option value="medium">medium</option>
                   <option value="hard">hard</option>
                 </select>
-              </div>
+              </div> */}
             </div>
             {/* The Save/Cancel buttons are at the top for this modal */}
           </div>
@@ -1682,6 +1784,30 @@ const QuestionPaperEditPage = () => {
               >
                 Confirm
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalVisible && modalDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative flex flex-col">
+            <button
+              onClick={() => setModalVisible(false)}
+              className="absolute top-4 right-4 px-3 py-1 border border-black rounded bg-black text-white"
+            >
+              Close
+            </button>
+            <div className="p-4 flex-1 overflow-auto">
+              {/* 
+                Display the returned link in an iframe.
+                The user can only view and close. 
+                (No download actions, no extra buttons)
+              */}
+              <iframe
+                src={modalDocument}
+                className="w-full h-full"
+                title="Question Paper Preview"
+              />
             </div>
           </div>
         </div>

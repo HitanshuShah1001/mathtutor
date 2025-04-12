@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { FileText, DownloadIcon } from "lucide-react";
+import { FileText, DownloadIcon, Edit, Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   grades,
@@ -18,7 +18,11 @@ import {
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
 import { deleteRequest, postRequest } from "../utils/ApiCall";
-import { CreatePaperButton, ProfileMenuButton, QuestionBankButton } from "./QuestionBankButton";
+import {
+  CreatePaperButton,
+  ProfileMenuButton,
+  QuestionBankButton,
+} from "./QuestionBankButton";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -47,7 +51,6 @@ const FilterGroupAccordion = ({
 }) => {
   return (
     <div className="border-b mb-2">
-      {/* Accordion header with label and toggle icon */}
       <div
         className="flex items-center justify-between cursor-pointer py-2 px-1"
         onClick={() => onToggleAccordion(filterKey)}
@@ -57,8 +60,6 @@ const FilterGroupAccordion = ({
           {isOpen ? "▲" : "▼"}
         </span>
       </div>
-
-      {/* If the accordion is open, render the list of filter values */}
       {isOpen && (
         <div className="flex flex-wrap gap-2 pb-3 pt-1 px-1">
           {values.map((val) => {
@@ -101,26 +102,19 @@ export const DocumentSidebar = () => {
   const navigate = useNavigate();
   const documentListRef = useRef(null);
 
-  // ----------------------------
   // Document and pagination state
-  // ----------------------------
   const [documents, setDocuments] = useState([]);
   const [cursor, setCursor] = useState(undefined);
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loading, setLoading] = useState(false);
   const [infiniteLoading, setInfiniteLoading] = useState(false);
-
-  // We have a searchQuery state, in case you later need to implement searching.
-  // For now, we'll reset pagination if it changes (same approach as filters).
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
 
-  // ----------------------------
   // Filter state
-  // ----------------------------
   const [filters, setFilters] = useState({
     grade: [],
     subject: [],
@@ -169,7 +163,6 @@ export const DocumentSidebar = () => {
    * - showFilterPanel: Boolean that, if false, hides the entire filter sidebar.
    */
   const [showFilterPanel, setShowFilterPanel] = useState(true);
-
   /**
    * Accordion state for each filter group:
    * - openFilterGroups: object storing a boolean for whether each filter category is expanded.
@@ -189,10 +182,6 @@ export const DocumentSidebar = () => {
     questionTypes: false,
   });
 
-  /**
-   * filterGroups: This array of objects maps each category's label, key, and possible values.
-   * We iterate over these to create multiple FilterGroupAccordion components.
-   */
   const filterGroups = [
     { label: "Grade", key: "grade", values: grades },
     { label: "Subject", key: "subject", values: subjects },
@@ -204,9 +193,6 @@ export const DocumentSidebar = () => {
     { label: "Exam Name", key: "examNames", values: examNames },
     { label: "Marks", key: "marks", values: marksOptions },
     { label: "Type", key: "types", values: types },
-    // Uncomment if needed:
-    // { label: "Difficulty", key: "difficulties", values: difficulties },
-    // { label: "Question Type", key: "questionTypes", values: questionTypes },
   ];
 
   /**
@@ -222,9 +208,6 @@ export const DocumentSidebar = () => {
     });
   };
 
-  /**
-   * onToggleAccordion: Toggles the open/close state for a specific filter group's accordion.
-   */
   const onToggleAccordion = (filterKey) => {
     setOpenFilterGroups((prev) => ({
       ...prev,
@@ -238,22 +221,19 @@ export const DocumentSidebar = () => {
    * If isInitialLoad=true, we fetch the first page (cursor omitted).
    * If isInitialLoad=false, we must have a valid customCursor to fetch next pages.
    */
+
   const fetchDocuments = async (isInitialLoad = false, customCursor) => {
-    // If we're trying to load a subsequent page but have no cursor, skip to prevent duplicates
     if (!isInitialLoad && (!customCursor || customCursor === null)) {
       return;
     }
 
     isInitialLoad ? setLoading(true) : setInfiniteLoading(true);
-
     try {
-      // Prepare query parameters (limit, cursor for pagination)
       const queryParams = new URLSearchParams({
         limit: "10",
         ...(typeof customCursor !== "undefined" && { cursor: customCursor }),
       });
 
-      // Prepare request body from filters
       const requestBody = {};
       if (filters.grade.length > 0) requestBody.grades = filters.grade;
       if (filters.subject.length > 0) requestBody.subjects = filters.subject;
@@ -273,9 +253,6 @@ export const DocumentSidebar = () => {
           d.toLowerCase()
         );
       }
-      // if (filters.questionTypes.length > 0) {
-      //   requestBody.questionTypes = filters.questionTypes;
-      // }
 
       const data = await postRequest(
         `${BASE_URL_API}/questionPaper/getPaginatedQuestionPapers?${queryParams.toString()}`,
@@ -299,7 +276,6 @@ export const DocumentSidebar = () => {
         setHasNextPage(data.hasNextPage);
         setCursor(data.nextCursor);
       } else {
-        // If initial load fails or returns empty, clear out old docs
         if (isInitialLoad) {
           setDocuments([]);
         }
@@ -314,10 +290,6 @@ export const DocumentSidebar = () => {
     }
   };
 
-  /**
-   * Whenever the filters OR the searchQuery changes,
-   * we reset pagination and fetch the first batch of documents anew.
-   */
   useEffect(() => {
     setDocuments([]);
     setCursor(undefined);
@@ -331,13 +303,12 @@ export const DocumentSidebar = () => {
    * and loads more documents if needed.
    */
   const checkIfMoreDocumentsNeeded = useCallback(() => {
-    // If we're out of pages or currently loading, do nothing
     if (!hasNextPage || infiniteLoading || loading) return;
 
     if (documentListRef.current) {
       const documentListHeight = documentListRef.current.offsetHeight;
       const viewportHeight = window.innerHeight;
-      const headerHeight = 80; // 80px for the header
+      const headerHeight = 80;
 
       // If the document list doesn't fill the viewport (with some buffer),
       // and we have more documents, fetch the next page.
@@ -371,19 +342,16 @@ export const DocumentSidebar = () => {
    */
   useEffect(() => {
     checkIfMoreDocumentsNeeded();
-    // Add resize event listener to check if more documents are needed when window is resized
     window.addEventListener("resize", checkIfMoreDocumentsNeeded);
     return () =>
       window.removeEventListener("resize", checkIfMoreDocumentsNeeded);
   }, [documents, checkIfMoreDocumentsNeeded]);
 
-  // Attach scroll listener on mount and clean up on unmount
   useEffect(() => {
     window.addEventListener("scroll", handleInfiniteScroll);
     return () => window.removeEventListener("scroll", handleInfiniteScroll);
   }, [handleInfiniteScroll]);
 
-  // Disable body scrolling when a modal is open
   useEffect(() => {
     if (modalVisible) {
       document.body.style.overflow = "hidden";
@@ -395,9 +363,48 @@ export const DocumentSidebar = () => {
     };
   }, [modalVisible]);
 
-  // ----------------------------
-  // Helper functions for document actions
-  // ----------------------------
+  // -----
+  // NEW: Inline Editing States and Functions for updating document name
+  const [editingDocId, setEditingDocId] = useState(null);
+  const [editedName, setEditedName] = useState("");
+
+  const handleEditIconClick = (doc) => {
+    setEditingDocId(doc.id);
+    setEditedName(doc.name);
+  };
+
+  const updateQuestionPaperName = async (id, newName) => {
+    // Stub function: Integrate your API call later
+    const url = `${BASE_URL_API}/questionpaper/changeQuestionPapername`;
+    const body = { id, name: newName };
+    const res = await postRequest(url,body);
+    return res
+  };
+
+  const handleSaveName = async (id) => {
+    try {
+      const result = await updateQuestionPaperName(id, editedName);
+      if (result.success) {
+        setDocuments((prevDocs) =>
+          prevDocs.map((d) => (d.id === id ? { ...d, name: editedName } : d))
+        );
+        setEditingDocId(null);
+        setEditedName("");
+        fetchDocuments(true,undefined);
+      } else {
+        alert("Error saving changes.");
+      }
+    } catch (error) {
+      console.error("Error updating name:", error);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingDocId(null);
+    setEditedName("");
+  };
+  // -----
+
   const getHtmlLink = async (questionPaperId) => {
     const url = `${BASE_URL_API}/questionpaper/generateHtml`;
     const body = { questionPaperId };
@@ -409,24 +416,15 @@ export const DocumentSidebar = () => {
     }
   };
 
-  /**
-   * handleCreatePaper: Triggered when the user clicks the "Create Question Paper" button.
-   */
   const handleCreatePaper = () => {
     setShowPaperDialog(true);
   };
 
-  /**
-   * handleCustomPaperClick: If the user chooses "Custom Paper," close the paper type dialog and open the custom paper creation modal.
-   */
   const handleCustomPaperClick = () => {
     setShowPaperDialog(false);
     setShowCustomCreateModal(true);
   };
 
-  /**
-   * handleConfirmCustomPaper: Validates the custom paper form and creates a new paper via the API.
-   */
   const handleConfirmCustomPaper = async () => {
     if (!customPaperName || !customPaperGrade || !customPaperSubject) {
       setErrorMessage("All three fields are required.");
@@ -454,7 +452,6 @@ export const DocumentSidebar = () => {
       } else {
         setErrorMessage(response?.message || "Failed to create paper.");
       }
-      // Reset fields and close modal
       setShowCustomCreateModal(false);
       setCustomPaperName("");
       setCustomPaperGrade("");
@@ -465,10 +462,6 @@ export const DocumentSidebar = () => {
     }
   };
 
-  /**
-   * downloadAllSetPDFs: For a multi-set question paper, each set can have its own link.
-   * This function opens each link, loads it, prints as a PDF, and then closes the window.
-   */
   const downloadAllSetPDFs = async (links) => {
     for (let index = 0; index < links?.length; index++) {
       const link = links[index];
@@ -513,9 +506,6 @@ export const DocumentSidebar = () => {
     }
   };
 
-  /**
-   * getDocumentName: Utility to prettify the document name by splitting underscores and capitalizing words.
-   */
   const getDocumentName = ({ name }) => {
     const names = name.split("_");
     let capitalisedWords = names.map(
@@ -524,21 +514,13 @@ export const DocumentSidebar = () => {
     return capitalisedWords.join(" ");
   };
 
-  /**
-   * getCapitalSubjectName: Utility to capitalize the subject name.
-   */
   const getCapitalSubjectName = ({ subject }) => {
     return subject.charAt(0).toUpperCase() + subject.slice(1);
   };
 
-  // ----------------------------
-  // Render
-  // ----------------------------
   return (
     <div className="min-h-screen relative">
-      {/* Fixed Header */}
       <header className="fixed top-0 left-0 right-0 z-20 bg-white shadow-md h-20 flex items-center px-4">
-        {/* Header section with title and Create Question Paper button */}
         <h2 className="text-2xl font-semibold text-gray-800">Documents</h2>
         <div className="ml-auto flex items-center">
           <QuestionBankButton />
@@ -547,17 +529,12 @@ export const DocumentSidebar = () => {
         </div>
       </header>
 
-      {/* Main Content Container */}
-      {/* Padding-top equal to header height (h-20) to avoid being overlapped */}
       <div className="flex pt-20">
-        {/* Left Filter Panel (Fixed) */}
         {showFilterPanel && (
           <aside className="fixed top-20 left-0 w-64 h-[calc(100vh-80px)] border-r px-4 py-2 overflow-y-auto bg-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
-
-            {/* Selected Filters Chips */}
             <div className="mb-4">
               {Object.entries(filters).map(([key, values]) =>
                 values.map((val) => (
@@ -576,7 +553,6 @@ export const DocumentSidebar = () => {
                 ))
               )}
             </div>
-            {/* Filter Accordions */}
             <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
               {filterGroups.map(({ label, key, values }) => (
                 <FilterGroupAccordion
@@ -591,7 +567,6 @@ export const DocumentSidebar = () => {
                 />
               ))}
             </div>
-            {/* Reset Filters Button */}
             <button
               onClick={() =>
                 setFilters({
@@ -616,13 +591,11 @@ export const DocumentSidebar = () => {
           </aside>
         )}
 
-        {/* Right Document List Panel */}
         <main
           className={`flex-1 overflow-y-auto p-4 ${
             showFilterPanel ? "ml-64" : ""
           }`}
         >
-          {/* Button to toggle filter sidebar visibility */}
           <div className="mb-4 flex items-center gap-4">
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
@@ -631,11 +604,6 @@ export const DocumentSidebar = () => {
               {showFilterPanel ? "Hide Filters" : "Show Filters"}
             </button>
           </div>
-
-          {/* Main documents display area:
-                1. Show a spinner if loading the initial set of documents.
-                2. Otherwise, list the documents or show a "no results" message if empty. 
-          */}
           {loading && documents.length === 0 ? (
             <div className="flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -658,9 +626,38 @@ export const DocumentSidebar = () => {
                       className="flex items-center justify-between p-4 border border-gray-200 rounded-lg shadow-sm"
                     >
                       <div>
-                        <h3 className="text-lg font-medium text-gray-800">
-                          {getDocumentName({ name: doc.name })}
-                        </h3>
+                        {/* Inline Editing for Document Name */}
+                        {editingDocId === doc.id ? (
+                          <div className="flex items-center">
+                            <input
+                              type="text"
+                              value={editedName}
+                              onChange={(e) => setEditedName(e.target.value)}
+                              className="text-lg font-medium text-gray-800 border rounded p-1"
+                            />
+                            <button
+                              onClick={() => handleSaveName(doc.id)}
+                              className="ml-2"
+                            >
+                              <Check className="w-5 h-5 text-green-600" />
+                            </button>
+                            <button onClick={handleCancelEdit} className="ml-2">
+                              <X className="w-5 h-5 text-red-600" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <h3 className="text-lg font-medium text-gray-800">
+                              {getDocumentName({ name: doc.name })}
+                            </h3>
+                            <button
+                              onClick={() => handleEditIconClick(doc)}
+                              className="ml-2"
+                            >
+                              <Edit className="w-5 h-5 text-gray-600 hover:text-gray-800" />
+                            </button>
+                          </div>
+                        )}
                         <p className="text-sm text-gray-500">
                           {getCapitalSubjectName({ subject: doc.subject })} •
                           Grade {doc.grade} • Status:{" "}
@@ -669,7 +666,6 @@ export const DocumentSidebar = () => {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        {/* View Button */}
                         <button
                           onClick={async () => {
                             try {
@@ -688,28 +684,36 @@ export const DocumentSidebar = () => {
                         >
                           View
                         </button>
-                        {/* Delete / Edit Buttons (if not archived) */}
                         {doc.type !== "archive" && (
                           <>
-                            <button
+                            {/* <button
                               onClick={async () => {
-                                try {
-                                  await deleteRequest(
-                                    `${BASE_URL_API}/questionPaper/${doc.id}`
-                                  );
-                                  // After deleting, reset and fetch again
-                                  setDocuments([]);
-                                  setCursor(undefined);
-                                  setHasNextPage(true);
-                                  fetchDocuments(true);
-                                } catch (error) {
-                                  console.error("Error deleting paper:", error);
+                                if (
+                                  window.confirm(
+                                    "Are you sure you want to delete this paper?"
+                                  )
+                                ) {
+                                  try {
+                                    await deleteRequest(
+                                      `${BASE_URL_API}/questionPaper/${doc.id}`
+                                    );
+                                    // After deleting, reset and fetch again
+                                    setDocuments([]);
+                                    setCursor(undefined);
+                                    setHasNextPage(true);
+                                    fetchDocuments(true);
+                                  } catch (error) {
+                                    console.error(
+                                      "Error deleting paper:",
+                                      error
+                                    );
+                                  }
                                 }
                               }}
                               className={commonButtonClass}
                             >
                               Delete
-                            </button>
+                            </button> */}
                             <button
                               onClick={() => {
                                 if (doc.sections && doc.sections.length > 0) {
@@ -736,8 +740,6 @@ export const DocumentSidebar = () => {
                       </div>
                     </div>
                   ))}
-
-                  {/* Infinite-scrolling status */}
                   {hasNextPage ? (
                     infiniteLoading && (
                       <div className="text-center py-4 text-gray-500">
@@ -756,7 +758,6 @@ export const DocumentSidebar = () => {
         </main>
       </div>
 
-      {/* Modal for viewing a document (Question Paper or Answer Sheet) */}
       {modalVisible && modalDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white w-11/12 h-[90vh] rounded-lg shadow-xl relative flex flex-col">
@@ -814,7 +815,6 @@ export const DocumentSidebar = () => {
         </div>
       )}
 
-      {/* Paper Type Selection Dialog */}
       {showPaperDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div
@@ -854,7 +854,6 @@ export const DocumentSidebar = () => {
         </div>
       )}
 
-      {/* Custom Paper Creation Modal */}
       {showCustomCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white border border-gray-200 shadow-lg rounded-lg w-[400px] p-6 relative">
@@ -920,7 +919,6 @@ export const DocumentSidebar = () => {
                   ))}
                 </select>
               </div>
-              
               <div className="flex justify-end mt-4">
                 <button
                   className={commonButtonClass}

@@ -1,19 +1,19 @@
 import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
+import "katex/dist/katex.min.css";
 
 export const renderTextWithMath = (text) => {
   if (!text) return null;
-  
+
   const removeHtmlTags = (str) => {
     return str.replace(/<[^>]*>/g, "");
   };
-  
-  
+
   const noTagsText = removeHtmlTags(text);
 
   const parts = noTagsText.split("$");
   return (
-    <div style={{ display: "inline" }}>
+    <div style={{ display: "inline", textAlign: "justify",whiteSpace:"pre-wrap" }}>
       {parts.map((part, index) =>
         index % 2 === 1 ? (
           <InlineMath key={index} math={part} />
@@ -25,10 +25,9 @@ export const renderTextWithMath = (text) => {
   );
 };
 
-export const renderTruncatedTextWithMath = (text, maxLength = 600) => {
+export const renderTruncatedTextWithMath = (text, maxLength = 100) => {
   if (!text) return null;
 
-  
   const removeHtmlTags = (str) => {
     return str.replace(/<[^>]*>/g, "");
   };
@@ -38,7 +37,7 @@ export const renderTruncatedTextWithMath = (text, maxLength = 600) => {
 
   // Truncate text if it's too long
   let truncated = noTagsText;
-  if (noTagsText.length > maxLength) {
+  if (noTagsText.length > 100) {
     truncated = noTagsText.slice(0, maxLength) + "...";
   }
 
@@ -46,7 +45,8 @@ export const renderTruncatedTextWithMath = (text, maxLength = 600) => {
   const parts = truncated.split("$");
 
   return (
-    <div style={{ display: "inline" }}>
+    <div style={{ display: "inline", textAlign: "justify", marginRight: 5,
+    whiteSpace:"pre-wrap" }}>
       {parts.map((part, index) =>
         index % 2 === 1 ? (
           <InlineMath key={index} math={part} />

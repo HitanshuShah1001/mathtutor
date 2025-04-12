@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
@@ -118,6 +117,8 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
   const [selectedQuestionObjs, setSelectedQuestionObjs] = useState([]);
   // Toggle between normal/all-questions view and selected-questions view
   const [viewSelected, setViewSelected] = useState(false);
+  const [showChaptersModal, setShowChaptersModal] = useState(false);
+
   // ------------------------------------------------------------
 
   const [loading, setLoading] = useState(false);
@@ -126,11 +127,11 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 
   // Updated filters as multi-select arrays
   const [filters, setFilters] = useState({
+    grades: [],
+    subjects: [],
     marks: [],
     types: [],
     difficulties: [],
-    grades: [],
-    subjects: [],
     examDays: [],
     examMonths: [],
     examYears: [],
@@ -186,11 +187,11 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
 
   // Define filter groups to display
   const filterGroups = [
+    { label: "Grades", key: "grades", values: grades },
+    { label: "Subjects", key: "subjects", values: subjects },
     { label: "Marks", key: "marks", values: marksOptions },
     { label: "Types", key: "types", values: types },
     { label: "Difficulty", key: "difficulties", values: difficulties },
-    { label: "Grades", key: "grades", values: grades },
-    { label: "Subjects", key: "subjects", values: subjects },
     { label: "Exam Days", key: "examDays", values: examDays },
     { label: "Exam Months", key: "examMonths", values: examMonths },
     { label: "Exam Years", key: "examYears", values: examYears },
@@ -198,12 +199,6 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
     { label: "Streams", key: "streams", values: streams },
     { label: "Exam Names", key: "examNames", values: examNames },
     { label: "Question Types", key: "questionTypes", values: questionTypes },
-    {
-      label: "Chapters",
-      key: "chapters",
-      values: chapters,
-    },
-    {},
   ];
 
   // --- Fetch Questions ---
@@ -362,7 +357,11 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
       (filters.grades.length === 1 || filters.examNames.length === 1) &&
       filters.subjects.length === 1
     ) {
-      fetchChapters(filters.grades[0], filters.subjects[0], filters.examNames[0]);
+      fetchChapters(
+        filters.grades[0],
+        filters.subjects[0],
+        filters.examNames[0]
+      );
     } else {
       // Otherwise, reset chapters
       setFilters((prev) => ({ ...prev, chapters: [] }));
@@ -394,6 +393,43 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
             </button>
           </div>
         </div>
+        {showChaptersModal && (
+          <div className={modalContainerClass}>
+            <div className={`${modalContentClass} max-w-md`}>
+              <h2 className="text-xl font-semibold mb-4">Select Chapters</h2>
+              <div className="flex flex-wrap gap-2">
+                {chapters && chapters.length > 0 ? (
+                  chapters.map((ch) => {
+                    const isSelected = filters.chapters.includes(ch);
+                    return (
+                      <span
+                        key={ch}
+                        onClick={() => toggleFilterValue("chapters", ch)}
+                        className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
+                          isSelected
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        }`}
+                      >
+                        {ch}
+                      </span>
+                    );
+                  })
+                ) : (
+                  <p>No chapters available</p>
+                )}
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowChaptersModal(false)}
+                  className="px-4 py-2 border rounded"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Content: Left panel for Filters and Right panel for Questions */}
         <div className="flex flex-1 overflow-hidden">
@@ -427,9 +463,19 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
+              {chapters.length > 0 && (
+                <button
+                  onClick={() => setShowChaptersModal(true)}
+                  className={`${blackButtonClass} w-full mt-4`}
+                >
+                  {filters.chapters.length > 0
+                    ? `Chapters (${filters.chapters.length} selected)`
+                    : "Select Chapters"}
+                </button>
+              )}
               <button
                 onClick={() => setViewSelected((prev) => !prev)}
-                className="px-3 py-2 border rounded"
+                className={`${blackButtonClass} w-full mt-4`}
               >
                 {viewSelected ? "Show All" : "Show Selected"}
               </button>
@@ -457,15 +503,19 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                           <div className="mb-2">
                             {renderTextWithMath(question.questionText)}
                           </div>
-                          {question.imageUrl && (
-                            <div className="mt-2 mb-3">
-                              <img
-                                src={question.imageUrl}
-                                alt="Question"
-                                className="max-h-40 object-contain"
-                              />
-                            </div>
-                          )}
+                          {question.imageUrls &&
+                            question.imageUrls.length > 0 && (
+                              <div className="mb-2 flex flex-wrap gap-2">
+                                {question?.imageUrls?.map((url, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={url}
+                                    alt={`Question ${question.id} preview ${idx}`}
+                                    className="rounded h-48 object-contain"
+                                  />
+                                ))}
+                              </div>
+                            )}
                           {question.type === "mcq" && question.options && (
                             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                               {question.options.map((option, index) => (
@@ -492,7 +542,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {question.type}
                           </span>
-                          {question.difficulty && (
+                          {/* {question.difficulty && (
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 question.difficulty.toLowerCase() === "easy"
@@ -505,7 +555,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                             >
                               {question.difficulty}
                             </span>
-                          )}
+                          )} */}
                           {question.marks && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                               {question.marks} marks
@@ -550,15 +600,19 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                         <div className="mb-2">
                           {renderTextWithMath(question.questionText)}
                         </div>
-                        {question.imageUrl && (
-                          <div className="mt-2 mb-3">
-                            <img
-                              src={question.imageUrl}
-                              alt="Question"
-                              className="max-h-40 object-contain"
-                            />
-                          </div>
-                        )}
+                        {question.imageUrls &&
+                          question.imageUrls.length > 0 && (
+                            <div className="mb-2 flex flex-wrap gap-2">
+                              {question?.imageUrls?.map((url, idx) => (
+                                <img
+                                  key={idx}
+                                  src={url}
+                                  alt={`Question ${question.id} preview ${idx}`}
+                                  className="rounded h-48 object-contain"
+                                />
+                              ))}
+                            </div>
+                          )}
                         {question.type === "mcq" && question.options && (
                           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                             {question.options.map((option, index) => (
@@ -585,7 +639,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {question.type}
                         </span>
-                        {question.difficulty && (
+                        {/* {question.difficulty && (
                           <span
                             className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               question.difficulty.toLowerCase() === "easy"
@@ -597,7 +651,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                           >
                             {question.difficulty}
                           </span>
-                        )}
+                        )} */}
                         {question.marks && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                             {question.marks} marks
@@ -693,7 +747,7 @@ export const CustomPaperCreatePage = () => {
     questionText: "",
     imageUrls: [],
     marks: "",
-    difficulty: "",
+    difficulty: "medium",
     options: [
       { key: "A", option: "", imageUrl: "" },
       { key: "B", option: "", imageUrl: "" },
@@ -737,7 +791,10 @@ export const CustomPaperCreatePage = () => {
         `${BASE_URL_API}/questionPaper/${questionPaperId}`
       );
       if (response?.success) {
-        setSections(response.questionPaper.sections || []);
+        const sortedSections = sortSectionsAlphabetically(
+          response.questionPaper.sections || []
+        );
+        setSections(sortedSections);
       } else {
         if (response.message === INVALID_TOKEN) {
           removeDataFromLocalStorage();
@@ -931,9 +988,35 @@ export const CustomPaperCreatePage = () => {
   const handleQuestionTextChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, questionText: e.target.value }));
   };
+
   const handleTypeChange = (e) => {
-    setEditedQuestion((prev) => ({ ...prev, type: e.target.value }));
+    const newType = e.target.value;
+    setEditedQuestion((prev) => {
+      // If changing from a non-mcq type to mcq, initialize options to 4 default options.
+      if (
+        prev.type !== "mcq" &&
+        newType === "mcq" &&
+        (editedQuestion?.options?.length == 0 || !editedQuestion.options)
+      ) {
+        return {
+          ...prev,
+          type: newType,
+          options: [
+            { key: "A", option: "", imageUrl: "" },
+            { key: "B", option: "", imageUrl: "" },
+            { key: "C", option: "", imageUrl: "" },
+            { key: "D", option: "", imageUrl: "" },
+          ],
+        };
+      }
+      // For other cases, simply update the type.
+      return {
+        ...prev,
+        type: newType,
+      };
+    });
   };
+
   const handleDifficultyChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, difficulty: e.target.value }));
   };
@@ -1029,7 +1112,7 @@ export const CustomPaperCreatePage = () => {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
         options: updatedOptions,
-        difficulty: editedQuestion.difficulty?.toLowerCase(),
+        difficulty: editedQuestion?.difficulty?.toLowerCase() ?? 'medium',
       };
 
       const response = await postRequest(`${BASE_URL_API}/question/upsert`, {
@@ -1086,26 +1169,71 @@ export const CustomPaperCreatePage = () => {
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
-    if (source.droppableId === destination.droppableId) {
-      const sectionIndex = parseInt(source.droppableId, 10);
-      const section = sections[sectionIndex];
-      const newQuestions = Array.from(section.questions);
-      const [removed] = newQuestions.splice(source.index, 1);
-      newQuestions.splice(destination.index, 0, removed);
-      const updatedSections = [...sections];
-      updatedSections[sectionIndex] = { ...section, questions: newQuestions };
-      setSections(updatedSections);
-      const payload = {
-        id: questionPaperId,
-        sections: updatedSections,
+
+    const sourceSectionIndex = parseInt(source.droppableId, 10);
+    const destSectionIndex = parseInt(destination.droppableId, 10);
+
+    const sourceSection = sections[sourceSectionIndex];
+    const destSection = sections[destSectionIndex];
+
+    // Clone the questions array
+    const updatedSections = [...sections];
+
+    if (sourceSectionIndex === destSectionIndex) {
+      // Same section reorder
+      const updatedQuestions = [...sourceSection.questions];
+      const [movedQuestion] = updatedQuestions.splice(source.index, 1);
+      updatedQuestions.splice(destination.index, 0, movedQuestion);
+
+      // Update orderIndex
+      const reordered = updatedQuestions.map((q, i) => ({
+        ...q,
+        orderIndex: i + 1,
+      }));
+
+      updatedSections[sourceSectionIndex] = {
+        ...sourceSection,
+        questions: reordered,
       };
-      const response = await postRequest(
-        `${BASE_URL_API}/questionPaper/update`,
-        payload
-      );
-      if (!response?.success) {
-        console.error("Failed to update question order:", response);
-      }
+    } else {
+      // Cross-section move
+      const sourceQuestions = [...sourceSection.questions];
+      const [movedQuestion] = sourceQuestions.splice(source.index, 1);
+
+      const destQuestions = [...destSection.questions];
+      destQuestions.splice(destination.index, 0, {
+        ...movedQuestion,
+        section: destSection.name,
+      });
+
+      updatedSections[sourceSectionIndex] = {
+        ...sourceSection,
+        questions: sourceQuestions.map((q, i) => ({ ...q, orderIndex: i + 1 })),
+      };
+      updatedSections[destSectionIndex] = {
+        ...destSection,
+        questions: destQuestions.map((q, i) => ({
+          ...q,
+          section: destSection.name,
+          orderIndex: i + 1,
+        })),
+      };
+    }
+
+    setSections(updatedSections);
+
+    const payload = {
+      id: questionPaperId,
+      sections: updatedSections,
+    };
+
+    const response = await postRequest(
+      `${BASE_URL_API}/questionPaper/update`,
+      payload
+    );
+    if (!response?.success) {
+      console.error("Failed to update question order:", response);
+    } else {
       await fetchQuestionPaperDetails();
     }
   };
@@ -1120,7 +1248,7 @@ export const CustomPaperCreatePage = () => {
       questionText: "",
       imageUrls: [],
       marks: "",
-      difficulty: "",
+      difficulty: "medium",
       options: [
         { key: "A", option: "", imageUrl: "" },
         { key: "B", option: "", imageUrl: "" },
@@ -1169,6 +1297,10 @@ export const CustomPaperCreatePage = () => {
     return foundSection.questions.length + 1;
   };
 
+  const sortSectionsAlphabetically = (sections) => {
+    return [...sections].sort((a, b) => a.name.localeCompare(b.name));
+  };
+
   // ================== NEW SECTION CREATION ==================
   const handleAddSection = () => {
     if (!newSectionName.trim()) {
@@ -1176,7 +1308,9 @@ export const CustomPaperCreatePage = () => {
       return;
     }
     const newSec = { name: newSectionName.trim(), questions: [] };
-    setSections([...sections, newSec]);
+    const updated = [...sections, newSec];
+    const sorted = sortSectionsAlphabetically(updated);
+    setSections(sorted);
     setShowAddSectionModal(false);
     setNewSectionName("");
   };
@@ -1274,7 +1408,7 @@ export const CustomPaperCreatePage = () => {
         ...newQuestion,
         imageUrls: uploadedImageUrls,
         options: newQuestion.type === "mcq" ? updatedOptions : undefined,
-        difficulty: newQuestion.difficulty?.toLowerCase(),
+        difficulty: newQuestion?.difficulty?.toLowerCase() ?? 'medium',
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
@@ -1293,7 +1427,7 @@ export const CustomPaperCreatePage = () => {
         questionText: "",
         imageUrls: [],
         marks: "",
-        difficulty: "",
+        difficulty: "medium",
         options: [
           { key: "A", option: "", imageUrl: "" },
           { key: "B", option: "", imageUrl: "" },
@@ -1494,7 +1628,14 @@ export const CustomPaperCreatePage = () => {
                   {(provided) => {
                     const groupedQuestions = groupQuestions(section.questions);
                     return (
-                      <div ref={provided.innerRef} {...provided.droppableProps}>
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        style={{
+                          minHeight:
+                            groupedQuestions.length === 0 ? "50px" : "auto",
+                        }}
+                      >
                         {groupedQuestions.map((group, groupIndex) => {
                           if (group.questions.length > 1) {
                             // Optional group
@@ -1545,7 +1686,7 @@ export const CustomPaperCreatePage = () => {
                                             )}
                                             {renderTruncatedTextWithMath(
                                               q.questionText,
-                                              600
+                                              100
                                             )}
                                           </div>
                                           {idx < group.questions.length - 1 && (
@@ -1598,7 +1739,7 @@ export const CustomPaperCreatePage = () => {
                                       )}
                                       {renderTruncatedTextWithMath(
                                         q.questionText,
-                                        600
+                                        100
                                       )}
                                       {q.optionalGroupId && (
                                         <span className="ml-2 text-xs font-bold text-green-800 bg-green-200 px-1 rounded">
@@ -1641,7 +1782,7 @@ export const CustomPaperCreatePage = () => {
 
       {/* ============ RIGHT PANEL (EDIT SELECTED QUESTION) ============ */}
       <div
-        className="p-4 overflow-hidden"
+        className="p-4 overflow-auto"
         style={{ width: `${100 - leftPanelWidth}%`, minWidth: "40%" }}
       >
         {!originalQuestion ? (
@@ -1679,7 +1820,7 @@ export const CustomPaperCreatePage = () => {
                       <option value="descriptive">Descriptive</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <span className="font-semibold">Difficulty:</span>
                     <select
                       value={editedQuestion.difficulty || ""}
@@ -1690,7 +1831,7 @@ export const CustomPaperCreatePage = () => {
                       <option value="medium">medium</option>
                       <option value="hard">hard</option>
                     </select>
-                  </div>
+                  </div> */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Marks:</span>
                     <input
@@ -1737,7 +1878,7 @@ export const CustomPaperCreatePage = () => {
                       <div key={index} className="relative">
                         <img
                           src={URL.createObjectURL(file)}
-                          alt={`New Image ${index + 1}`}
+                          alt={`New ${index + 1}`}
                           className="h-24 object-cover rounded border"
                         />
                         <button
@@ -1899,7 +2040,7 @@ export const CustomPaperCreatePage = () => {
                       questionText: "",
                       imageUrls: [],
                       marks: "",
-                      difficulty: "",
+                      difficulty: "medium",
                       options: [
                         { key: "A", option: "", imageUrl: "" },
                         { key: "B", option: "", imageUrl: "" },
@@ -2085,7 +2226,7 @@ export const CustomPaperCreatePage = () => {
                   placeholder="e.g. 5"
                 />
               </div>
-              <div className="flex-1">
+              {/* <div className="flex-1">
                 <label className="block mb-1 font-medium">
                   Difficulty <span className="text-red-500">*</span>
                 </label>
@@ -2099,7 +2240,7 @@ export const CustomPaperCreatePage = () => {
                   <option value="medium">medium</option>
                   <option value="hard">hard</option>
                 </select>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
