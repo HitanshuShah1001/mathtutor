@@ -35,6 +35,7 @@ import {
   renderTruncatedTextWithMath,
 } from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
+import { CustomLoader } from "./Loader";
 
 /**
  * API to generate HTML link for question paper preview
@@ -730,6 +731,7 @@ export const CustomPaperCreatePage = () => {
   // State to hold paper details (sections array)
   const [sections, setSections] = useState([]);
 
+  const [loading, setLoading] = useState(false);
   // States for question editing
   const [originalQuestion, setOriginalQuestion] = useState(null);
   const [editedQuestion, setEditedQuestion] = useState(null);
@@ -1112,8 +1114,9 @@ export const CustomPaperCreatePage = () => {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
         options: updatedOptions,
-        difficulty: editedQuestion?.difficulty?.toLowerCase() ?? 'medium',
+        difficulty: editedQuestion?.difficulty?.toLowerCase() ?? "medium",
       };
+      setLoading(true);
 
       const response = await postRequest(`${BASE_URL_API}/question/upsert`, {
         ...finalQuestion,
@@ -1134,6 +1137,8 @@ export const CustomPaperCreatePage = () => {
     } catch (error) {
       console.error("Error saving question:", error);
       alert("Error saving question.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1335,6 +1340,7 @@ export const CustomPaperCreatePage = () => {
         questionPaperId: parseInt(questionPaperId),
         questionDetails,
       };
+      setLoading(true);
       const resp = await postRequest(
         `${BASE_URL_API}/questionPaper/addQuestions`,
         body
@@ -1349,6 +1355,7 @@ export const CustomPaperCreatePage = () => {
       console.error("Error importing questions:", err);
       alert("Error importing questions.");
     }
+    setLoading(false);
     setShowBankModal({ visible: false, sectionName: null });
   };
 
@@ -1408,7 +1415,7 @@ export const CustomPaperCreatePage = () => {
         ...newQuestion,
         imageUrls: uploadedImageUrls,
         options: newQuestion.type === "mcq" ? updatedOptions : undefined,
-        difficulty: newQuestion?.difficulty?.toLowerCase() ?? 'medium',
+        difficulty: newQuestion?.difficulty?.toLowerCase() ?? "medium",
         orderIndex,
         section: sectionForNewQuestion,
         questionPaperId: parseInt(questionPaperId),
@@ -1418,6 +1425,7 @@ export const CustomPaperCreatePage = () => {
       if (newQuestion.type !== "mcq") {
         delete createQuestionBody.options;
       }
+      setLoading(true);
       await postRequest(`${BASE_URL_API}/question/upsert`, createQuestionBody);
       await fetchQuestionPaperDetails();
       setShowAddQuestionModal(false);
@@ -1435,6 +1443,7 @@ export const CustomPaperCreatePage = () => {
           { key: "D", option: "", imageUrl: "" },
         ],
       });
+      setLoading(false);
     } catch (error) {
       console.error("Error adding new question:", error);
       alert("Error adding question.");
@@ -1527,13 +1536,12 @@ export const CustomPaperCreatePage = () => {
     return q1.optionalGroupId === q2.optionalGroupId;
   };
 
-  // ================== RENDER ==================
   return (
     <div className="flex h-screen overflow-hidden fixed inset-0">
       {/* ================= LEFT PANEL (Sections + Questions) ================= */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div
-          className="border-r p-4 overflow-y-auto"
+          className={`border-r p-4 overflow-y-auto ${loading ? "blur-sm" : ""}`}
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
           <div className="mb-4 flex flex-col gap-2">
@@ -1821,17 +1829,17 @@ export const CustomPaperCreatePage = () => {
                     </select>
                   </div>
                   {/* <div className="flex items-center gap-2">
-                    <span className="font-semibold">Difficulty:</span>
-                    <select
-                      value={editedQuestion.difficulty || ""}
-                      onChange={handleDifficultyChange}
-                      className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                    >
-                      <option value="easy">easy</option>
-                      <option value="medium">medium</option>
-                      <option value="hard">hard</option>
-                    </select>
-                  </div> */}
+                      <span className="font-semibold">Difficulty:</span>
+                      <select
+                        value={editedQuestion.difficulty || ""}
+                        onChange={handleDifficultyChange}
+                        className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
+                      >
+                        <option value="easy">easy</option>
+                        <option value="medium">medium</option>
+                        <option value="hard">hard</option>
+                      </select>
+                    </div> */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Marks:</span>
                     <input
@@ -2227,20 +2235,20 @@ export const CustomPaperCreatePage = () => {
                 />
               </div>
               {/* <div className="flex-1">
-                <label className="block mb-1 font-medium">
-                  Difficulty <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={newQuestion.difficulty}
-                  onChange={(e) => handleNewQuestionChange(e, "difficulty")}
-                  className="border rounded px-2 py-1 w-full"
-                >
-                  <option value="">Select Difficulty</option>
-                  <option value="easy">easy</option>
-                  <option value="medium">medium</option>
-                  <option value="hard">hard</option>
-                </select>
-              </div> */}
+                  <label className="block mb-1 font-medium">
+                    Difficulty <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newQuestion.difficulty}
+                    onChange={(e) => handleNewQuestionChange(e, "difficulty")}
+                    className="border rounded px-2 py-1 w-full"
+                  >
+                    <option value="">Select Difficulty</option>
+                    <option value="easy">easy</option>
+                    <option value="medium">medium</option>
+                    <option value="hard">hard</option>
+                  </select>
+                </div> */}
             </div>
           </div>
         </div>
@@ -2311,10 +2319,10 @@ export const CustomPaperCreatePage = () => {
             </button>
             <div className="p-4 flex-1 overflow-auto">
               {/* 
-                Display the returned link in an iframe.
-                The user can only view and close. 
-                (No download actions, no extra buttons)
-              */}
+                  Display the returned link in an iframe.
+                  The user can only view and close. 
+                  (No download actions, no extra buttons)
+                */}
               <iframe
                 src={modalDocument}
                 className="w-full h-full"
@@ -2324,8 +2332,14 @@ export const CustomPaperCreatePage = () => {
           </div>
         </div>
       )}
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-white bg-opacity-30">
+          <CustomLoader />
+        </div>
+      )}
     </div>
   );
+  // ================== RENDER ==================
 };
 
 export default CustomPaperCreatePage;
