@@ -22,6 +22,7 @@ import {
   renderTruncatedTextWithMath,
 } from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
+import { CustomLoader } from "./Loader";
 
 /**
  * Main component for editing a question paper.
@@ -35,6 +36,7 @@ const QuestionPaperEditPage = () => {
   // State to hold the sections of the question paper
   const [sections, setSections] = useState([]);
 
+  const [loading, setLoading] = useState(false);
   // The original question (before editing)
   const [originalQuestion, setOriginalQuestion] = useState(null);
 
@@ -490,6 +492,7 @@ const QuestionPaperEditPage = () => {
       section: showBankModal.sectionName,
     }));
     try {
+      setLoading(true);
       const body = {
         questionPaperId: parseInt(questionPaperId),
         questionDetails,
@@ -508,6 +511,8 @@ const QuestionPaperEditPage = () => {
     } catch (err) {
       console.error("Error importing questions:", err);
       alert("Error importing questions.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -623,6 +628,7 @@ const QuestionPaperEditPage = () => {
    */
   const handleSave = async () => {
     try {
+      setLoading(true);
       // Upload newly selected question-level images
       let updatedImageUrls = editedQuestion.imageUrls || [];
       if (questionImageUrls.length > 0) {
@@ -660,7 +666,7 @@ const QuestionPaperEditPage = () => {
 
       let payload = {
         ...updatedQuestion,
-        difficulty: updatedQuestion.difficulty?.toLowerCase() ?? 'medium',
+        difficulty: updatedQuestion.difficulty?.toLowerCase() ?? "medium",
         questionPaperId,
         grade,
         subject,
@@ -689,6 +695,8 @@ const QuestionPaperEditPage = () => {
     } catch (error) {
       console.error("Error upserting question:", error);
       alert("Error upserting question.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -916,6 +924,7 @@ const QuestionPaperEditPage = () => {
     }
 
     try {
+      setLoading(true);
       // Upload question-level images
       let uploadedImageUrls = [];
       if (newQuestion.imageUrls?.length > 0) {
@@ -991,6 +1000,8 @@ const QuestionPaperEditPage = () => {
     } catch (error) {
       console.error("Error adding new question:", error);
       alert("Error adding question.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1016,7 +1027,7 @@ const QuestionPaperEditPage = () => {
       {/* Left panel with sections and questions */}
       <DragDropContext onDragEnd={handleDragEnd}>
         <div
-          className="border-r p-4 overflow-y-auto"
+          className={`border-r p-4 overflow-y-auto ${loading ? "blur-sm" : ""}`}
           style={{ width: `${leftPanelWidth}%`, minWidth: "15%" }}
         >
           {/* --Search Box-- */}
@@ -1810,6 +1821,11 @@ const QuestionPaperEditPage = () => {
               />
             </div>
           </div>
+        </div>
+      )}
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-white bg-opacity-30">
+          <CustomLoader />
         </div>
       )}
     </div>
