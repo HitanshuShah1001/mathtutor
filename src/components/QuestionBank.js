@@ -668,7 +668,7 @@ const QuestionBank = () => {
       const payload = {
         ...newQuestion,
         subject: newQuestion.subject?.toLowerCase(),
-        chapter: newQuestion.chapter?.toLowerCase(),
+        chapter: newQuestion.chapter?.toLowerCase().trim(),
         grade: parseInt(newQuestion.grade),
         textBook: newQuestion.textBook?.toLowerCase(),
         imageUrls: finalImageUrls,
