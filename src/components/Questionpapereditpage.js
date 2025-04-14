@@ -415,7 +415,6 @@ const QuestionPaperEditPage = () => {
    * Updates the question text in the editedQuestion state.
    */
   const handleQuestionTextChange = (content) => {
-    console.log(content.target.value)
     setEditedQuestion((prev) => ({
       ...prev,
       questionText: content.target.value,
@@ -634,7 +633,6 @@ const QuestionPaperEditPage = () => {
    * Saves the edited question to the database (upsert). It uploads newly added images first.
    */
   const handleSave = async () => {
-    console.log(editedQuestion);
 
     try {
       setLoading(true);
@@ -744,8 +742,6 @@ const QuestionPaperEditPage = () => {
   const handleDragEnd = async (result) => {
     const { source, destination } = result;
     if (!destination) return;
-    console.log(sections, "sections");
-    console.log(source, destination);
     const sourceSectionIndex = parseInt(source.droppableId, 10);
     const destSectionIndex = parseInt(destination.droppableId, 10);
 
@@ -795,7 +791,6 @@ const QuestionPaperEditPage = () => {
         })),
       };
     }
-    console.log(updatedSections);
     setSections(updatedSections);
 
     const payload = {

@@ -1,7 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowDownRight } from "lucide-react";
 import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css"; // Import Quill styles
+import katex from "katex";
+import "react-quill/dist/quill.snow.css";
+import "katex/dist/katex.min.css";
+// Import your custom styles, which override Quill's tooltip
+
+if (typeof window !== "undefined") {
+  window.katex = katex;
+}
 
 const ResizableTextarea = ({
   value,
@@ -43,17 +50,7 @@ const ResizableTextarea = ({
     }
   };
 
-  // Quill modules/formats
-  const modules = {
-    toolbar: [
-      ["bold", "italic", "underline"],
-      [{ align: [] }],
-      [{ list: "ordered" }, { list: "bullet" }],
-      [{ size: ["small", false, "large", "huge"] }],
-      ["clean"], // Remove formatting
-    ],
-  };
-
+  // Define allowed formats including the formula format
   const formats = [
     "bold",
     "italic",
@@ -62,7 +59,22 @@ const ResizableTextarea = ({
     "list",
     "bullet",
     "size",
+    "header",
   ];
+
+  // Custom modules with formula
+  const modules = {
+    toolbar: {
+      container: [
+        [{ header: [1, 2, false] }],
+        ["bold", "italic", "underline"],
+        [{ align: [] }],
+        [{ list: "ordered" }, { list: "bullet" }],
+        ["clean"],
+      ],
+    },
+    formula: true,
+  };
 
   useEffect(() => {
     const handleWindowMouseMove = (e) => handleMouseMove(e);
@@ -75,119 +87,90 @@ const ResizableTextarea = ({
     };
   }, [height]);
 
-  // Set up Quill selection handler to prevent formatting when $ is selected
+  // If you still need the "$" logic, keep it; otherwise remove
   useEffect(() => {
-    if (quillRef.current) {
-      const quill = quillRef.current.getEditor();
+    if (!quillRef.current) return;
+    const quill = quillRef.current.getEditor();
+    if (!quill) return;
 
-      // Function to disable toolbar elements
-      const disableToolbar = (disabled) => {
-        const toolbarButtons = document.querySelectorAll(".ql-toolbar button");
-        const toolbarSelects = document.querySelectorAll(".ql-toolbar select");
-        const toolbarPickers = document.querySelectorAll(
-          ".ql-toolbar .ql-picker-label"
-        );
+    const disableToolbar = (disabled) => {
+      const toolbarButtons = document.querySelectorAll(".ql-toolbar button");
+      const toolbarSelects = document.querySelectorAll(".ql-toolbar select");
+      const toolbarPickers = document.querySelectorAll(".ql-toolbar .ql-picker-label");
 
-        // Disable/enable direct buttons
-        toolbarButtons.forEach((button) => {
-          if (disabled) {
-            button.setAttribute("disabled", "true");
-          } else {
-            button.removeAttribute("disabled");
-          }
-        });
-
-        // Disable/enable select dropdowns
-        toolbarSelects.forEach((select) => {
-          if (disabled) {
-            select.setAttribute("disabled", "true");
-          } else {
-            select.removeAttribute("disabled");
-          }
-        });
-
-        // Disable/enable pickers (align, size, etc.)
-        toolbarPickers.forEach((picker) => {
-          if (disabled) {
-            picker.setAttribute("aria-disabled", "true");
-            picker.style.pointerEvents = "none";
-            picker.style.opacity = "0.5";
-          } else {
-            picker.removeAttribute("aria-disabled");
-            picker.style.pointerEvents = "";
-            picker.style.opacity = "";
-          }
-        });
-      };
-
-
-
-      // Handler for selection change
-      const selectionChangeHandler = () => {
-        const range = quill.getSelection();
-        if (range && range.length > 0) {
-          const text = quill.getText(range.index, range.length);
-
-          // If selected text contains $, disable formatting
-          if (text.includes("$")) {
-            disableToolbar(true);
-
-            // Also prevent keyboard shortcuts
-            document.addEventListener("keydown", preventKeyboardShortcuts);
-          } else {
-            disableToolbar(false);
-            document.removeEventListener("keydown", preventKeyboardShortcuts);
-          }
+      toolbarButtons.forEach((button) => {
+        disabled
+          ? button.setAttribute("disabled", "true")
+          : button.removeAttribute("disabled");
+      });
+      toolbarSelects.forEach((select) => {
+        disabled
+          ? select.setAttribute("disabled", "true")
+          : select.removeAttribute("disabled");
+      });
+      toolbarPickers.forEach((picker) => {
+        if (disabled) {
+          picker.setAttribute("aria-disabled", "true");
+          picker.style.pointerEvents = "none";
+          picker.style.opacity = "0.5";
         } else {
-          // No selection, ensure toolbar is enabled
+          picker.removeAttribute("aria-disabled");
+          picker.style.pointerEvents = "";
+          picker.style.opacity = "";
+        }
+      });
+    };
+
+    const preventKeyboardShortcuts = (e) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "b" || e.key === "i" || e.key === "u")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    const selectionChangeHandler = () => {
+      const range = quill.getSelection();
+      if (range && range.length > 0) {
+        const text = quill.getText(range.index, range.length);
+        if (text.includes("$")) {
+          disableToolbar(true);
+          document.addEventListener("keydown", preventKeyboardShortcuts);
+        } else {
           disableToolbar(false);
           document.removeEventListener("keydown", preventKeyboardShortcuts);
         }
-      };
-
-      // Prevent common formatting keyboard shortcuts
-      const preventKeyboardShortcuts = (e) => {
-        // Common formatting shortcuts (Ctrl/Cmd + B/I/U)
-        if (
-          (e.ctrlKey || e.metaKey) &&
-          (e.key === "b" || e.key === "i" || e.key === "u")
-        ) {
-          e.preventDefault();
-          e.stopPropagation();
-          return false;
-        }
-      };
-
-      // Intercept text-change to revert any formatting on $ text
-      const textChangeHandler = (delta, oldContents, source) => {
-        if (source !== "user") return;
-
-        // Check each operation in the delta
-        delta.ops.forEach((op) => {
-          if (op.retain && op.attributes) {
-            // This is a formatting operation
-            const affectedText = quill.getText(op.retain, 1);
-            if (affectedText.includes("$")) {
-              // Text contains $, so revert the formatting
-              setTimeout(() => {
-                quill.removeFormat(op.retain, 1);
-              }, 0);
-            }
-          }
-        });
-      };
-
-      // Listen for events
-      quill.on("selection-change", selectionChangeHandler);
-      quill.on("text-change", textChangeHandler);
-
-      // Clean up event listeners
-      return () => {
-        quill.off("selection-change", selectionChangeHandler);
-        quill.off("text-change", textChangeHandler);
+      } else {
+        disableToolbar(false);
         document.removeEventListener("keydown", preventKeyboardShortcuts);
-      };
-    }
+      }
+    };
+
+    const textChangeHandler = (delta, oldContents, source) => {
+      if (source !== "user") return;
+      delta.ops.forEach((op) => {
+        if (op.retain && op.attributes) {
+          const affectedText = quill.getText(op.retain, 1);
+          if (affectedText.includes("$")) {
+            setTimeout(() => {
+              quill.removeFormat(op.retain, 1);
+            }, 0);
+          }
+        }
+      });
+    };
+
+    quill.on("selection-change", selectionChangeHandler);
+    quill.on("text-change", textChangeHandler);
+
+    return () => {
+      quill.off("selection-change", selectionChangeHandler);
+      quill.off("text-change", textChangeHandler);
+      document.removeEventListener("keydown", preventKeyboardShortcuts);
+    };
   }, []);
 
   return (
@@ -205,8 +188,8 @@ const ResizableTextarea = ({
           theme="snow"
           value={value || ""}
           onChange={handleEditorChange}
-          modules={modules}
           formats={formats}
+          modules={modules}
           style={{
             height: height - 42, // Subtract toolbar height
             maxHeight: "100%",
