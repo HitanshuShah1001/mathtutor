@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { FileText, DownloadIcon, Edit, Check, X } from "lucide-react";
+import { FileText, DownloadIcon, Edit, Check, X, Loader } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   grades,
@@ -23,6 +23,7 @@ import {
   ProfileMenuButton,
   QuestionBankButton,
 } from "./QuestionBankButton";
+import { CustomLoader } from "./Loader";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -377,8 +378,8 @@ export const DocumentSidebar = () => {
     // Stub function: Integrate your API call later
     const url = `${BASE_URL_API}/questionpaper/changeQuestionPapername`;
     const body = { id, name: newName };
-    const res = await postRequest(url,body);
-    return res
+    const res = await postRequest(url, body);
+    return res;
   };
 
   const handleSaveName = async (id) => {
@@ -390,7 +391,7 @@ export const DocumentSidebar = () => {
         );
         setEditingDocId(null);
         setEditedName("");
-        fetchDocuments(true,undefined);
+        fetchDocuments(true, undefined);
       } else {
         alert("Error saving changes.");
       }
@@ -605,10 +606,7 @@ export const DocumentSidebar = () => {
             </button>
           </div>
           {loading && documents.length === 0 ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-              <p className="ml-4 text-gray-600">Loading documents...</p>
-            </div>
+            <CustomLoader title="Loading Documents" />
           ) : (
             <div ref={documentListRef}>
               {documents?.length === 0 ? (
