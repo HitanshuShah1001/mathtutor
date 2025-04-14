@@ -21,6 +21,7 @@ import {
   grades,
   INVALID_TOKEN,
   marksOptions,
+  MCQ,
   questionTypes,
   shifts,
   streams,
@@ -995,11 +996,7 @@ export const CustomPaperCreatePage = () => {
     const newType = e.target.value;
     setEditedQuestion((prev) => {
       // If changing from a non-mcq type to mcq, initialize options to 4 default options.
-      if (
-        prev.type !== "mcq" &&
-        newType === "mcq" &&
-        (editedQuestion?.options?.length == 0 || !editedQuestion.options)
-      ) {
+      if (prev.type !== MCQ && newType === MCQ) {
         return {
           ...prev,
           type: newType,
@@ -1010,12 +1007,14 @@ export const CustomPaperCreatePage = () => {
             { key: "D", option: "", imageUrl: "" },
           ],
         };
+      } else {
+        const { options, ...withoutOptions } = prev;
+        return {
+          ...withoutOptions,
+          type: newType,
+          options: null,
+        };
       }
-      // For other cases, simply update the type.
-      return {
-        ...prev,
-        type: newType,
-      };
     });
   };
 
@@ -1113,7 +1112,7 @@ export const CustomPaperCreatePage = () => {
       const finalQuestion = {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
-        options: updatedOptions,
+        options: editedQuestion.type == MCQ ? updatedOptions : null,
         difficulty: editedQuestion?.difficulty?.toLowerCase() ?? "medium",
       };
       setLoading(true);

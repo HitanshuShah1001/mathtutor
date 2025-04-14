@@ -11,7 +11,11 @@ import {
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
+import {
+  BASE_URL_API,
+  DESCRIPTIVE,
+  INVALID_TOKEN,
+} from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
@@ -450,11 +454,7 @@ const QuestionPaperEditPage = () => {
     const newType = e.target.value;
     setEditedQuestion((prev) => {
       // If changing from a non-mcq type to mcq, initialize options to 4 default options.
-      if (
-        prev.type !== "mcq" &&
-        newType === "mcq" &&
-        (editedQuestion?.options?.length == 0 || !editedQuestion.options)
-      ) {
+      if (prev.type !== "mcq" && newType === "mcq") {
         return {
           ...prev,
           type: newType,
@@ -464,6 +464,13 @@ const QuestionPaperEditPage = () => {
             { key: "C", option: "", imageUrl: "" },
             { key: "D", option: "", imageUrl: "" },
           ],
+        };
+      } else {
+        const { options, ...withoutOptions } = prev;
+        return {
+          ...withoutOptions,
+          type: newType,
+          options: null,
         };
       }
       // For other cases, simply update the type.
@@ -627,6 +634,8 @@ const QuestionPaperEditPage = () => {
    * Saves the edited question to the database (upsert). It uploads newly added images first.
    */
   const handleSave = async () => {
+    console.log(editedQuestion);
+
     try {
       setLoading(true);
       // Upload newly selected question-level images
@@ -661,7 +670,6 @@ const QuestionPaperEditPage = () => {
       const updatedQuestion = {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
-        options: updatedOptions,
       };
 
       let payload = {
@@ -675,7 +683,7 @@ const QuestionPaperEditPage = () => {
         payload.id = updatedQuestion.id;
       }
       if (updatedQuestion.type !== "mcq") {
-        delete payload.options;
+        updatedQuestion.options = null;
       }
 
       const response = await postRequest(
