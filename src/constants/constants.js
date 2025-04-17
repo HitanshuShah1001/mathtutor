@@ -1,7 +1,7 @@
 export const USER = "user";
 export const ASSISTANT = "assistant";
-export const BASE_URL_API = "https://api.gotutorless.com";
-// export const BASE_URL_API = "http://localhost:3000";
+// export const BASE_URL_API = "https://api.gotutorless.com";
+export const BASE_URL_API = "http://localhost:3000";
 export const API_SEND_OTP = "auth/send-otp";
 export const OTP_VERIFY = "auth/verify-otp";
 export const ACCESS_KEY = "accessKey";
