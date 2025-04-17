@@ -37,6 +37,7 @@ import {
 } from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
 import { CustomLoader } from "./Loader";
+import { chapterstoomit } from "../constants/chapterstoomit";
 
 /**
  * API to generate HTML link for question paper preview
@@ -401,22 +402,24 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
               <h2 className="text-xl font-semibold mb-4">Select Chapters</h2>
               <div className="flex flex-wrap gap-2">
                 {chapters && chapters.length > 0 ? (
-                  chapters.map((ch) => {
-                    const isSelected = filters.chapters.includes(ch);
-                    return (
-                      <span
-                        key={ch}
-                        onClick={() => toggleFilterValue("chapters", ch)}
-                        className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
-                          isSelected
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                        }`}
-                      >
-                        {ch}
-                      </span>
-                    );
-                  })
+                  chapters
+                    .filter((chapter) => !chapterstoomit.includes(chapter))
+                    .map((ch) => {
+                      const isSelected = filters.chapters.includes(ch);
+                      return (
+                        <span
+                          key={ch}
+                          onClick={() => toggleFilterValue("chapters", ch)}
+                          className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
+                            isSelected
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+                          }`}
+                        >
+                          {ch}
+                        </span>
+                      );
+                    })
                 ) : (
                   <p>No chapters available</p>
                 )}
