@@ -330,6 +330,7 @@ const QuestionPaperEditPage = () => {
 
   const visibleSections = getFilteredSections();
 
+  // For showing a live math preview on the right side
   const isEditingMath = editedQuestion?.questionText?.includes("$");
 
   /**
@@ -633,7 +634,6 @@ const QuestionPaperEditPage = () => {
    * Saves the edited question to the database (upsert). It uploads newly added images first.
    */
   const handleSave = async () => {
-
     try {
       setLoading(true);
       // Upload newly selected question-level images
@@ -791,6 +791,7 @@ const QuestionPaperEditPage = () => {
         })),
       };
     }
+
     setSections(updatedSections);
 
     const payload = {
@@ -1415,7 +1416,6 @@ const QuestionPaperEditPage = () => {
               </div>
             </div>
 
-          
             {isEditingMath && (
               <div className="border-l pl-4 mt-4">
                 <h3 className="font-semibold mb-2">Math Preview</h3>
