@@ -25,6 +25,7 @@ import {
   ProfileMenuButton,
   QuestionPapersButton,
 } from "./QuestionBankButton";
+import ChaptersModal from "./ChaptersModal";
 
 // Styling constants
 const inputClass =
@@ -457,7 +458,7 @@ const QuestionBank = () => {
         imageUrls: questionToEdit.imageUrls || [],
         marks: questionToEdit.marks || "",
         difficulty: questionToEdit.difficulty || "",
-        textBook: questionToEdit.textBook ||  "",
+        textBook: questionToEdit.textBook || "",
         options:
           questionToEdit.type === "mcq"
             ? questionToEdit.options?.map((opt) => ({
@@ -806,8 +807,30 @@ const QuestionBank = () => {
               <h2 className="font-bold text-lg">Filters</h2>
             </div>
 
+            {chapters.length > 0 && (
+              <button
+                onClick={() => setShowChaptersModal(true)}
+                className={`${blackButtonClass} w-full mt-4`}
+              >
+                {filters.chapters.length > 0
+                  ? `Chapters (${filters.chapters.length} selected)`
+                  : "Select Chapters"}
+              </button>
+            )}
+            <button
+              onClick={() => setViewSelected((prev) => !prev)}
+              className={`${blackButtonClass} w-full mt-4`}
+            >
+              {viewSelected ? "Show All" : "Show Selected"}
+            </button>
+            <button
+              onClick={resetAllFilters}
+              className={`${blackButtonClass} w-full mt-4`}
+            >
+              Reset Filters
+            </button>
             {/* Active filters */}
-            <div className="mb-4">
+            <div className="my-4">
               {Object.entries(filters).map(([key, values]) =>
                 values?.map((val) => (
                   <span
@@ -848,11 +871,6 @@ const QuestionBank = () => {
                   key: "questionTypes",
                   values: questionTypes,
                 },
-                {
-                  label: "Chapters",
-                  key: "chapters",
-                  values: chapters,
-                },
               ]?.map(({ label, key, values }) => (
                 <FilterGroupAccordion
                   key={key}
@@ -865,31 +883,7 @@ const QuestionBank = () => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
-              {chapters.length > 0 && (
-                <button
-                  onClick={() => setShowChaptersModal(true)}
-                  className={`${blackButtonClass} w-full mt-4`}
-                >
-                  {filters.chapters.length > 0
-                    ? `Chapters (${filters.chapters.length} selected)`
-                    : "Select Chapters"}
-                </button>
-              )}
-              <button
-                onClick={() => setViewSelected((prev) => !prev)}
-                className={`${blackButtonClass} w-full mt-4`}
-              >
-                {viewSelected ? "Show All" : "Show Selected"}
-              </button>
             </div>
-
-            {/* Reset Filters */}
-            <button
-              onClick={resetAllFilters}
-              className={`${blackButtonClass} w-full mt-4`}
-            >
-              Reset Filters
-            </button>
           </aside>
         )}
 
@@ -933,41 +927,13 @@ const QuestionBank = () => {
             </div>
           </div>
           {showChaptersModal && (
-            <div className={modalContainerClass}>
-              <div className={`${modelChapterClass} max-w-md`}>
-                <h2 className="text-xl font-semibold mb-4">Select Chapters</h2>
-                <div className="flex flex-wrap gap-2">
-                  {chapters && chapters.length > 0 ? (
-                    chapters.map((ch) => {
-                      const isSelected = filters.chapters.includes(ch);
-                      return (
-                        <span
-                          key={ch}
-                          onClick={() => toggleFilterValue("chapters", ch)}
-                          className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
-                            isSelected
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                          }`}
-                        >
-                          {ch}
-                        </span>
-                      );
-                    })
-                  ) : (
-                    <p>No chapters available</p>
-                  )}
-                </div>
-                <div className="mt-4 flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowChaptersModal(false)}
-                    className="px-4 py-2 border rounded"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ChaptersModal
+              showChaptersModal={showChaptersModal}
+              chapters={chapters}
+              filters={filters}
+              toggleFilterValue={toggleFilterValue}
+              setShowChaptersModal={setShowChaptersModal}
+            />
           )}
           {/* Questions List */}
           <div className="pt-[72px]">

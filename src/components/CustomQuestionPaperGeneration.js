@@ -38,6 +38,7 @@ import {
 import ResizableTextarea from "./ResizableTextArea";
 import { CustomLoader } from "./Loader";
 import { chapterstoomit } from "../constants/chapterstoomit";
+import ChaptersModal from "./ChaptersModal";
 
 /**
  * API to generate HTML link for question paper preview
@@ -397,43 +398,14 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
           </div>
         </div>
         {showChaptersModal && (
-          <div className={modalContainerClass}>
-            <div className={`${modalContentClass} max-w-md`}>
-              <h2 className="text-xl font-semibold mb-4">Select Chapters</h2>
-              <div className="flex flex-wrap gap-2">
-                {chapters && chapters.length > 0 ? (
-                  chapters
-                    .filter((chapter) => !chapterstoomit.includes(chapter))
-                    .map((ch) => {
-                      const isSelected = filters.chapters.includes(ch);
-                      return (
-                        <span
-                          key={ch}
-                          onClick={() => toggleFilterValue("chapters", ch)}
-                          className={`px-3 py-1 rounded-full cursor-pointer transition-colors text-sm ${
-                            isSelected
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                          }`}
-                        >
-                          {ch}
-                        </span>
-                      );
-                    })
-                ) : (
-                  <p>No chapters available</p>
-                )}
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={() => setShowChaptersModal(false)}
-                  className="px-4 py-2 border rounded"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
-          </div>
+          <ChaptersModal
+            showChaptersModal={showChaptersModal}
+            chapters={chapters}
+            chapterstoomit={chapterstoomit}
+            filters={filters}
+            toggleFilterValue={toggleFilterValue}
+            setShowChaptersModal={setShowChaptersModal}
+          />
         )}
 
         {/* Modal Content: Left panel for Filters and Right panel for Questions */}
@@ -455,6 +427,16 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                 </div>
               </div>
 
+              {chapters.length > 0 && (
+                <button
+                  onClick={() => setShowChaptersModal(true)}
+                  className={`${blackButtonClass} w-full mt-4`}
+                >
+                  {filters.chapters.length > 0
+                    ? `Chapters (${filters.chapters.length} selected)`
+                    : "Select Chapters"}
+                </button>
+              )}
               {/* Filter Groups */}
               {filterGroups.map(({ label, key, values }) => (
                 <FilterGroupAccordion
@@ -468,16 +450,7 @@ export const QuestionBankModal = ({ onClose, onImport }) => {
                   toggleFilterValue={toggleFilterValue}
                 />
               ))}
-              {chapters.length > 0 && (
-                <button
-                  onClick={() => setShowChaptersModal(true)}
-                  className={`${blackButtonClass} w-full mt-4`}
-                >
-                  {filters.chapters.length > 0
-                    ? `Chapters (${filters.chapters.length} selected)`
-                    : "Select Chapters"}
-                </button>
-              )}
+
               <button
                 onClick={() => setViewSelected((prev) => !prev)}
                 className={`${blackButtonClass} w-full mt-4`}
