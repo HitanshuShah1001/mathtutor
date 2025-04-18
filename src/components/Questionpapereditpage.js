@@ -1452,7 +1452,8 @@ const QuestionPaperEditPage = () => {
                                   : URL.createObjectURL(opt.imageUrl)
                               }
                               alt={`Option ${opt.key}`}
-                              className="h-24"
+                             
+                              className="h-24 w-24"
                             />
                             {typeof opt.imageUrl === "string" ? (
                               <button
