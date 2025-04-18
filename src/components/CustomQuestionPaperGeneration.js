@@ -36,9 +36,14 @@ import {
   renderTruncatedTextWithMath,
 } from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
-import { CustomLoader } from "./Loader";
 import { chapterstoomit } from "../constants/chapterstoomit";
 import ChaptersModal from "./ChaptersModal";
+import {
+  AddQuestionForSection,
+  LoaderWrapper,
+  PreviewButton,
+} from "../subcomponents/CommonComps";
+import { OptionalActionButton } from "./OptionalButtons";
 
 /**
  * API to generate HTML link for question paper preview
@@ -1528,12 +1533,7 @@ export const CustomPaperCreatePage = () => {
               className="w-full p-2 border rounded"
             />
             {/* Preview button */}
-            <button
-              onClick={handlePreviewClick}
-              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition-colors"
-            >
-              Preview
-            </button>
+            <PreviewButton handlePreviewClick={handlePreviewClick} />
             <button
               onClick={() => {
                 setNewSectionName(getNextSectionLetter());
@@ -1549,21 +1549,15 @@ export const CustomPaperCreatePage = () => {
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               {twoSelectedHaveSameGroupId() ? (
-                <button
+                <OptionalActionButton
+                  title="Unmark as optional"
                   onClick={handleUnmarkAsOptional}
-                  className="px-4 py-2 rounded shadow-md"
-                  style={{ backgroundColor: "black", color: "white" }}
-                >
-                  Unmark as Optional
-                </button>
+                />
               ) : (
-                <button
+                <OptionalActionButton
+                  title="Mark as optional"
                   onClick={handleMarkAsOptional}
-                  className="px-4 py-2 rounded shadow-md"
-                  style={{ backgroundColor: "black", color: "white" }}
-                >
-                  Mark as Optional
-                </button>
+                />
               )}
             </div>
           )}
@@ -1585,13 +1579,10 @@ export const CustomPaperCreatePage = () => {
                       <ChevronUp size={16} />
                     )}
                   </button>
-                  <button
-                    onClick={() => handleAddQuestionForSection(section.name)}
-                    className="p-2 rounded bg-black text-white flex items-center justify-center"
-                    title="Add a new question to this section"
-                  >
-                    <Plus size={16} className="text-white" />
-                  </button>
+                  <AddQuestionForSection
+                    section={section}
+                    handleAddQuestionForSection={handleAddQuestionForSection}
+                  />
                   <button
                     onClick={() =>
                       setShowBankModal({
@@ -2208,21 +2199,6 @@ export const CustomPaperCreatePage = () => {
                   placeholder="e.g. 5"
                 />
               </div>
-              {/* <div className="flex-1">
-                  <label className="block mb-1 font-medium">
-                    Difficulty <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={newQuestion.difficulty}
-                    onChange={(e) => handleNewQuestionChange(e, "difficulty")}
-                    className="border rounded px-2 py-1 w-full"
-                  >
-                    <option value="">Select Difficulty</option>
-                    <option value="easy">easy</option>
-                    <option value="medium">medium</option>
-                    <option value="hard">hard</option>
-                  </select>
-                </div> */}
             </div>
           </div>
         </div>
@@ -2306,14 +2282,9 @@ export const CustomPaperCreatePage = () => {
           </div>
         </div>
       )}
-      {loading && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-white bg-opacity-30">
-          <CustomLoader />
-        </div>
-      )}
+      {loading && <LoaderWrapper />}
     </div>
   );
-  // ================== RENDER ==================
 };
 
 export default CustomPaperCreatePage;

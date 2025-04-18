@@ -11,11 +11,7 @@ import {
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import {
-  BASE_URL_API,
-  DESCRIPTIVE,
-  INVALID_TOKEN,
-} from "../constants/constants";
+import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
@@ -26,7 +22,15 @@ import {
   renderTruncatedTextWithMath,
 } from "./RenderTextWithMath";
 import ResizableTextarea from "./ResizableTextArea";
-import { CustomLoader } from "./Loader";
+import { groupQuestions } from "../utils/groupQuestions";
+import { getNextSectionLetter } from "../utils/getNextSectionLetter";
+import { getFilteredSections } from "../utils/getFilteredSections";
+import { OptionalActionButton } from "./OptionalButtons";
+import {
+  AddQuestionForSection,
+  LoaderWrapper,
+  PreviewButton,
+} from "../subcomponents/CommonComps";
 
 /**
  * Main component for editing a question paper.
@@ -69,19 +73,7 @@ const QuestionPaperEditPage = () => {
   });
 
   // Object that holds the data for a brand-new question to be added
-  const [newQuestion, setNewQuestion] = useState({
-    type: "mcq",
-    questionText: "",
-    imageUrls: [],
-    marks: "",
-    difficulty: "medium",
-    options: [
-      { key: "A", option: "", imageUrl: "" },
-      { key: "B", option: "", imageUrl: "" },
-      { key: "C", option: "", imageUrl: "" },
-      { key: "D", option: "", imageUrl: "" },
-    ],
-  });
+  const [newQuestion, setNewQuestion] = useState(newQuestion);
 
   // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
@@ -106,52 +98,6 @@ const QuestionPaperEditPage = () => {
   const [isResizing, setIsResizing] = useState(false);
 
   const navigate = useNavigate();
-
-  /**
-   * Helper function to group questions by their optionalGroupId.
-   * Questions without an optionalGroupId each become their own group.
-   */
-  const groupQuestions = (questions) => {
-    const groups = [];
-    const seen = new Set();
-
-    questions.forEach((q) => {
-      // If question has an optionalGroupId, group them
-      if (q.optionalGroupId) {
-        if (!seen.has(q.optionalGroupId)) {
-          const grouped = questions.filter(
-            (x) => x.optionalGroupId === q.optionalGroupId
-          );
-          groups.push({ groupId: q.optionalGroupId, questions: grouped });
-          seen.add(q.optionalGroupId);
-        }
-      } else {
-        // If no optionalGroupId, it's alone in its group
-        groups.push({ groupId: null, questions: [q] });
-      }
-    });
-
-    return groups;
-  };
-
-  /**
-   * Returns the next alphabet letter for naming a new section.
-   * If no sections exist, returns "A".
-   * If there's at least one, finds the highest letter and returns the next letter.
-   */
-  const getNextSectionLetter = () => {
-    if (!sections || sections.length === 0) return "A";
-    const letters = sections
-      .map((sec) => sec.name.trim().toUpperCase())
-      .filter((name) => /^[A-Z]$/.test(name));
-    if (letters.length === 0) return "A";
-    const maxLetter = letters.reduce((prev, curr) =>
-      curr.charCodeAt(0) > prev.charCodeAt(0) ? curr : prev
-    );
-    const nextCharCode = maxLetter.charCodeAt(0) + 1;
-    if (nextCharCode > "Z".charCodeAt(0)) return "A";
-    return String.fromCharCode(nextCharCode);
-  };
 
   /**
    * Handles creating and adding a new section to the local state.
@@ -314,21 +260,7 @@ const QuestionPaperEditPage = () => {
         questionImageUrls.length > 0
       : false;
 
-  /**
-   * Filters the sections by the search term so that only matching questions appear.
-   */
-  const getFilteredSections = () => {
-    const lowerSearch = searchTerm?.toLowerCase();
-    const filtered = sections.map((section) => {
-      const filteredQuestions = section.questions.filter((q) =>
-        q.questionText?.toLowerCase().includes(lowerSearch)
-      );
-      return { ...section, questions: filteredQuestions };
-    });
-    return filtered;
-  };
-
-  const visibleSections = getFilteredSections();
+  const visibleSections = getFilteredSections({ searchTerm, sections });
 
   // For showing a live math preview on the right side
   const isEditingMath = editedQuestion?.questionText?.includes("$");
@@ -473,11 +405,6 @@ const QuestionPaperEditPage = () => {
           options: null,
         };
       }
-      // For other cases, simply update the type.
-      return {
-        ...prev,
-        type: newType,
-      };
     });
   };
 
@@ -521,17 +448,6 @@ const QuestionPaperEditPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  /**
-   * Updates the difficulty level of the edited question.
-   */
-  const handleDifficultyChange = (e) => {
-    const newDiff = e.target.value;
-    setEditedQuestion((prev) => ({
-      ...prev,
-      difficulty: newDiff,
-    }));
   };
 
   /**
@@ -817,19 +733,7 @@ const QuestionPaperEditPage = () => {
     setSectionForNewQuestion(sectionName);
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
-    setNewQuestion({
-      type: "mcq",
-      questionText: "",
-      imageUrls: [],
-      marks: "",
-      difficulty: "medium",
-      options: [
-        { key: "A", option: "", imageUrl: "" },
-        { key: "B", option: "", imageUrl: "" },
-        { key: "C", option: "", imageUrl: "" },
-        { key: "D", option: "", imageUrl: "" },
-      ],
-    });
+    setNewQuestion(newQuestion);
   };
 
   /**
@@ -988,19 +892,7 @@ const QuestionPaperEditPage = () => {
       setShowAddQuestionModal(false);
       setIsEditingNewQuestion(false);
       setSectionForNewQuestion(null);
-      setNewQuestion({
-        type: "mcq",
-        questionText: "",
-        imageUrls: [],
-        marks: "",
-        difficulty: "medium",
-        options: [
-          { key: "A", option: "", imageUrl: "" },
-          { key: "B", option: "", imageUrl: "" },
-          { key: "C", option: "", imageUrl: "" },
-          { key: "D", option: "", imageUrl: "" },
-        ],
-      });
+      setNewQuestion(newQuestion);
     } catch (error) {
       console.error("Error adding new question:", error);
       alert("Error adding question.");
@@ -1043,19 +935,14 @@ const QuestionPaperEditPage = () => {
               placeholder="Search questions..."
               className="w-full p-2 border rounded"
             />
-            <button
-              onClick={handlePreviewClick}
-              className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition-colors"
-            >
-              Preview
-            </button>
+            <PreviewButton handlePreviewClick={handlePreviewClick} />
           </div>
 
           {/* --Add New Section Button-- */}
           <div className="mb-4" style={{ width: "100%" }}>
             <button
               onClick={() => {
-                setNewSectionName(getNextSectionLetter());
+                setNewSectionName(getNextSectionLetter({ sections }));
                 setShowAddSectionModal(true);
               }}
               className="px-4 py-2 bg-black text-white font-semibold rounded hover:bg-black transition-colors"
@@ -1073,21 +960,15 @@ const QuestionPaperEditPage = () => {
           {selectedOptionalQuestions.length === 2 && (
             <div className="mb-4">
               {twoSelectedHaveSameGroupId() ? (
-                <button
+                <OptionalActionButton
                   onClick={handleUnmarkAsOptional}
-                  className="px-4 py-2 rounded shadow-md"
-                  style={{ backgroundColor: "black", color: "white" }}
-                >
-                  Unmark as Optional
-                </button>
+                  title="Unmark as optional"
+                />
               ) : (
-                <button
+                <OptionalActionButton
                   onClick={handleMarkAsOptional}
-                  className="px-4 py-2 rounded shadow-md"
-                  style={{ backgroundColor: "black", color: "white" }}
-                >
-                  Mark as Optional
-                </button>
+                  title="Mark as optional"
+                />
               )}
             </div>
           )}
@@ -1109,13 +990,10 @@ const QuestionPaperEditPage = () => {
                       <ChevronUp size={16} />
                     )}
                   </button>
-                  <button
-                    onClick={() => handleAddQuestionForSection(section.name)}
-                    className="p-2 rounded bg-black text-white flex items-center justify-center"
-                    title="Add a new question to this section"
-                  >
-                    <Plus size={16} className="text-white" />
-                  </button>
+                  <AddQuestionForSection
+                    section={section}
+                    handleAddQuestionForSection={handleAddQuestionForSection}
+                  />
                   <button
                     onClick={() =>
                       setShowBankModal({
@@ -1324,19 +1202,6 @@ const QuestionPaperEditPage = () => {
                   <option value="descriptive">descriptive</option>
                 </select>
               </div>
-
-              {/* <div className="flex items-center gap-2">
-                <span className="font-semibold">Difficulty:</span>
-                <select
-                  value={editedQuestion.difficulty || ""}
-                  onChange={handleDifficultyChange}
-                  className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-semibold shadow-sm focus:outline-none"
-                >
-                  <option value="easy">easy</option>
-                  <option value="medium">medium</option>
-                  <option value="hard">hard</option>
-                </select>
-              </div> */}
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Marks:</span>
                 <input
@@ -1540,19 +1405,7 @@ const QuestionPaperEditPage = () => {
                     setIsEditingNewQuestion(false);
                     setSectionForNewQuestion(null);
                     // Reset newQuestion to defaults
-                    setNewQuestion({
-                      type: "mcq",
-                      questionText: "",
-                      imageUrls: [],
-                      marks: "",
-                      difficulty: "medium",
-                      options: [
-                        { key: "A", option: "", imageUrl: "" },
-                        { key: "B", option: "", imageUrl: "" },
-                        { key: "C", option: "", imageUrl: "" },
-                        { key: "D", option: "", imageUrl: "" },
-                      ],
-                    });
+                    setNewQuestion(newQuestion);
                   }}
                   className="px-3 py-1 border border-black rounded"
                 >
@@ -1826,11 +1679,7 @@ const QuestionPaperEditPage = () => {
           </div>
         </div>
       )}
-      {loading && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-white bg-opacity-30">
-          <CustomLoader />
-        </div>
-      )}
+      {loading && <LoaderWrapper />}
     </div>
   );
 };

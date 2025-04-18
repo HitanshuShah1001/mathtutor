@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { FileText, DownloadIcon, Edit, Check, X, Loader } from "lucide-react";
+import { DownloadIcon, Edit, Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   grades,
@@ -17,13 +17,13 @@ import {
 } from "../constants/constants";
 import DocumentViewer from "./DocumentViewer";
 import { removeDataFromLocalStorage } from "../utils/LocalStorageOps";
-import { deleteRequest, postRequest } from "../utils/ApiCall";
+import { postRequest } from "../utils/ApiCall";
 import {
   CreatePaperButton,
   ProfileMenuButton,
   QuestionBankButton,
 } from "./QuestionBankButton";
-import { CustomLoader } from "./Loader";
+import { LoaderWrapper } from "../subcomponents/CommonComps";
 
 /**
  * Reusable styling classes for various buttons and input fields.
@@ -606,7 +606,7 @@ export const DocumentSidebar = () => {
             </button>
           </div>
           {loading && documents.length === 0 ? (
-            <CustomLoader title="Loading Documents" />
+            <LoaderWrapper />
           ) : (
             <div ref={documentListRef}>
               {documents?.length === 0 ? (
