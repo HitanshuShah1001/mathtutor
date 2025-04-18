@@ -7,15 +7,13 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  FileImage,
+  Keyboard,
 } from "lucide-react";
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import {
-  BASE_URL_API,
-  DESCRIPTIVE,
-  INVALID_TOKEN,
-} from "../constants/constants";
+import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
@@ -104,6 +102,13 @@ const QuestionPaperEditPage = () => {
   // Manages the left panel's width for resizing
   const [leftPanelWidth, setLeftPanelWidth] = useState(33);
   const [isResizing, setIsResizing] = useState(false);
+
+  // New state for the question source selection modal
+  const [showQuestionSourceModal, setShowQuestionSourceModal] = useState(false);
+  // New state for the image upload modal
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false);
+  // New state for the selected image
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const navigate = useNavigate();
 
@@ -815,21 +820,7 @@ const QuestionPaperEditPage = () => {
    */
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
-    setShowAddQuestionModal(true);
-    setIsEditingNewQuestion(false);
-    setNewQuestion({
-      type: "mcq",
-      questionText: "",
-      imageUrls: [],
-      marks: "",
-      difficulty: "medium",
-      options: [
-        { key: "A", option: "", imageUrl: "" },
-        { key: "B", option: "", imageUrl: "" },
-        { key: "C", option: "", imageUrl: "" },
-        { key: "D", option: "", imageUrl: "" },
-      ],
-    });
+    setShowQuestionSourceModal(true);
   };
 
   /**
@@ -1024,6 +1015,19 @@ const QuestionPaperEditPage = () => {
     if (!q1 || !q2) return false;
     if (!q1.optionalGroupId || !q2.optionalGroupId) return false;
     return q1.optionalGroupId === q2.optionalGroupId;
+  };
+
+  /**
+   * Handles image selection for the "Add from Image" flow
+   */
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      // Here you would typically proceed with image processing
+      // For now, we'll just show a success message
+      // TODO: Add your image processing logic here
+    }
   };
 
   return (
@@ -1524,6 +1528,152 @@ const QuestionPaperEditPage = () => {
           </div>
         )}
       </div>
+
+      {/* Question Source Selection Modal */}
+      {showQuestionSourceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+            <h3 className="text-xl font-semibold mb-4 text-black">
+              Add New Question
+            </h3>
+            <p className="text-gray-600 mb-6">
+              How would you like to add this question?
+            </p>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => {
+                  setShowQuestionSourceModal(false);
+                  setShowAddQuestionModal(true);
+                  setIsEditingNewQuestion(false);
+                  setNewQuestion({
+                    type: "mcq",
+                    questionText: "",
+                    imageUrls: [],
+                    marks: "",
+                    difficulty: "medium",
+                    options: [
+                      { key: "A", option: "", imageUrl: "" },
+                      { key: "B", option: "", imageUrl: "" },
+                      { key: "C", option: "", imageUrl: "" },
+                      { key: "D", option: "", imageUrl: "" },
+                    ],
+                  });
+                }}
+                className="flex items-center gap-3 w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <Keyboard size={24} className="text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <h4 className="font-medium text-black">Manual Entry</h4>
+                  <p className="text-sm text-gray-500">
+                    Type or paste your question
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowQuestionSourceModal(false);
+                  setShowImageUploadModal(true);
+                }}
+                className="flex items-center gap-3 w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="p-3 bg-green-100 rounded-full">
+                  <FileImage size={24} className="text-green-600" />
+                </div>
+                <div className="text-left">
+                  <h4 className="font-medium text-black">From Image</h4>
+                  <p className="text-sm text-gray-500">
+                    Upload an image of your question
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowQuestionSourceModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Upload Modal */}
+      {showImageUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+            <h3 className="text-xl font-semibold mb-4 text-black">
+              Upload Question Image
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Please select an image containing your question
+            </p>
+
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              {selectedImage ? (
+                <div className="relative">
+                  <img
+                    src={URL.createObjectURL(selectedImage)}
+                    alt="Selected question"
+                    className="max-h-64 mx-auto mb-4 rounded"
+                  />
+                  <button
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                  >
+                    <Trash size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <FileImage size={48} className="mx-auto text-gray-400 mb-4" />
+                  <p className="text-gray-500 mb-4">
+                    Drag & drop your image here, or click to browse
+                  </p>
+                  <label className="inline-block px-4 py-2 bg-black text-white rounded cursor-pointer hover:bg-gray-800 transition-colors">
+                    Select Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowImageUploadModal(false);
+                  setSelectedImage(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              {selectedImage && (
+                <button
+                  onClick={() => {
+                    // TODO: Handle image processing here
+                    setShowImageUploadModal(false);
+                  }}
+                  className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                >
+                  Process Image
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Question Modal */}
       {showAddQuestionModal && (
