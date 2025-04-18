@@ -13,7 +13,7 @@ import {
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
+import { BASE_URL_API, INVALID_TOKEN, MCQ } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
@@ -673,6 +673,7 @@ const QuestionPaperEditPage = () => {
       const updatedQuestion = {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
+        options: editedQuestion.type == MCQ ? updatedOptions : null,
       };
 
       let payload = {
@@ -684,9 +685,6 @@ const QuestionPaperEditPage = () => {
       };
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
-      }
-      if (updatedQuestion.type !== "mcq") {
-        updatedQuestion.options = null;
       }
 
       const response = await postRequest(
