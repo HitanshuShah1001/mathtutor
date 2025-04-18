@@ -1024,10 +1024,19 @@ const QuestionPaperEditPage = () => {
     const file = e.target.files[0];
     if (file) {
       setSelectedImage(file);
-      // Here you would typically proceed with image processing
-      // For now, we'll just show a success message
-      // TODO: Add your image processing logic here
     }
+  };
+
+  const getQuestionsFromSelectedImage = async () => {
+    const generatedLink = `https://tutor-staffroom-files.s3.ap-south-1.amazonaws.com/${Date.now()}-${
+      selectedImage.name
+    }`;
+    const imageUrl = await uploadToS3(selectedImage, generatedLink);
+    const sendImageToBackendToGetResponse = await postRequest(
+      `${BASE_URL_API}/extract/pdf-mistral-from-image`,
+      { imageUrl }
+    );
+    console.log(sendImageToBackendToGetResponse);
   };
 
   return (
@@ -1662,8 +1671,7 @@ const QuestionPaperEditPage = () => {
               {selectedImage && (
                 <button
                   onClick={() => {
-                    // TODO: Handle image processing here
-                    setShowImageUploadModal(false);
+                    getQuestionsFromSelectedImage();
                   }}
                   className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
                 >
