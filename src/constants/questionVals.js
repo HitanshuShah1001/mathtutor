@@ -1,4 +1,4 @@
-export const newQuestion = {
+export const newQuestionConfig = {
   type: "mcq",
   questionText: "",
   imageUrls: [],

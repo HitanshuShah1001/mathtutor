@@ -11,7 +11,7 @@ import {
 import "katex/dist/katex.min.css";
 import { postRequest, getRequest } from "../utils/ApiCall";
 import { uploadToS3 } from "../utils/s3utils";
-import { BASE_URL_API, INVALID_TOKEN } from "../constants/constants";
+import { BASE_URL_API, INVALID_TOKEN, MCQ } from "../constants/constants";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { modalContainerClass, modalContentClass } from "./QuestionBank";
 import { v4 as uuidv4 } from "uuid";
@@ -31,6 +31,18 @@ import {
   LoaderWrapper,
   PreviewButton,
 } from "../subcomponents/CommonComps";
+import {
+  handleAddSection,
+  sortSectionsAlphabetically,
+} from "../utils/handleAddSectionsAndSortAlphabetically";
+import {
+  handleAddOptionEdit,
+  handleAddOptionNew,
+  handleRemoveOptionEdit,
+  handleRemoveOptionNew,
+} from "../utils/Optionops";
+import { handleQuestionClick } from "../utils/HandleQuestionClick";
+import { newQuestionConfig } from "../constants/questionVals";
 
 /**
  * Main component for editing a question paper.
@@ -73,12 +85,12 @@ const QuestionPaperEditPage = () => {
   });
 
   // Object that holds the data for a brand-new question to be added
-  const [newQuestion, setNewQuestion] = useState(newQuestion);
+  const [newQuestion, setNewQuestion] = useState(newQuestionConfig);
 
   // Controls visibility of the "Add Section" modal
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
-  const [grade, setGrade] = useState(paperGrade);
-  const [subject, setSubject] = useState(paperSubject);
+  const grade = useState(paperGrade);
+  const subject = useState(paperSubject);
   // Stores the name of the new section to be added
   const [newSectionName, setNewSectionName] = useState("");
 
@@ -98,27 +110,6 @@ const QuestionPaperEditPage = () => {
   const [isResizing, setIsResizing] = useState(false);
 
   const navigate = useNavigate();
-
-  /**
-   * Handles creating and adding a new section to the local state.
-   * This doesn't persist to the server directly in this function.
-   */
-  const handleAddSection = () => {
-    if (!newSectionName.trim()) {
-      alert("Please enter a valid section name.");
-      return;
-    }
-    const newSec = { name: newSectionName.trim(), questions: [] };
-    const updated = [...sections, newSec];
-    const sorted = sortSectionsAlphabetically(updated);
-    setSections(sorted);
-    setShowAddSectionModal(false);
-    setNewSectionName("");
-  };
-
-  const sortSectionsAlphabetically = (sections) => {
-    return [...sections].sort((a, b) => a.name.localeCompare(b.name));
-  };
 
   /**
    * Toggles the collapse/expand state of a given section.
@@ -161,54 +152,6 @@ const QuestionPaperEditPage = () => {
     setIsResizing(true);
   };
 
-  const handleAddOptionNew = () => {
-    setNewQuestion((prev) => {
-      const newOptions = [...prev.options];
-      const newKey = String.fromCharCode(65 + newOptions.length);
-      newOptions.push({ key: newKey, option: "", imageUrl: "" });
-      return { ...prev, options: newOptions };
-    });
-  };
-
-  const handleRemoveOptionNew = (index) => {
-    setNewQuestion((prev) => {
-      let newOptions = [...prev.options];
-      if (newOptions.length > 2) {
-        newOptions.splice(index, 1);
-        newOptions = newOptions.map((opt, idx) => ({
-          ...opt,
-          key: String.fromCharCode(65 + idx),
-        }));
-        return { ...prev, options: newOptions };
-      }
-      return prev;
-    });
-  };
-
-  const handleAddOptionEdit = () => {
-    setEditedQuestion((prev) => {
-      const newOptions = [...(prev.options || [])];
-      const newKey = String.fromCharCode(65 + newOptions.length);
-      newOptions.push({ key: newKey, option: "", imageUrl: "" });
-      return { ...prev, options: newOptions };
-    });
-  };
-
-  const handleRemoveOptionEdit = (index) => {
-    setEditedQuestion((prev) => {
-      let newOptions = [...(prev.options || [])];
-      if (newOptions.length > 2) {
-        newOptions.splice(index, 1);
-        newOptions = newOptions.map((opt, idx) => ({
-          ...opt,
-          key: String.fromCharCode(65 + idx),
-        }));
-        return { ...prev, options: newOptions };
-      }
-      return prev;
-    });
-  };
-
   /**
    * Fetches the details of the question paper (sections, questions) from the server.
    */
@@ -240,16 +183,6 @@ const QuestionPaperEditPage = () => {
     fetchQuestionPaperDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  /**
-   * When a question is clicked from the left panel, set it as the original and
-   * initialize the editedQuestion with a deep copy.
-   */
-  const handleQuestionClick = (question) => {
-    setOriginalQuestion(question);
-    setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    setQuestionImageUrls([]);
-  };
 
   /**
    * Determines if the current edited question has unsaved changes.
@@ -596,10 +529,12 @@ const QuestionPaperEditPage = () => {
       if (originalQuestion) {
         payload.id = updatedQuestion.id;
       }
-      if (updatedQuestion.type !== "mcq") {
+      if (updatedQuestion.type !== MCQ) {
         updatedQuestion.options = null;
       }
-
+      if (updatedQuestion.type === MCQ) {
+        updatedQuestion.options = updatedOptions;
+      }
       const response = await postRequest(
         `${BASE_URL_API}/question/upsert`,
         payload
@@ -1047,7 +982,12 @@ const QuestionPaperEditPage = () => {
                                           <div
                                             className="flex items-center gap-2 p-3 rounded shadow cursor-pointer transition-colors border-l-4 border-blue-500 w-full"
                                             onClick={() =>
-                                              handleQuestionClick(q)
+                                              handleQuestionClick({
+                                                question: q,
+                                                setEditedQuestion,
+                                                setOriginalQuestion,
+                                                setQuestionImageUrls,
+                                              })
                                             }
                                           >
                                             <span
@@ -1359,7 +1299,12 @@ const QuestionPaperEditPage = () => {
                             {editedQuestion.options.length > 2 && (
                               <button
                                 type="button"
-                                onClick={() => handleRemoveOptionEdit(idx)}
+                                onClick={() =>
+                                  handleRemoveOptionEdit({
+                                    index: idx,
+                                    setEditedQuestion,
+                                  })
+                                }
                                 className="ml-4"
                               >
                                 Delete
@@ -1379,7 +1324,7 @@ const QuestionPaperEditPage = () => {
                 </ul>
                 <button
                   type="button"
-                  onClick={handleAddOptionEdit}
+                  onClick={handleAddOptionEdit({ setEditedQuestion })}
                   className="mt-2 px-3 py-1 border border-black rounded bg-black text-white"
                 >
                   Add Option
@@ -1550,7 +1495,7 @@ const QuestionPaperEditPage = () => {
                     {newQuestion.options.length > 2 && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveOptionNew(index)}
+                        onClick={() => handleRemoveOptionNew({ index })}
                         className="absolute top-2 right-2 text-red-500 hover:text-red-700"
                       >
                         Delete
@@ -1560,7 +1505,7 @@ const QuestionPaperEditPage = () => {
                 ))}
                 <button
                   type="button"
-                  onClick={handleAddOptionNew}
+                  onClick={handleAddOptionNew({ setNewQuestion })}
                   className="px-3 py-1 border border-black rounded bg-black text-white"
                 >
                   Add Option
@@ -1646,7 +1591,13 @@ const QuestionPaperEditPage = () => {
                 Cancel
               </button>
               <button
-                onClick={handleAddSection}
+                onClick={handleAddSection({
+                  newSectionName,
+                  sections,
+                  setSections,
+                  setShowAddSectionModal,
+                  setNewSectionName,
+                })}
                 className="px-3 py-1 border border-black rounded bg-black text-white"
               >
                 Confirm

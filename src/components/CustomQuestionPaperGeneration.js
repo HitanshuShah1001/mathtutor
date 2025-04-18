@@ -44,6 +44,7 @@ import {
   PreviewButton,
 } from "../subcomponents/CommonComps";
 import { OptionalActionButton } from "./OptionalButtons";
+import { handleQuestionClick } from "../utils/HandleQuestionClick";
 
 /**
  * API to generate HTML link for question paper preview
@@ -707,7 +708,7 @@ export const CustomPaperCreatePage = () => {
   const navigate = useNavigate();
 
   // Retrieve questionPaperId passed via navigate state
-  const { questionPaperId, numberOfSets, grade, subject } =
+  const { questionPaperId, grade, subject } =
     location.state || {};
 
   // State to hold paper details (sections array)
@@ -956,12 +957,6 @@ export const CustomPaperCreatePage = () => {
     }
   };
 
-  // ================== QUESTION CLICK / EDIT ==================
-  const handleQuestionClick = (question) => {
-    setOriginalQuestion(question);
-    setEditedQuestion(JSON.parse(JSON.stringify(question)));
-    setQuestionImageUrls([]);
-  };
   const isModified =
     editedQuestion && originalQuestion
       ? JSON.stringify(editedQuestion) !== JSON.stringify(originalQuestion) ||
@@ -999,9 +994,6 @@ export const CustomPaperCreatePage = () => {
     });
   };
 
-  const handleDifficultyChange = (e) => {
-    setEditedQuestion((prev) => ({ ...prev, difficulty: e.target.value }));
-  };
   const handleMarksChange = (e) => {
     setEditedQuestion((prev) => ({ ...prev, marks: e.target.value }));
   };
@@ -1093,7 +1085,7 @@ export const CustomPaperCreatePage = () => {
       const finalQuestion = {
         ...editedQuestion,
         imageUrls: updatedImageUrls,
-        options: editedQuestion.type == MCQ ? updatedOptions : null,
+        options: editedQuestion.type === MCQ ? updatedOptions : null,
         difficulty: editedQuestion?.difficulty?.toLowerCase() ?? "medium",
       };
       setLoading(true);
@@ -1632,7 +1624,12 @@ export const CustomPaperCreatePage = () => {
                                           <div
                                             className="flex items-center gap-2 p-3 rounded shadow cursor-pointer transition-colors border-l-4 border-blue-500 w-full"
                                             onClick={() =>
-                                              handleQuestionClick(q)
+                                              handleQuestionClick({
+                                                question: q,
+                                                setOriginalQuestion,
+                                                setEditedQuestion,
+                                                setQuestionImageUrls,
+                                              })
                                             }
                                           >
                                             <span
