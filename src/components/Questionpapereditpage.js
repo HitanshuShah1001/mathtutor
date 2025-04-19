@@ -818,7 +818,7 @@ const QuestionPaperEditPage = () => {
    */
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
-    setShowQuestionSourceModal(false);
+    setShowQuestionSourceModal(false); //set it to true after image process
     setShowAddQuestionModal(true);
     setIsEditingNewQuestion(false);
     setNewQuestion({
