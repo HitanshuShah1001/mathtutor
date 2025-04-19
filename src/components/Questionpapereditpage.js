@@ -818,7 +818,22 @@ const QuestionPaperEditPage = () => {
    */
   const handleAddQuestionForSection = (sectionName) => {
     setSectionForNewQuestion(sectionName);
-    setShowQuestionSourceModal(true);
+    setShowQuestionSourceModal(false);
+    setShowAddQuestionModal(true);
+    setIsEditingNewQuestion(false);
+    setNewQuestion({
+      type: "mcq",
+      questionText: "",
+      imageUrls: [],
+      marks: "",
+      difficulty: "medium",
+      options: [
+        { key: "A", option: "", imageUrl: "" },
+        { key: "B", option: "", imageUrl: "" },
+        { key: "C", option: "", imageUrl: "" },
+        { key: "D", option: "", imageUrl: "" },
+      ],
+    });
   };
 
   /**
@@ -1452,7 +1467,6 @@ const QuestionPaperEditPage = () => {
                                   : URL.createObjectURL(opt.imageUrl)
                               }
                               alt={`Option ${opt.key}`}
-                             
                               className="h-24 w-24"
                             />
                             {typeof opt.imageUrl === "string" ? (

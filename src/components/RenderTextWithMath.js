@@ -4,26 +4,35 @@ import "katex/dist/katex.min.css";
 export const renderTextWithMath = (text) => {
   if (!text) return null;
 
-  const removeHtmlTags = (str) => {
-    return str.replace(/<[^>]*>/g, "");
+  const containerStyle = {
+    display: "inline-block",
+    whiteSpace: "pre-wrap",
+    textAlign: "justify",
+    marginRight: 5,
+    height: 50, // fixed height
   };
 
-  const noTagsText = removeHtmlTags(text);
+  // detect HTML
+  const isHtml = /<[^>]+>/.test(text);
 
-  const parts = noTagsText.split("$");
+  if (isHtml) {
+    return (
+      <div style={containerStyle} dangerouslySetInnerHTML={{ __html: text }} />
+    );
+  }
+
+  // plain text: truncate and split math
+  let truncated = text;
+
+  const parts = truncated.split(/\$([^$]+)\$/g);
+
   return (
-    <div
-      style={{
-        display: "inline",
-        textAlign: "justify",
-        whiteSpace: "pre-wrap",
-      }}
-    >
-      {parts.map((part, index) =>
-        index % 2 === 1 ? (
-          <InlineMath key={index} math={part} />
+    <div style={containerStyle}>
+      {parts.map((part, idx) =>
+        idx % 2 === 1 ? (
+          <InlineMath key={idx} math={part} />
         ) : (
-          <span key={index}>{part}</span>
+          <span key={idx}>{part}</span>
         )
       )}
     </div>
